@@ -104,7 +104,7 @@ export class MCPManager {
 
     const client = new Client(
       { name: 'kangnam-client', version: '1.0.0' },
-      { capabilities: { tools: {} } }
+      { capabilities: {} }
     )
 
     try {
@@ -196,7 +196,7 @@ export class MCPManager {
     const result = await server.client.callTool({ name: originalName, arguments: args })
     return {
       content: (result.content as Array<{ type: string; text?: string }>) ?? [],
-      isError: result.isError ?? false
+      isError: (result.isError as boolean) ?? false
     }
   }
 

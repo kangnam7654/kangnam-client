@@ -69,9 +69,9 @@ export class AntigravityProvider implements LLMProvider {
       body.tools = this.formatTools(tools)
     }
 
-    // Antigravity uses the Interactions API endpoint
+    // Antigravity uses cloudcode-pa endpoint (same domain as Gemini CLI, different quota pool)
     const response = await fetch(
-      'https://autopush-aiplatform.sandbox.googleapis.com/v1/projects/-/locations/-/interactions:streamGenerate',
+      'https://cloudcode-pa.googleapis.com/v1internal:streamGenerateContent?alt=sse',
       {
         method: 'POST',
         headers: {

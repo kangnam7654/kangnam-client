@@ -17,6 +17,11 @@ const api = {
       const handler = (_: unknown, provider: string) => callback(provider)
       ipcRenderer.on('auth:on-disconnected', handler)
       return () => ipcRenderer.removeListener('auth:on-disconnected', handler)
+    },
+    onCopilotDeviceCode: (callback: (data: { userCode: string; verificationUri: string }) => void) => {
+      const handler = (_: unknown, data: { userCode: string; verificationUri: string }) => callback(data)
+      ipcRenderer.on('auth:copilot-device-code', handler)
+      return () => ipcRenderer.removeListener('auth:copilot-device-code', handler)
     }
   },
 

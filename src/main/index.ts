@@ -105,6 +105,11 @@ app.whenReady().then(async () => {
   createWindow()
   createTray()
 
+  // Pass main window reference to auth manager
+  if (mainWindow) {
+    authManager.setMainWindow(mainWindow)
+  }
+
   // Load MCP servers from config
   await mcpManager.loadFromConfig().catch(err => {
     console.warn('Failed to load MCP config:', err.message)

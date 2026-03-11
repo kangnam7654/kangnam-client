@@ -27,7 +27,7 @@ export function registerChatHandlers(
     const win = BrowserWindow.fromWebContents(event.sender)
     if (!win) return
 
-    const accessToken = authManager.getAccessToken(provider)
+    const accessToken = await authManager.getAccessToken(provider)
     if (!accessToken) {
       win.webContents.send('chat:error', { conversationId, error: `Not connected to ${provider}` })
       return

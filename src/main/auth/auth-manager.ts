@@ -1,5 +1,45 @@
 import { BrowserWindow, shell } from 'electron'
-import { deleteToken, getToken, listTokenProviders, saveToken, StoredToken } from './token-store'
+import { deleteToken, getToken, listTokenProviders, saveToken } from './token-store'
+import { generatePKCE, generateState } from './pkce'
+import { waitForOAuthCallback, startOAuthServer } from './oauth-server'
+
+// --- OAuth Credentials (from open-source implementations) ---
+
+const CODEX = {
+  clientId: 'app_EMoamEEZ73f0CkXaXp7hrann',
+  authUrl: 'https://auth.openai.com/oauth/authorize',
+  tokenUrl: 'https://auth.openai.com/oauth/token',
+  redirectPort: 1455,
+  redirectPath: '/auth/callback',
+  scopes: 'openid profile email offline_access'
+}
+
+const GEMINI = {
+  clientId: '681255809395-oo8ft2oprdrnp9e3aqf6av3hmdib135j.apps.googleusercontent.com',
+  clientSecret: '***REMOVED***',
+  authUrl: 'https://accounts.google.com/o/oauth2/v2/auth',
+  tokenUrl: 'https://oauth2.googleapis.com/token',
+  redirectPath: '/oauth2callback',
+  scopes: 'https://www.googleapis.com/auth/cloud-platform https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/userinfo.profile'
+}
+
+const ANTIGRAVITY = {
+  clientId: '1071006060591-tmhssin2h21lcre235vtolojh4g403ep.apps.googleusercontent.com',
+  clientSecret: '***REMOVED***',
+  authUrl: 'https://accounts.google.com/o/oauth2/v2/auth',
+  tokenUrl: 'https://oauth2.googleapis.com/token',
+  redirectPort: 51121,
+  redirectPath: '/oauth-callback',
+  scopes: 'https://www.googleapis.com/auth/cloud-platform https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/userinfo.profile https://www.googleapis.com/auth/cclog https://www.googleapis.com/auth/experimentsandconfigs'
+}
+
+const COPILOT = {
+  clientId: 'Iv1.b507a08c87ecfe98',
+  deviceCodeUrl: 'https://github.com/login/device/code',
+  tokenUrl: 'https://github.com/login/oauth/access_token',
+  copilotTokenUrl: 'https://api.github.com/copilot_internal/v2/token',
+  scope: 'read:user'
+}
 
 export interface AuthStatus {
   provider: string
@@ -7,19 +47,11 @@ export interface AuthStatus {
   expiresAt: number | null
 }
 
-type AuthCallback = (provider: string, token: StoredToken) => void
-
 export class AuthManager {
-  private pendingCallbacks = new Map<string, AuthCallback>()
   private mainWindow: BrowserWindow | null = null
-  private onConnectedListeners: ((provider: string) => void)[] = []
 
   setMainWindow(win: BrowserWindow): void {
     this.mainWindow = win
-  }
-
-  onConnected(listener: (provider: string) => void): void {
-    this.onConnectedListeners.push(listener)
   }
 
   async connect(provider: string): Promise<void> {
@@ -59,101 +91,258 @@ export class AuthManager {
     })
   }
 
-  getAccessToken(provider: string): string | null {
+  /**
+   * Get a valid access token for the given provider.
+   * Automatically refreshes expired tokens.
+   */
+  async getAccessToken(provider: string): Promise<string | null> {
     const token = getToken(provider)
     if (!token) return null
 
-    // Check expiration
-    if (token.expires_at && Date.now() / 1000 > token.expires_at) {
-      // TODO: Implement token refresh per provider
-      return null
+    const now = Math.floor(Date.now() / 1000)
+
+    // Check if token expires within 5 minutes
+    if (token.expires_at && now > token.expires_at - 300) {
+      try {
+        return await this.refreshToken(provider, token.refresh_token)
+      } catch (err) {
+        console.error(`Failed to refresh ${provider} token:`, err)
+        return null
+      }
     }
 
     return token.access_token
   }
 
-  handleOAuthCallback(url: string): void {
-    // Parse kangnam-client://callback?provider=xxx&code=yyy
-    try {
-      const parsed = new URL(url)
-      const provider = parsed.searchParams.get('provider')
-      const code = parsed.searchParams.get('code')
-
-      if (provider && code) {
-        this.exchangeCodeForToken(provider, code)
-      }
-    } catch {
-      console.error('Failed to parse OAuth callback URL:', url)
-    }
-  }
-
-  // --- Provider-specific OAuth flows ---
+  // ==============================
+  // Codex OAuth (PKCE, no secret)
+  // ==============================
 
   private async startCodexOAuth(): Promise<void> {
-    // OpenAI Codex OAuth: opens browser for ChatGPT login
-    // The actual OAuth URL/client_id depends on the OpenAI OAuth spec
-    // Reference: open-hax/codex implementation
-    const authUrl = 'https://auth.openai.com/authorize?' + new URLSearchParams({
+    const { codeVerifier, codeChallenge } = generatePKCE()
+    const state = generateState()
+    const redirectUri = `http://localhost:${CODEX.redirectPort}${CODEX.redirectPath}`
+
+    // Start local server to receive callback
+    const { promise } = waitForOAuthCallback(CODEX.redirectPort, CODEX.redirectPath)
+
+    // Open browser for auth
+    const authUrl = `${CODEX.authUrl}?` + new URLSearchParams({
       response_type: 'code',
-      redirect_uri: 'kangnam-client://callback?provider=codex',
-      scope: 'openid profile email',
-      // client_id will need to be obtained or reverse-engineered
-      client_id: 'CODEX_CLIENT_ID_PLACEHOLDER'
+      client_id: CODEX.clientId,
+      redirect_uri: redirectUri,
+      scope: CODEX.scopes,
+      state,
+      code_challenge: codeChallenge,
+      code_challenge_method: 'S256'
     }).toString()
 
     await shell.openExternal(authUrl)
+
+    // Wait for callback
+    const result = await promise
+    if (result.state !== state) {
+      throw new Error('OAuth state mismatch — possible CSRF attack')
+    }
+
+    // Exchange code for tokens
+    const tokenResponse = await fetch(CODEX.tokenUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({
+        grant_type: 'authorization_code',
+        client_id: CODEX.clientId,
+        code: result.code,
+        redirect_uri: redirectUri,
+        code_verifier: codeVerifier
+      }).toString()
+    })
+
+    if (!tokenResponse.ok) {
+      const text = await tokenResponse.text()
+      throw new Error(`Codex token exchange failed: ${text}`)
+    }
+
+    const tokens = (await tokenResponse.json()) as {
+      access_token: string
+      refresh_token?: string
+      expires_in?: number
+    }
+
+    saveToken({
+      provider: 'codex',
+      access_token: tokens.access_token,
+      refresh_token: tokens.refresh_token ?? null,
+      expires_at: tokens.expires_in
+        ? Math.floor(Date.now() / 1000) + tokens.expires_in
+        : null,
+      metadata: null
+    })
+
+    this.notifyConnected('codex')
   }
+
+  // ==============================
+  // Gemini OAuth (PKCE + secret)
+  // ==============================
 
   private async startGeminiOAuth(): Promise<void> {
-    // Google OAuth for Gemini CLI
-    const authUrl = 'https://accounts.google.com/o/oauth2/auth?' + new URLSearchParams({
+    const { codeVerifier, codeChallenge } = generatePKCE()
+    const state = generateState()
+
+    // Dynamic port allocation
+    const { promise, getPort } = startOAuthServer(GEMINI.redirectPath)
+
+    // Wait a tick for the server to get its port
+    await new Promise(r => setTimeout(r, 100))
+    const port = getPort()
+    const redirectUri = `http://127.0.0.1:${port}${GEMINI.redirectPath}`
+
+    const authUrl = `${GEMINI.authUrl}?` + new URLSearchParams({
       response_type: 'code',
-      redirect_uri: 'kangnam-client://callback?provider=gemini',
-      scope: 'openid email profile https://www.googleapis.com/auth/cloud-platform',
-      client_id: 'GEMINI_CLIENT_ID_PLACEHOLDER',
+      client_id: GEMINI.clientId,
+      redirect_uri: redirectUri,
+      scope: GEMINI.scopes,
+      state,
       access_type: 'offline',
-      prompt: 'consent'
+      prompt: 'consent',
+      code_challenge: codeChallenge,
+      code_challenge_method: 'S256'
     }).toString()
 
     await shell.openExternal(authUrl)
+
+    const result = await promise
+    if (result.state !== state) {
+      throw new Error('OAuth state mismatch')
+    }
+
+    // Exchange code for tokens (Gemini requires client_secret)
+    const tokenResponse = await fetch(GEMINI.tokenUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({
+        grant_type: 'authorization_code',
+        client_id: GEMINI.clientId,
+        client_secret: GEMINI.clientSecret,
+        code: result.code,
+        redirect_uri: redirectUri,
+        code_verifier: codeVerifier
+      }).toString()
+    })
+
+    if (!tokenResponse.ok) {
+      const text = await tokenResponse.text()
+      throw new Error(`Gemini token exchange failed: ${text}`)
+    }
+
+    const tokens = (await tokenResponse.json()) as {
+      access_token: string
+      refresh_token?: string
+      expires_in?: number
+    }
+
+    saveToken({
+      provider: 'gemini',
+      access_token: tokens.access_token,
+      refresh_token: tokens.refresh_token ?? null,
+      expires_at: tokens.expires_in
+        ? Math.floor(Date.now() / 1000) + tokens.expires_in
+        : null,
+      metadata: { redirect_uri: redirectUri }
+    })
+
+    this.notifyConnected('gemini')
   }
+
+  // ==============================
+  // Antigravity OAuth (PKCE + secret, extra scopes)
+  // ==============================
 
   private async startAntigravityOAuth(): Promise<void> {
-    // Google OAuth for Antigravity (additional scopes)
-    const authUrl = 'https://accounts.google.com/o/oauth2/auth?' + new URLSearchParams({
+    const { codeVerifier, codeChallenge } = generatePKCE()
+    const state = generateState()
+    const redirectUri = `http://localhost:${ANTIGRAVITY.redirectPort}${ANTIGRAVITY.redirectPath}`
+
+    const { promise } = waitForOAuthCallback(ANTIGRAVITY.redirectPort, ANTIGRAVITY.redirectPath)
+
+    const authUrl = `${ANTIGRAVITY.authUrl}?` + new URLSearchParams({
       response_type: 'code',
-      redirect_uri: 'kangnam-client://callback?provider=antigravity',
-      scope: [
-        'openid',
-        'email',
-        'profile',
-        'https://www.googleapis.com/auth/cloud-platform',
-        'https://www.googleapis.com/auth/cclog',
-        'https://www.googleapis.com/auth/experimentsandconfigs'
-      ].join(' '),
-      client_id: 'ANTIGRAVITY_CLIENT_ID_PLACEHOLDER',
+      client_id: ANTIGRAVITY.clientId,
+      redirect_uri: redirectUri,
+      scope: ANTIGRAVITY.scopes,
+      state,
       access_type: 'offline',
-      prompt: 'consent'
+      prompt: 'consent',
+      code_challenge: codeChallenge,
+      code_challenge_method: 'S256'
     }).toString()
 
     await shell.openExternal(authUrl)
+
+    const result = await promise
+    if (result.state !== state) {
+      throw new Error('OAuth state mismatch')
+    }
+
+    const tokenResponse = await fetch(ANTIGRAVITY.tokenUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({
+        grant_type: 'authorization_code',
+        client_id: ANTIGRAVITY.clientId,
+        client_secret: ANTIGRAVITY.clientSecret,
+        code: result.code,
+        redirect_uri: redirectUri,
+        code_verifier: codeVerifier
+      }).toString()
+    })
+
+    if (!tokenResponse.ok) {
+      const text = await tokenResponse.text()
+      throw new Error(`Antigravity token exchange failed: ${text}`)
+    }
+
+    const tokens = (await tokenResponse.json()) as {
+      access_token: string
+      refresh_token?: string
+      expires_in?: number
+    }
+
+    saveToken({
+      provider: 'antigravity',
+      access_token: tokens.access_token,
+      refresh_token: tokens.refresh_token ?? null,
+      expires_at: tokens.expires_in
+        ? Math.floor(Date.now() / 1000) + tokens.expires_in
+        : null,
+      metadata: null
+    })
+
+    this.notifyConnected('antigravity')
   }
 
+  // ==============================
+  // GitHub Copilot (Device Flow)
+  // ==============================
+
   private async startCopilotDeviceFlow(): Promise<void> {
-    // GitHub Copilot Device Flow
     // Step 1: Request device code
-    const response = await fetch('https://github.com/login/device/code', {
+    const response = await fetch(COPILOT.deviceCodeUrl, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         Accept: 'application/json'
       },
       body: JSON.stringify({
-        // VSCode's OAuth client_id (required for Copilot)
-        client_id: '01ab8ac9400c4e429b23',
-        scope: 'read:user'
+        client_id: COPILOT.clientId,
+        scope: COPILOT.scope
       })
     })
+
+    if (!response.ok) {
+      throw new Error(`Copilot device code request failed: ${response.status}`)
+    }
 
     const data = (await response.json()) as {
       device_code: string
@@ -173,25 +362,34 @@ export class AuthManager {
     await shell.openExternal(data.verification_uri)
 
     // Step 2: Poll for completion
-    await this.pollCopilotToken(data.device_code, data.interval, data.expires_in)
+    const githubToken = await this.pollCopilotToken(data.device_code, data.interval, data.expires_in)
+
+    // Step 3: Exchange GitHub token for Copilot token
+    const copilotToken = await this.exchangeCopilotToken(githubToken)
+
+    saveToken({
+      provider: 'copilot',
+      access_token: copilotToken,
+      refresh_token: githubToken, // GitHub token used to get new Copilot tokens
+      expires_at: Math.floor(Date.now() / 1000) + 1500, // ~25 min
+      metadata: null
+    })
+
+    this.notifyConnected('copilot')
   }
 
-  private async pollCopilotToken(deviceCode: string, interval: number, expiresIn: number): Promise<void> {
+  private async pollCopilotToken(deviceCode: string, interval: number, expiresIn: number): Promise<string> {
     const deadline = Date.now() + expiresIn * 1000
 
-    const poll = async (): Promise<void> => {
-      if (Date.now() > deadline) {
-        throw new Error('Copilot device flow timed out')
-      }
-
-      const response = await fetch('https://github.com/login/oauth/access_token', {
+    while (Date.now() < deadline) {
+      const response = await fetch(COPILOT.tokenUrl, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           Accept: 'application/json'
         },
         body: JSON.stringify({
-          client_id: '01ab8ac9400c4e429b23',
+          client_id: COPILOT.clientId,
           device_code: deviceCode,
           grant_type: 'urn:ietf:params:oauth:grant-type:device_code'
         })
@@ -203,65 +401,163 @@ export class AuthManager {
       }
 
       if (data.access_token) {
-        // Step 3: Exchange for Copilot token
-        const copilotToken = await this.exchangeCopilotToken(data.access_token)
-
-        saveToken({
-          provider: 'copilot',
-          access_token: copilotToken,
-          refresh_token: data.access_token, // GitHub OAuth token used to refresh Copilot token
-          expires_at: Math.floor(Date.now() / 1000) + 1800, // 30 min
-          metadata: { github_token: data.access_token }
-        })
-
-        this.mainWindow?.webContents.send('auth:on-connected', 'copilot')
-        this.onConnectedListeners.forEach(l => l('copilot'))
-        return
+        return data.access_token
       }
 
-      if (data.error === 'authorization_pending' || data.error === 'slow_down') {
-        const waitMs = data.error === 'slow_down' ? (interval + 5) * 1000 : interval * 1000
-        await new Promise(resolve => setTimeout(resolve, waitMs))
-        return poll()
+      if (data.error === 'authorization_pending') {
+        await new Promise(r => setTimeout(r, interval * 1000))
+        continue
+      }
+
+      if (data.error === 'slow_down') {
+        await new Promise(r => setTimeout(r, (interval + 5) * 1000))
+        continue
       }
 
       throw new Error(`Copilot auth error: ${data.error}`)
     }
 
-    await poll()
+    throw new Error('Copilot device flow timed out')
   }
 
   private async exchangeCopilotToken(githubToken: string): Promise<string> {
-    const response = await fetch('https://api.github.com/copilot_internal/v2/token', {
+    const response = await fetch(COPILOT.copilotTokenUrl, {
       headers: {
         Authorization: `token ${githubToken}`,
         Accept: 'application/json',
-        'Editor-Version': 'vscode/1.97.0',
-        'Editor-Plugin-Version': 'copilot/1.0.0'
+        'Editor-Version': 'vscode/1.85.1',
+        'Editor-Plugin-Version': 'copilot/1.155.0'
       }
     })
 
-    const data = (await response.json()) as { token: string }
+    if (!response.ok) {
+      const text = await response.text()
+      throw new Error(`Copilot token exchange failed: ${response.status} ${text}`)
+    }
+
+    const data = (await response.json()) as { token: string; expires_at: number }
     return data.token
   }
 
-  private async exchangeCodeForToken(provider: string, code: string): Promise<void> {
-    // TODO: Implement per-provider token exchange
-    // This is called when the OAuth callback is received with an auth code
-    // Each provider has different token exchange endpoints
+  // ==============================
+  // Token Refresh
+  // ==============================
 
-    console.log(`Exchanging code for ${provider} token...`)
+  private async refreshToken(provider: string, refreshToken: string | null): Promise<string | null> {
+    if (!refreshToken) return null
 
-    // Placeholder - actual implementation depends on provider
+    switch (provider) {
+      case 'codex':
+        return this.refreshCodexToken(refreshToken)
+      case 'gemini':
+        return this.refreshGoogleToken('gemini', GEMINI.clientId, GEMINI.clientSecret, refreshToken)
+      case 'antigravity':
+        return this.refreshGoogleToken('antigravity', ANTIGRAVITY.clientId, ANTIGRAVITY.clientSecret, refreshToken)
+      case 'copilot':
+        return this.refreshCopilotToken(refreshToken)
+      default:
+        return null
+    }
+  }
+
+  private async refreshCodexToken(refreshToken: string): Promise<string> {
+    const response = await fetch(CODEX.tokenUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({
+        grant_type: 'refresh_token',
+        client_id: CODEX.clientId,
+        refresh_token: refreshToken
+      }).toString()
+    })
+
+    if (!response.ok) {
+      throw new Error(`Codex token refresh failed: ${response.status}`)
+    }
+
+    const data = (await response.json()) as {
+      access_token: string
+      refresh_token?: string
+      expires_in?: number
+    }
+
     saveToken({
-      provider,
-      access_token: code, // Temporary - should be exchanged
-      refresh_token: null,
-      expires_at: null,
+      provider: 'codex',
+      access_token: data.access_token,
+      refresh_token: data.refresh_token ?? refreshToken,
+      expires_at: data.expires_in
+        ? Math.floor(Date.now() / 1000) + data.expires_in
+        : null,
       metadata: null
     })
 
+    return data.access_token
+  }
+
+  private async refreshGoogleToken(
+    provider: string,
+    clientId: string,
+    clientSecret: string,
+    refreshToken: string
+  ): Promise<string> {
+    const response = await fetch('https://oauth2.googleapis.com/token', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({
+        grant_type: 'refresh_token',
+        client_id: clientId,
+        client_secret: clientSecret,
+        refresh_token: refreshToken
+      }).toString()
+    })
+
+    if (!response.ok) {
+      throw new Error(`${provider} token refresh failed: ${response.status}`)
+    }
+
+    const data = (await response.json()) as {
+      access_token: string
+      expires_in?: number
+    }
+
+    saveToken({
+      provider,
+      access_token: data.access_token,
+      refresh_token: refreshToken, // Google doesn't rotate refresh tokens
+      expires_at: data.expires_in
+        ? Math.floor(Date.now() / 1000) + data.expires_in
+        : null,
+      metadata: null
+    })
+
+    return data.access_token
+  }
+
+  private async refreshCopilotToken(githubToken: string): Promise<string> {
+    // Copilot tokens are refreshed by re-exchanging the GitHub OAuth token
+    const copilotToken = await this.exchangeCopilotToken(githubToken)
+
+    saveToken({
+      provider: 'copilot',
+      access_token: copilotToken,
+      refresh_token: githubToken,
+      expires_at: Math.floor(Date.now() / 1000) + 1500,
+      metadata: null
+    })
+
+    return copilotToken
+  }
+
+  // ==============================
+  // Helpers
+  // ==============================
+
+  private notifyConnected(provider: string): void {
     this.mainWindow?.webContents.send('auth:on-connected', provider)
-    this.onConnectedListeners.forEach(l => l(provider))
+  }
+
+  // Legacy handler — no longer needed since we use local HTTP servers
+  handleOAuthCallback(_url: string): void {
+    // Kept for backward compatibility with custom protocol registration
   }
 }

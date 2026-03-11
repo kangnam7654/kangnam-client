@@ -51,10 +51,9 @@ export class CopilotProvider implements LLMProvider {
       headers: {
         'Content-Type': 'application/json',
         Authorization: `Bearer ${accessToken}`,
-        // Required headers to simulate VSCode
-        'Editor-Version': 'vscode/1.97.0',
-        'Editor-Plugin-Version': 'copilot-chat/0.22.0',
-        'Openai-Organization': 'github-copilot',
+        // Required headers (VSCode-compatible)
+        'Editor-Version': 'vscode/1.85.1',
+        'Editor-Plugin-Version': 'copilot/1.155.0',
         'Copilot-Integration-Id': 'vscode-chat',
         'X-Request-Id': crypto.randomUUID()
       },

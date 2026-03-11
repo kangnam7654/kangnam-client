@@ -8,10 +8,20 @@ interface MCPServerStatus {
   error?: string
 }
 
+const PROVIDER_INFO: Record<string, { label: string; description: string; color: string }> = {
+  codex: { label: 'OpenAI Codex', description: 'ChatGPT Plus/Pro subscription', color: '#10a37f' },
+  gemini: { label: 'Google Gemini', description: 'Google AI Pro subscription', color: '#4285f4' },
+  antigravity: { label: 'Antigravity', description: 'Google Antigravity (Gemini + Claude)', color: '#ea4335' },
+  copilot: { label: 'GitHub Copilot', description: 'Copilot subscription (device flow)', color: '#6e40c9' }
+}
+
 export function SettingsPanel() {
   const { showSettings, setShowSettings, settingsTab, setSettingsTab, authStatuses, setAuthStatuses } = useAppStore()
   const [mcpServers, setMcpServers] = useState<MCPServerStatus[]>([])
   const [newServerJson, setNewServerJson] = useState('')
+  const [connecting, setConnecting] = useState<string | null>(null)
+  const [copilotCode, setCopilotCode] = useState<{ userCode: string; verificationUri: string } | null>(null)
+  const [connectError, setConnectError] = useState<string | null>(null)
 
   useEffect(() => {
     if (showSettings) {
@@ -19,11 +29,45 @@ export function SettingsPanel() {
     }
   }, [showSettings])
 
+  // Listen for Copilot device code
+  useEffect(() => {
+    const unsub = window.api.auth.onCopilotDeviceCode((data) => {
+      setCopilotCode(data)
+    })
+    return () => { unsub() }
+  }, [])
+
+  // Listen for auth connected events to clear connecting state
+  useEffect(() => {
+    const unsub = window.api.auth.onConnected(async () => {
+      setConnecting(null)
+      setCopilotCode(null)
+      setConnectError(null)
+      const statuses = await window.api.auth.status()
+      setAuthStatuses(statuses)
+    })
+    return () => { unsub() }
+  }, [setAuthStatuses])
+
   const loadData = async () => {
     const statuses = await window.api.auth.status()
     setAuthStatuses(statuses)
     const servers = await window.api.mcp.serverStatus()
     setMcpServers(servers)
+  }
+
+  const handleConnect = async (provider: string) => {
+    setConnecting(provider)
+    setConnectError(null)
+    setCopilotCode(null)
+    try {
+      await window.api.auth.connect(provider)
+      await loadData()
+    } catch (err) {
+      setConnectError(err instanceof Error ? err.message : String(err))
+    } finally {
+      setConnecting(null)
+    }
   }
 
   if (!showSettings) return null
@@ -59,35 +103,70 @@ export function SettingsPanel() {
         {/* Content */}
         <div className="p-6 overflow-y-auto max-h-[60vh]">
           {settingsTab === 'providers' && (
-            <div className="space-y-4">
-              <p className="text-sm text-[var(--text-muted)]">Connect your LLM providers</p>
-              {authStatuses.map(status => (
-                <div key={status.provider} className="flex items-center justify-between p-3 rounded-lg bg-[var(--bg-tertiary)]">
-                  <div>
-                    <span className="text-sm font-medium capitalize">{status.provider}</span>
-                    <span className={`ml-2 text-xs ${status.connected ? 'text-[var(--success)]' : 'text-[var(--text-muted)]'}`}>
-                      {status.connected ? 'Connected' : 'Not connected'}
-                    </span>
-                  </div>
-                  <button
-                    onClick={async () => {
-                      if (status.connected) {
-                        await window.api.auth.disconnect(status.provider)
-                      } else {
-                        await window.api.auth.connect(status.provider)
-                      }
-                      await loadData()
-                    }}
-                    className={`px-3 py-1 rounded text-xs font-medium ${
-                      status.connected
-                        ? 'bg-[var(--danger)]/20 text-[var(--danger)] hover:bg-[var(--danger)]/30'
-                        : 'bg-[var(--accent)] text-white hover:bg-[var(--accent-hover)]'
-                    }`}
-                  >
-                    {status.connected ? 'Disconnect' : 'Connect'}
-                  </button>
+            <div className="space-y-3">
+              <p className="text-sm text-[var(--text-muted)] mb-4">Connect your LLM providers via OAuth</p>
+
+              {connectError && (
+                <div className="px-3 py-2 rounded-lg bg-[var(--danger)]/10 text-[var(--danger)] text-xs">
+                  {connectError}
                 </div>
-              ))}
+              )}
+
+              {/* Copilot device code modal */}
+              {copilotCode && (
+                <div className="p-4 rounded-lg bg-[var(--bg-tertiary)] border border-[var(--accent)] space-y-2">
+                  <p className="text-sm font-medium">Enter this code on GitHub:</p>
+                  <div className="text-2xl font-mono font-bold text-center py-2 tracking-widest text-[var(--accent)]">
+                    {copilotCode.userCode}
+                  </div>
+                  <p className="text-xs text-[var(--text-muted)] text-center">
+                    A browser window should have opened. If not, visit github.com/login/device
+                  </p>
+                  <p className="text-xs text-[var(--text-muted)] text-center animate-pulse">
+                    Waiting for authorization...
+                  </p>
+                </div>
+              )}
+
+              {authStatuses.map(status => {
+                const info = PROVIDER_INFO[status.provider]
+                if (!info) return null
+                const isConnecting = connecting === status.provider
+                return (
+                  <div key={status.provider} className="flex items-center justify-between p-3 rounded-lg bg-[var(--bg-tertiary)]">
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span
+                          className="w-2 h-2 rounded-full"
+                          style={{ backgroundColor: status.connected ? 'var(--success)' : info.color }}
+                        />
+                        <span className="text-sm font-medium">{info.label}</span>
+                      </div>
+                      <p className="text-xs text-[var(--text-muted)] ml-4 mt-0.5">{info.description}</p>
+                    </div>
+                    <button
+                      disabled={isConnecting}
+                      onClick={async () => {
+                        if (status.connected) {
+                          await window.api.auth.disconnect(status.provider)
+                          await loadData()
+                        } else {
+                          handleConnect(status.provider)
+                        }
+                      }}
+                      className={`px-3 py-1.5 rounded text-xs font-medium transition-colors ${
+                        isConnecting
+                          ? 'bg-[var(--bg-hover)] text-[var(--text-muted)] cursor-wait'
+                          : status.connected
+                            ? 'bg-[var(--danger)]/20 text-[var(--danger)] hover:bg-[var(--danger)]/30'
+                            : 'bg-[var(--accent)] text-white hover:bg-[var(--accent-hover)]'
+                      }`}
+                    >
+                      {isConnecting ? 'Connecting...' : status.connected ? 'Disconnect' : 'Connect'}
+                    </button>
+                  </div>
+                )
+              })}
             </div>
           )}
 
@@ -97,7 +176,10 @@ export function SettingsPanel() {
                 MCP Servers — connect tools to your LLM
               </p>
 
-              {/* Server list */}
+              {mcpServers.length === 0 && (
+                <p className="text-xs text-[var(--text-muted)] py-4 text-center">No MCP servers configured</p>
+              )}
+
               {mcpServers.map(server => (
                 <div key={server.name} className="flex items-center justify-between p-3 rounded-lg bg-[var(--bg-tertiary)]">
                   <div>
@@ -121,10 +203,9 @@ export function SettingsPanel() {
                 </div>
               ))}
 
-              {/* Add server */}
               <div className="mt-4">
                 <label className="text-sm text-[var(--text-secondary)] block mb-2">
-                  Add MCP Server (JSON config)
+                  Add MCP Server (JSON)
                 </label>
                 <textarea
                   value={newServerJson}

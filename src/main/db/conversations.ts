@@ -1,5 +1,6 @@
 import { getDb, saveDatabase } from './database'
 import { randomUUID } from 'crypto'
+import type { BindParams } from 'sql.js'
 
 export interface Conversation {
   id: string
@@ -31,7 +32,7 @@ function rowsToObjects<T>(stmt: ReturnType<ReturnType<typeof getDb>['prepare']>)
   return results
 }
 
-function queryOne<T>(sql: string, params: unknown[] = []): T | null {
+function queryOne<T>(sql: string, params: BindParams = []): T | null {
   const db = getDb()
   const stmt = db.prepare(sql)
   stmt.bind(params)
@@ -44,14 +45,14 @@ function queryOne<T>(sql: string, params: unknown[] = []): T | null {
   return null
 }
 
-function queryAll<T>(sql: string, params: unknown[] = []): T[] {
+function queryAll<T>(sql: string, params: BindParams = []): T[] {
   const db = getDb()
   const stmt = db.prepare(sql)
   stmt.bind(params)
   return rowsToObjects<T>(stmt)
 }
 
-function execute(sql: string, params: unknown[] = []): void {
+function execute(sql: string, params: BindParams = []): void {
   const db = getDb()
   db.run(sql, params)
   saveDatabase()

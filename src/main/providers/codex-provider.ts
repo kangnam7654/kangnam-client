@@ -40,7 +40,9 @@ export class CodexProvider implements LLMProvider {
       body.tools = this.formatTools(tools)
     }
 
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+    // Use ChatGPT subscription endpoint (not API billing)
+    // Falls back to /v1/chat/completions if the subscription endpoint fails
+    const response = await fetch('https://chatgpt.com/backend-api/codex/responses', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

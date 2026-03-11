@@ -1,5 +1,9 @@
 import { ChatMessage, LLMProvider, StreamCallbacks, ToolCall, ToolDefinition } from './base-provider'
 
+/**
+ * Gemini provider using the Code Assist endpoint (subscription-based).
+ * Uses cloudcode-pa.googleapis.com/v1internal with a non-standard request envelope.
+ */
 export class GeminiProvider implements LLMProvider {
   readonly name = 'gemini'
   readonly displayName = 'Google Gemini'
@@ -33,19 +37,25 @@ export class GeminiProvider implements LLMProvider {
 
     const systemInstruction = messages.find(m => m.role === 'system')
 
-    const body: Record<string, unknown> = { contents }
+    // Build the inner request (standard GenerateContent format)
+    const innerRequest: Record<string, unknown> = { contents }
 
     if (systemInstruction) {
-      body.systemInstruction = { parts: [{ text: systemInstruction.content }] }
+      innerRequest.systemInstruction = { parts: [{ text: systemInstruction.content }] }
     }
 
     if (tools.length > 0) {
-      body.tools = this.formatTools(tools)
+      innerRequest.tools = this.formatTools(tools)
     }
 
-    const model = 'gemini-2.5-pro'
+    // Code Assist uses a wrapping envelope
+    const body = {
+      model: 'gemini-2.5-pro',
+      request: innerRequest
+    }
+
     const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/${model}:streamGenerateContent?alt=sse`,
+      'https://cloudcode-pa.googleapis.com/v1internal:streamGenerateContent?alt=sse',
       {
         method: 'POST',
         headers: {
@@ -62,6 +72,13 @@ export class GeminiProvider implements LLMProvider {
       throw new Error(`Gemini API error ${response.status}: ${errorText}`)
     }
 
+    return this.parseSSEStream(response, callbacks)
+  }
+
+  private async parseSSEStream(
+    response: Response,
+    callbacks: StreamCallbacks
+  ): Promise<{ stopReason: 'end_turn' | 'tool_use'; toolCalls?: ToolCall[] }> {
     const toolCalls: ToolCall[] = []
     const reader = response.body?.getReader()
     if (!reader) throw new Error('No response body')
