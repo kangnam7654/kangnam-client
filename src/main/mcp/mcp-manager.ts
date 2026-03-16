@@ -216,6 +216,20 @@ export class MCPManager {
     this.saveConfig()
   }
 
+  async reconnectServer(name: string): Promise<void> {
+    const server = this.servers.get(name)
+    if (!server) throw new Error(`Server '${name}' not found`)
+    const config = server.config
+    await this.disconnect(name)
+    await this.connect(config)
+  }
+
+  async updateServer(oldName: string, config: ServerConfig): Promise<void> {
+    await this.disconnect(oldName)
+    await this.connect(config)
+    this.saveConfig()
+  }
+
   async removeServer(name: string): Promise<void> {
     await this.disconnect(name)
     this.saveConfig()

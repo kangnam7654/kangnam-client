@@ -78,7 +78,10 @@ const api = {
   // MCP
   mcp: {
     listServers: () => ipcRenderer.invoke('mcp:list-servers'),
+    getConfig: (name: string) => ipcRenderer.invoke('mcp:get-config', name),
     addServer: (config: unknown) => ipcRenderer.invoke('mcp:add-server', config),
+    reconnectServer: (name: string) => ipcRenderer.invoke('mcp:reconnect-server', name),
+    updateServer: (oldName: string, config: unknown) => ipcRenderer.invoke('mcp:update-server', oldName, config),
     removeServer: (name: string) => ipcRenderer.invoke('mcp:remove-server', name),
     listTools: () => ipcRenderer.invoke('mcp:list-tools'),
     serverStatus: () => ipcRenderer.invoke('mcp:server-status')
