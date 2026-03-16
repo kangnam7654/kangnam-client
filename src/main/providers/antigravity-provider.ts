@@ -46,18 +46,36 @@ export class AntigravityProvider implements LLMProvider {
     messages: ChatMessage[],
     tools: ToolDefinition[],
     accessToken: string,
-    callbacks: StreamCallbacks
+    callbacks: StreamCallbacks,
+    model?: string,
+    reasoningEffort?: 'low' | 'medium' | 'high'
   ): Promise<{ stopReason: 'end_turn' | 'tool_use'; toolCalls?: ToolCall[] }> {
     this.controller = new AbortController()
 
     // Build Interactions API request
-    const userMessage = messages[messages.length - 1]?.content ?? ''
+    const lastMessage = messages[messages.length - 1]
+    const userMessage = lastMessage?.content ?? ''
+
+    // Build userInput with optional inline image data
+    const userInput: Record<string, unknown> = { text: userMessage }
+    if (lastMessage?.images && lastMessage.images.length > 0) {
+      const inlineData: Array<Record<string, unknown>> = []
+      for (const img of lastMessage.images) {
+        const match = img.match(/^data:([^;]+);base64,(.+)$/)
+        if (match) {
+          inlineData.push({ mimeType: match[1], data: match[2] })
+        }
+      }
+      if (inlineData.length > 0) {
+        userInput.inlineData = inlineData
+      }
+    }
 
     const body: Record<string, unknown> = {
-      userInput: { text: userMessage },
+      userInput,
       config: {
-        model: 'gemini-2.5-pro',
-        thinkingConfig: { thinkingBudget: 1024 }
+        model: model || 'gemini-3.1-pro-preview',
+        thinkingConfig: { thinkingLevel: reasoningEffort || 'medium' }
       }
     }
 

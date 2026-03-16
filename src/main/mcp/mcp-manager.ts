@@ -90,10 +90,15 @@ export class MCPManager {
     if (config.type === 'stdio') {
       if (!config.command) throw new Error(`Server ${config.name}: 'command' is required for stdio transport`)
 
+      // Ensure homebrew/local paths are in PATH (Electron apps may not inherit shell PATH)
+      const extraPaths = ['/opt/homebrew/bin', '/usr/local/bin', '/opt/homebrew/sbin']
+      const currentPath = process.env.PATH ?? ''
+      const fullPath = [...extraPaths, currentPath].join(':')
+
       transport = new StdioClientTransport({
         command: config.command,
         args: config.args ?? [],
-        env: { ...process.env, ...config.env } as Record<string, string>
+        env: { ...process.env, PATH: fullPath, ...config.env } as Record<string, string>
       })
     } else {
       if (!config.url) throw new Error(`Server ${config.name}: 'url' is required for http/sse transport`)
@@ -108,7 +113,13 @@ export class MCPManager {
     )
 
     try {
-      await client.connect(transport)
+      // 15-second timeout to prevent hanging on unresponsive servers
+      await Promise.race([
+        client.connect(transport),
+        new Promise<never>((_, reject) =>
+          setTimeout(() => reject(new Error(`Connection to '${config.name}' timed out after 15s`)), 15_000)
+        )
+      ])
 
       const { tools } = await client.listTools()
       const aggregatedTools: AggregatedTool[] = tools.map(t => ({

@@ -47,6 +47,10 @@ export interface AuthStatus {
   expiresAt: number | null
 }
 
+export interface ConnectOptions {
+  setupToken?: string
+}
+
 export class AuthManager {
   private mainWindow: BrowserWindow | null = null
 
@@ -54,7 +58,7 @@ export class AuthManager {
     this.mainWindow = win
   }
 
-  async connect(provider: string): Promise<void> {
+  async connect(provider: string, options?: ConnectOptions): Promise<void> {
     switch (provider) {
       case 'codex':
         await this.startCodexOAuth()
@@ -68,6 +72,9 @@ export class AuthManager {
       case 'copilot':
         await this.startCopilotDeviceFlow()
         break
+      case 'claude':
+        await this.saveClaudeSetupToken(options?.setupToken)
+        break
       default:
         throw new Error(`Unknown provider: ${provider}`)
     }
@@ -75,16 +82,16 @@ export class AuthManager {
 
   async disconnect(provider: string): Promise<void> {
     deleteToken(provider)
-    this.mainWindow?.webContents.send('auth:on-disconnected', provider)
+    this.safeSend('auth:on-disconnected', provider)
   }
 
-  getStatus(): AuthStatus[] {
-    const providers = ['codex', 'gemini', 'antigravity', 'copilot']
+  async getStatus(): Promise<AuthStatus[]> {
+    const providers = ['codex', 'gemini', 'antigravity', 'copilot', 'claude']
     const connectedProviders = listTokenProviders()
-    return providers.map(p => {
-      const token = connectedProviders.includes(p) ? getToken(p) : null
+    return providers.map(provider => {
+      const token = connectedProviders.includes(provider) ? getToken(provider) : null
       return {
-        provider: p,
+        provider,
         connected: !!token,
         expiresAt: token?.expires_at ?? null
       }
@@ -353,7 +360,7 @@ export class AuthManager {
     }
 
     // Send user_code to renderer for display
-    this.mainWindow?.webContents.send('auth:copilot-device-code', {
+    this.safeSend('auth:copilot-device-code', {
       userCode: data.user_code,
       verificationUri: data.verification_uri
     })
@@ -552,8 +559,85 @@ export class AuthManager {
   // Helpers
   // ==============================
 
+  private safeSend(channel: string, ...args: unknown[]): void {
+    if (this.mainWindow && !this.mainWindow.isDestroyed()) {
+      this.mainWindow.webContents.send(channel, ...args)
+    }
+  }
+
   private notifyConnected(provider: string): void {
-    this.mainWindow?.webContents.send('auth:on-connected', provider)
+    this.safeSend('auth:on-connected', provider)
+  }
+
+  private async saveClaudeSetupToken(rawToken?: string): Promise<void> {
+    const token = this.normalizeClaudeToken(rawToken)
+
+    // Verify token with a minimal API call before saving
+    await this.verifyClaudeToken(token)
+
+    const authMethod = token.startsWith('sk-ant-oat') ? 'setup-token' : 'api-key'
+
+    saveToken({
+      provider: 'claude',
+      access_token: token,
+      refresh_token: null,
+      expires_at: null,
+      metadata: { authMethod }
+    })
+
+    this.notifyConnected('claude')
+  }
+
+  private async verifyClaudeToken(token: string): Promise<void> {
+    const isOAT = token.startsWith('sk-ant-oat')
+    const headers: Record<string, string> = {
+      'content-type': 'application/json',
+      'anthropic-version': '2023-06-01'
+    }
+    if (isOAT) {
+      headers['Authorization'] = `Bearer ${token}`
+      headers['anthropic-beta'] = 'claude-code-20250219,oauth-2025-04-20'
+    } else {
+      headers['x-api-key'] = token
+    }
+
+    const response = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({
+        model: 'claude-haiku-4-5',
+        max_tokens: 1,
+        messages: [{ role: 'user', content: 'hi' }]
+      })
+    })
+
+    if (response.status === 401) {
+      const body = await response.text().catch(() => '')
+      throw new Error(`Invalid token — 401 Unauthorized. ${body}`)
+    }
+    if (response.status === 403) {
+      throw new Error('Token forbidden — 403. This token may not have API access.')
+    }
+    if (response.status >= 500) {
+      throw new Error(`Anthropic API error ${response.status}. Try again later.`)
+    }
+  }
+
+  private normalizeClaudeToken(rawToken?: string): string {
+    const token = rawToken?.trim()
+    if (!token) {
+      throw new Error('API key is required. Get one at console.anthropic.com/settings/keys')
+    }
+
+    if (!token.startsWith('sk-ant-')) {
+      throw new Error('API key must start with `sk-ant-`. Get one at console.anthropic.com')
+    }
+
+    if (token.length < 24) {
+      throw new Error('Token looks too short.')
+    }
+
+    return token
   }
 
   // Legacy handler — no longer needed since we use local HTTP servers

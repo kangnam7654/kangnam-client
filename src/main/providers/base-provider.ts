@@ -3,6 +3,10 @@ export interface ChatMessage {
   content: string
   toolUseId?: string
   toolCallId?: string
+  /** Image data URLs (base64) to include as visual input */
+  images?: string[]
+  /** Tool calls made by the assistant (for agent loop context) */
+  toolCalls?: ToolCall[]
 }
 
 export interface ToolDefinition {
@@ -19,6 +23,7 @@ export interface ToolCall {
 
 export interface StreamCallbacks {
   onToken: (text: string) => void
+  onThinking: (text: string) => void
   onToolCall: (toolCall: ToolCall) => void
   onComplete: () => void
   onError: (error: Error) => void
@@ -36,7 +41,9 @@ export interface LLMProvider {
     messages: ChatMessage[],
     tools: ToolDefinition[],
     accessToken: string,
-    callbacks: StreamCallbacks
+    callbacks: StreamCallbacks,
+    model?: string,
+    reasoningEffort?: 'low' | 'medium' | 'high'
   ): Promise<{ stopReason: 'end_turn' | 'tool_use'; toolCalls?: ToolCall[] }>
 
   /**

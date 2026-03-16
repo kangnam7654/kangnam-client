@@ -23,17 +23,32 @@ export class GeminiProvider implements LLMProvider {
     messages: ChatMessage[],
     tools: ToolDefinition[],
     accessToken: string,
-    callbacks: StreamCallbacks
+    callbacks: StreamCallbacks,
+    model?: string,
+    reasoningEffort?: 'low' | 'medium' | 'high'
   ): Promise<{ stopReason: 'end_turn' | 'tool_use'; toolCalls?: ToolCall[] }> {
     this.controller = new AbortController()
 
-    // Convert to Gemini format
+    // Convert to Gemini format (with multimodal support)
     const contents = messages
       .filter(m => m.role !== 'system')
-      .map(m => ({
-        role: m.role === 'assistant' ? 'model' : 'user',
-        parts: [{ text: m.content }]
-      }))
+      .map(m => {
+        const parts: Array<Record<string, unknown>> = []
+        // Add inline image data
+        if (m.images && m.images.length > 0) {
+          for (const img of m.images) {
+            const match = img.match(/^data:([^;]+);base64,(.+)$/)
+            if (match) {
+              parts.push({ inlineData: { mimeType: match[1], data: match[2] } })
+            }
+          }
+        }
+        parts.push({ text: m.content })
+        return {
+          role: m.role === 'assistant' ? 'model' : 'user',
+          parts
+        }
+      })
 
     const systemInstruction = messages.find(m => m.role === 'system')
 
@@ -48,9 +63,15 @@ export class GeminiProvider implements LLMProvider {
       innerRequest.tools = this.formatTools(tools)
     }
 
+    if (reasoningEffort) {
+      innerRequest.generationConfig = {
+        thinkingConfig: { thinkingLevel: reasoningEffort }
+      }
+    }
+
     // Code Assist uses a wrapping envelope
     const body = {
-      model: 'gemini-2.5-pro',
+      model: model || 'gemini-3.1-pro-preview',
       request: innerRequest
     }
 

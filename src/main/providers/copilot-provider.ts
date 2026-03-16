@@ -26,15 +26,39 @@ export class CopilotProvider implements LLMProvider {
     messages: ChatMessage[],
     tools: ToolDefinition[],
     accessToken: string,
-    callbacks: StreamCallbacks
+    callbacks: StreamCallbacks,
+    _model?: string,
+    _reasoningEffort?: 'low' | 'medium' | 'high'
   ): Promise<{ stopReason: 'end_turn' | 'tool_use'; toolCalls?: ToolCall[] }> {
     this.controller = new AbortController()
 
-    const formattedMessages = messages.map(m => ({
-      role: m.role === 'tool' ? 'tool' : m.role,
-      content: m.content,
-      ...(m.toolCallId ? { tool_call_id: m.toolCallId } : {})
-    }))
+    const formattedMessages = messages.map(m => {
+      // Multimodal: include images as content parts (OpenAI vision format)
+      if (m.images && m.images.length > 0 && m.role === 'user') {
+        const content: Array<Record<string, unknown>> = []
+        for (const img of m.images) {
+          content.push({ type: 'image_url', image_url: { url: img } })
+        }
+        if (m.content) {
+          content.push({ type: 'text', text: m.content })
+        }
+        return { role: m.role, content }
+      }
+      const msg: Record<string, unknown> = {
+        role: m.role === 'tool' ? 'tool' : m.role,
+        content: m.content,
+        ...(m.toolCallId ? { tool_call_id: m.toolCallId } : {})
+      }
+      // Include tool_calls on assistant messages so API can match tool results
+      if (m.role === 'assistant' && m.toolCalls && m.toolCalls.length > 0) {
+        msg.tool_calls = m.toolCalls.map(tc => ({
+          id: tc.id,
+          type: 'function',
+          function: { name: tc.name, arguments: JSON.stringify(tc.arguments) }
+        }))
+      }
+      return msg
+    })
 
     const body: Record<string, unknown> = {
       model: 'gpt-4o',

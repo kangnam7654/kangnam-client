@@ -4,16 +4,29 @@ import { MCPManager } from '../mcp/mcp-manager'
 import { LLMRouter } from '../providers/llm-router'
 import { mcpToolsToProviderTools } from '../mcp/tool-adapter'
 import { ChatMessage, ToolCall } from '../providers/base-provider'
+import { getDb } from '../db/database'
 import {
   addMessage,
+  autoTitleIfNeeded,
   createConversation,
   deleteConversation,
+  deleteAllConversations,
+  getConversation,
   getMessages,
   listConversations,
-  updateConversationTitle
+  updateConversationTitle,
+  togglePin,
+  searchMessages
 } from '../db/conversations'
 
 const llmRouter = new LLMRouter()
+
+/** Safely send IPC message — no-op if window is destroyed */
+function safeSend(win: BrowserWindow, channel: string, data: unknown): void {
+  if (!win.isDestroyed()) {
+    win.webContents.send(channel, data)
+  }
+}
 
 // Track active abort controllers per conversation
 const activeRequests = new Map<string, string>() // conversationId -> providerName
@@ -23,30 +36,53 @@ export function registerChatHandlers(
   authManager: AuthManager,
   mcpManager: MCPManager
 ): void {
-  ipcMain.handle('chat:send', async (event, conversationId: string, message: string, provider: string) => {
+  ipcMain.handle('chat:send', async (event, conversationId: string, message: string, provider: string, attachments?: string, model?: string, reasoningEffort?: string, promptId?: string) => {
     const win = BrowserWindow.fromWebContents(event.sender)
     if (!win) return
 
-    const accessToken = await authManager.getAccessToken(provider)
+    const isMock = provider === 'mock'
+    const accessToken = isMock ? 'mock-token' : await authManager.getAccessToken(provider)
     if (!accessToken) {
-      win.webContents.send('chat:error', { conversationId, error: `Not connected to ${provider}` })
+      safeSend(win, 'chat:error', { conversationId, error: `Not connected to ${provider}` })
       return
     }
 
-    // Save user message
-    addMessage(conversationId, 'user', message)
+    // Inject skill instructions (+ references) BEFORE user message
+    if (promptId) {
+      const { getSkillInstructions } = require('../db/skills')
+      const instructions: string | null = getSkillInstructions(promptId)
+      if (instructions) {
+        addMessage(conversationId, 'system', instructions)
+      }
+    }
+
+    // Save user message (with attachments if any)
+    addMessage(conversationId, 'user', message, undefined, undefined, attachments || undefined)
+
+    // Auto-generate title from first user message
+    autoTitleIfNeeded(conversationId, message)
 
     // Get all MCP tools
     const mcpTools = mcpManager.getAllTools()
     const tools = mcpToolsToProviderTools(mcpTools)
 
-    // Build message history
+    // Build message history (include image attachments for multimodal)
     const dbMessages = getMessages(conversationId)
-    const chatMessages: ChatMessage[] = dbMessages.map(m => ({
-      role: m.role as ChatMessage['role'],
-      content: m.content,
-      toolUseId: m.tool_use_id ?? undefined
-    }))
+    const chatMessages: ChatMessage[] = dbMessages.map(m => {
+      const msg: ChatMessage = {
+        role: m.role as ChatMessage['role'],
+        content: m.content,
+        toolUseId: m.tool_use_id ?? undefined
+      }
+      if (m.attachments) {
+        try {
+          const atts = JSON.parse(m.attachments) as Array<{ type: string; dataUrl: string }>
+          const imgs = atts.filter(a => a.type === 'image').map(a => a.dataUrl)
+          if (imgs.length > 0) msg.images = imgs
+        } catch { /* ignore */ }
+      }
+      return msg
+    })
 
     const llmProvider = llmRouter.getProvider(provider)
     activeRequests.set(conversationId, provider)
@@ -60,12 +96,16 @@ export function registerChatHandlers(
         tools,
         accessToken,
         {
+
           onToken: (text) => {
             fullResponse += text
-            win.webContents.send('chat:stream', { conversationId, chunk: text })
+            safeSend(win, 'chat:stream', { conversationId, chunk: text })
+          },
+          onThinking: (text) => {
+            safeSend(win, 'chat:thinking', { conversationId, chunk: text })
           },
           onToolCall: (toolCall) => {
-            win.webContents.send('chat:tool-call', {
+            safeSend(win, 'chat:tool-call', {
               conversationId,
               tool: toolCall.name,
               args: toolCall.arguments
@@ -73,9 +113,11 @@ export function registerChatHandlers(
           },
           onComplete: () => {},
           onError: (error) => {
-            win.webContents.send('chat:error', { conversationId, error: error.message })
+            safeSend(win, 'chat:error', { conversationId, error: error.message })
           }
-        }
+        },
+        model || undefined,
+        (reasoningEffort as 'low' | 'medium' | 'high') || undefined
       )
 
       if (result.stopReason === 'tool_use' && result.toolCalls) {
@@ -85,10 +127,10 @@ export function registerChatHandlers(
         // Execute tool calls
         const toolResults = await executeToolCalls(result.toolCalls, mcpManager)
 
-        // Add tool results to messages
+        // Add tool results to messages (include toolCalls on assistant message for API context)
         const updatedMessages: ChatMessage[] = [
           ...messages,
-          { role: 'assistant', content: fullResponse || '[tool call]' },
+          { role: 'assistant', content: fullResponse || '[tool call]', toolCalls: result.toolCalls },
           ...toolResults.map(tr => ({
             role: 'tool' as const,
             content: tr.content,
@@ -96,9 +138,9 @@ export function registerChatHandlers(
           }))
         ]
 
-        // Save tool results
+        // Save tool results (with tool name and args)
         for (const tr of toolResults) {
-          addMessage(conversationId, 'tool', tr.content, tr.toolCallId)
+          addMessage(conversationId, 'tool', tr.content, tr.toolCallId, undefined, undefined, tr.toolName, JSON.stringify(tr.toolArgs))
         }
 
         // Reset for next iteration
@@ -111,21 +153,40 @@ export function registerChatHandlers(
         if (fullResponse) {
           addMessage(conversationId, 'assistant', fullResponse)
         }
-        win.webContents.send('chat:complete', { conversationId })
+        safeSend(win, 'chat:complete', { conversationId })
       }
     }
 
     try {
       await runAgentLoop(chatMessages)
     } catch (err) {
-      if ((err as Error).name !== 'AbortError') {
-        win.webContents.send('chat:error', {
+      if ((err as Error).name === 'AbortError') {
+        // Save partial response accumulated before abort
+        if (fullResponse.trim()) {
+          addMessage(conversationId, 'assistant', fullResponse)
+        }
+        safeSend(win, 'chat:complete', { conversationId })
+      } else {
+        safeSend(win, 'chat:error', {
           conversationId,
           error: err instanceof Error ? err.message : String(err)
         })
       }
     } finally {
       activeRequests.delete(conversationId)
+    }
+
+    // Fire-and-forget: generate smart title via LLM after first exchange
+    const userMsgCount = getMessages(conversationId).filter(m => m.role === 'user').length
+    if (userMsgCount === 1) {
+      generateSmartTitle(provider, accessToken, message, model || undefined)
+        .then(smartTitle => {
+          if (smartTitle) {
+            updateConversationTitle(conversationId, smartTitle)
+            safeSend(win, 'conv:title-updated', { conversationId, title: smartTitle })
+          }
+        })
+        .catch(() => {}) // swallow — fallback title from autoTitleIfNeeded is already set
     }
   })
 
@@ -143,13 +204,66 @@ export function registerChatHandlers(
   ipcMain.handle('conv:delete', (_event, id: string) => deleteConversation(id))
   ipcMain.handle('conv:get-messages', (_event, id: string) => getMessages(id))
   ipcMain.handle('conv:update-title', (_event, id: string, title: string) => updateConversationTitle(id, title))
+  ipcMain.handle('conv:toggle-pin', (_event, id: string) => togglePin(id))
+  ipcMain.handle('conv:delete-all', () => deleteAllConversations())
+  ipcMain.handle('conv:search', (_event, query: string) => searchMessages(query))
+}
+
+/**
+ * Generate a smart conversation title using LLM.
+ * Creates a fresh provider instance to avoid conflicts with the main chat flow.
+ */
+async function generateSmartTitle(
+  providerName: string,
+  accessToken: string,
+  userMessage: string,
+  model?: string
+): Promise<string | null> {
+  // Create an isolated provider instance (separate AbortController)
+  const freshProvider = llmRouter.createFresh(providerName)
+  if (!freshProvider) return null
+
+  let title = ''
+  try {
+    const messages: ChatMessage[] = [
+      {
+        role: 'system',
+        content: 'Generate a concise conversation title (3-8 words) based on the user\'s message. No quotes, no period, no prefix. Reply with ONLY the title, nothing else.'
+      },
+      { role: 'user', content: userMessage }
+    ]
+
+    await freshProvider.sendMessage(messages, [], accessToken, {
+      onToken: (t) => { title += t },
+      onToolCall: () => {},
+      onComplete: () => {},
+      onError: () => {}
+    }, model)
+
+    const cleaned = title
+      .trim()
+      .replace(/^["']+|["']+$/g, '')  // strip wrapping quotes
+      .replace(/[.!]+$/, '')           // strip trailing punctuation
+      .trim()
+
+    return (cleaned.length > 0 && cleaned.length <= 80) ? cleaned : null
+  } catch {
+    return null
+  }
+}
+
+interface ToolResult {
+  toolCallId: string
+  toolName: string
+  toolArgs: Record<string, unknown>
+  content: string
 }
 
 async function executeToolCalls(
   toolCalls: ToolCall[],
   mcpManager: MCPManager
-): Promise<Array<{ toolCallId: string; content: string }>> {
-  const results: Array<{ toolCallId: string; content: string }> = []
+): Promise<ToolResult[]> {
+  const results: ToolResult[] = []
 
   for (const tc of toolCalls) {
     try {
@@ -161,11 +275,15 @@ async function executeToolCalls(
 
       results.push({
         toolCallId: tc.id,
+        toolName: tc.name,
+        toolArgs: tc.arguments ?? {},
         content: result.isError ? `Error: ${text}` : text
       })
     } catch (err) {
       results.push({
         toolCallId: tc.id,
+        toolName: tc.name,
+        toolArgs: tc.arguments ?? {},
         content: `Error executing tool ${tc.name}: ${err instanceof Error ? err.message : String(err)}`
       })
     }

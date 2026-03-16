@@ -5,12 +5,12 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta
       http-equiv="Content-Security-Policy"
-      content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; connect-src 'self' https://*.openai.com https://*.googleapis.com https://*.github.com https://*.githubcopilot.com"
+      content="default-src 'self'; script-src 'self' 'unsafe-eval' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; font-src 'self' data:; connect-src 'self' ws://localhost:* https://*.openai.com https://*.chatgpt.com https://*.googleapis.com https://*.github.com https://*.githubcopilot.com; img-src 'self' data: blob:; worker-src 'self' blob:"
     />
     <title>Kangnam Client</title>
   </head>
-  <body>
+  <body style="margin:0; background:#2b2b2b;">
     <div id="root"></div>
-    <script type="module" src="../main.tsx"></script>
+    <script type="module" src="./main.tsx"></script>
   </body>
 </html>

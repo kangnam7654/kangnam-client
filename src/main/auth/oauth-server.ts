@@ -12,7 +12,7 @@ interface OAuthCallbackResult {
 export function waitForOAuthCallback(
   port: number,
   path: string,
-  timeoutMs: number = 300_000 // 5 minutes
+  timeoutMs: number = 120_000 // 2 minutes
 ): { promise: Promise<OAuthCallbackResult>; server: Server } {
   let server: Server
 

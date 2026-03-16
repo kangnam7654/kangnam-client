@@ -1,0 +1,291 @@
+@import "tailwindcss";
+@source "../";
+
+:root {
+  --bg-main: #2b2b2b;
+  --bg-sidebar: #191919;
+  --bg-surface: #363636;
+  --bg-hover: #404040;
+  --border: #333333;
+  --border-light: #4a4a4a;
+  --text-primary: #ececec;
+  --text-secondary: #b0b0b0;
+  --text-muted: #727272;
+  --accent: #d97757;
+  --accent-hover: #c96a4c;
+  --accent-soft: rgba(217, 119, 87, 0.15);
+  --danger: #ef4444;
+  --success: #10b981;
+
+  /* Semantic — components reference these */
+  --bg-code: #1e1e1e;
+  --bg-code-inline: rgba(255, 255, 255, 0.08);
+  --text-code-inline: #e8b4b8;
+  --bg-user-bubble: rgba(255, 255, 255, 0.08);
+  --bg-tool-result-ok: #1a3328;
+  --text-tool-result-ok: #7dd3a8;
+  --bg-tool-result-err: #1a1a1a;
+  --text-tool-result-err: #f87171;
+  --sidebar-bg: #2a2a2a;
+  --sidebar-item-bg: #333;
+  --overlay-soft: rgba(0, 0, 0, 0.15);
+  --shadow-pill: rgba(0, 0, 0, 0.2);
+  --border-subtle: rgba(255, 255, 255, 0.06);
+  --border-subtle-hover: rgba(255, 255, 255, 0.12);
+  --scrollbar-thumb: rgba(255, 255, 255, 0.1);
+}
+
+[data-theme="light"] {
+  --bg-main: #f5f5f0;
+  --bg-sidebar: #e8e8e3;
+  --bg-surface: #ffffff;
+  --bg-hover: #ebebeb;
+  --border: #d5d5d0;
+  --border-light: #c5c5c0;
+  --text-primary: #1a1a1a;
+  --text-secondary: #555555;
+  --text-muted: #999999;
+  --accent: #c96a4c;
+  --accent-hover: #b55e42;
+  --accent-soft: rgba(201, 106, 76, 0.12);
+
+  --bg-code: #f0ede8;
+  --bg-code-inline: rgba(0, 0, 0, 0.06);
+  --text-code-inline: #b35d6d;
+  --bg-user-bubble: rgba(0, 0, 0, 0.05);
+  --bg-tool-result-ok: #e8f5e9;
+  --text-tool-result-ok: #2e7d32;
+  --bg-tool-result-err: #fbe9e7;
+  --text-tool-result-err: #c62828;
+  --sidebar-bg: #eaeae5;
+  --sidebar-item-bg: #f0f0eb;
+  --overlay-soft: rgba(0, 0, 0, 0.04);
+  --shadow-pill: rgba(0, 0, 0, 0.08);
+  --border-subtle: rgba(0, 0, 0, 0.08);
+  --border-subtle-hover: rgba(0, 0, 0, 0.15);
+  --scrollbar-thumb: rgba(0, 0, 0, 0.12);
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html, body, #root {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, system-ui, 'Apple SD Gothic Neo', sans-serif;
+  background: var(--bg-main);
+  color: var(--text-primary);
+  overflow: hidden;
+  -webkit-user-select: none;
+  user-select: none;
+  font-weight: 450;
+  font-size: 14.5px;
+  letter-spacing: -0.01em;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  font-feature-settings: 'kern', 'liga', 'calt';
+}
+
+.selectable {
+  -webkit-user-select: text;
+  user-select: text;
+}
+
+.drag-region {
+  -webkit-app-region: drag;
+}
+
+.no-drag {
+  -webkit-app-region: no-drag;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar {
+  width: 5px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: transparent;
+  border-radius: 3px;
+}
+
+*:hover > ::-webkit-scrollbar-thumb,
+::-webkit-scrollbar-thumb:hover {
+  background: var(--scrollbar-thumb);
+}
+
+/* ── Sidebar items ─────────────────────────────────────────── */
+.sidebar-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  transition: background 0.15s, color 0.15s;
+  text-align: left;
+  cursor: pointer;
+  line-height: 1.5;
+  letter-spacing: -0.01em;
+}
+
+.sidebar-item:hover {
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--text-primary);
+}
+
+[data-theme="light"] .sidebar-item:hover {
+  background: rgba(0, 0, 0, 0.04);
+}
+
+/* ── Markdown ──────────────────────────────────────────────── */
+.aui-markdown {
+  line-height: 1.75;
+  word-break: break-word;
+  -webkit-user-select: text;
+  user-select: text;
+}
+
+.aui-markdown p {
+  margin-bottom: 0.875em;
+}
+
+.aui-markdown p:last-child {
+  margin-bottom: 0;
+}
+
+.aui-markdown ul,
+.aui-markdown ol {
+  padding-left: 1.5em;
+  margin-bottom: 0.875em;
+}
+
+.aui-markdown li {
+  margin-bottom: 0.375em;
+}
+
+.aui-markdown li > p {
+  margin-bottom: 0.25em;
+}
+
+.aui-markdown h1 { font-size: 1.4em; font-weight: 600; margin: 1.5em 0 0.5em; }
+.aui-markdown h2 { font-size: 1.2em; font-weight: 600; margin: 1.25em 0 0.5em; }
+.aui-markdown h3 { font-size: 1.05em; font-weight: 600; margin: 1em 0 0.5em; }
+.aui-markdown h1:first-child,
+.aui-markdown h2:first-child,
+.aui-markdown h3:first-child { margin-top: 0; }
+
+.aui-markdown blockquote {
+  border-left: 3px solid var(--border-light);
+  padding-left: 1em;
+  margin: 0.875em 0;
+  color: var(--text-secondary);
+}
+
+.aui-markdown code:not(pre code) {
+  background: var(--bg-code-inline);
+  border-radius: 5px;
+  padding: 0.2em 0.4em;
+  font-size: 0.85em;
+  font-family: 'SF Mono', 'JetBrains Mono', 'Fira Code', Monaco, Menlo, Consolas, monospace;
+  color: var(--text-code-inline);
+}
+
+.aui-markdown hr {
+  border: none;
+  border-top: 1px solid var(--border);
+  margin: 1.25em 0;
+}
+
+.aui-markdown table {
+  border-collapse: collapse;
+  margin: 0.875em 0;
+  width: 100%;
+  font-size: 0.9em;
+}
+
+.aui-markdown th,
+.aui-markdown td {
+  border: 1px solid var(--border);
+  padding: 0.5em 0.75em;
+  text-align: left;
+}
+
+.aui-markdown th {
+  background: var(--bg-surface);
+  font-weight: 600;
+}
+
+.aui-markdown a {
+  color: var(--accent);
+  text-decoration: none;
+}
+
+.aui-markdown a:hover {
+  text-decoration: underline;
+}
+
+/* ── Composer textarea ─────────────────────────────────────── */
+.composer-input {
+  scrollbar-width: none;
+}
+
+.composer-input::-webkit-scrollbar {
+  display: none;
+}
+
+/* ── Search highlight (CSS Highlight API) ────────────────── */
+::highlight(search-highlight) {
+  background-color: rgba(255, 180, 50, 0.4);
+  color: inherit;
+}
+
+.search-match {
+  outline: 1px solid rgba(255, 180, 50, 0.25);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* ── Animations ─────────────────────────────────────────── */
+@keyframes pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.5; transform: scale(0.95); }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes dropdownIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+@keyframes starburstPulse {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.3); }
+  100% { transform: scale(1); }
+}
+
+@keyframes dotBounce {
+  0%, 80%, 100% { transform: scale(0.6); opacity: 0.4; }
+  40% { transform: scale(1); opacity: 1; }
+}
