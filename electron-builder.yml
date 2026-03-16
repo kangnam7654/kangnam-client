@@ -39,9 +39,10 @@ win:
   artifactName: "${productName}-${version}-${arch}.${ext}"
 
 nsis:
-  oneClick: false
-  allowToChangeInstallationDirectory: true
-  deleteAppDataOnUninstall: false
+  oneClick: true
+  perMachine: false
+  deleteAppDataOnUninstall: true
+  runAfterFinish: false
 
 linux:
   target:

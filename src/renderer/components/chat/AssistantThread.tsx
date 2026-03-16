@@ -48,17 +48,16 @@ function Starburst({ size = 20, animated = false }: { size?: number; animated?: 
 
 // ── User Message ──────────────────────────────────────────────
 const UserMessage: FC = () => (
-  <MessagePrimitive.Root className="py-6" style={{ paddingLeft: 24, paddingRight: 24 }}>
-    <div style={{ maxWidth: 640, marginLeft: 'auto', marginRight: 'auto', display: 'flex', justifyContent: 'flex-end' }}>
+  <MessagePrimitive.Root style={{ padding: '12px 24px' }}>
+    <div style={{ maxWidth: 680, marginLeft: 'auto', marginRight: 'auto', display: 'flex', justifyContent: 'flex-end' }}>
       <div style={{
         maxWidth: '85%',
-        padding: '10px 16px',
-        borderRadius: 18,
-        borderBottomRightRadius: 4,
-        background: 'var(--accent)',
-        color: 'white'
+        padding: '12px 16px',
+        borderRadius: 20,
+        background: 'var(--bg-user-bubble)',
+        color: 'var(--text-primary)'
       }}>
-        <div className="text-[15px] leading-[1.6] whitespace-pre-wrap">
+        <div className="text-[15px] leading-[1.5] whitespace-pre-wrap" style={{ wordWrap: 'break-word' }}>
           <MessagePrimitive.Content components={{ Text: UserTextPart, Image: UserImagePart }} />
         </div>
       </div>
@@ -104,8 +103,8 @@ const AssistantMessage: FC = () => {
   }
 
   return (
-  <MessagePrimitive.Root className="py-6 group" style={{ paddingLeft: 24, paddingRight: 24 }}>
-    <div style={{ maxWidth: 640, marginLeft: 'auto', marginRight: 'auto' }}>
+  <MessagePrimitive.Root className="group" style={{ padding: '12px 24px' }}>
+    <div style={{ maxWidth: 680, marginLeft: 'auto', marginRight: 'auto' }}>
       {/* Tool calls (rendered from DB, persistent) */}
       {toolMsgs.length > 0 && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginBottom: 8 }}>
@@ -515,9 +514,13 @@ const StopButton: FC = () => {
   return (
     <button
       onClick={handleStop}
-      className="w-7 h-7 rounded-full bg-[var(--bg-hover)] hover:bg-[var(--border-light)] flex items-center justify-center text-[var(--text-secondary)] transition-colors"
+      style={{
+        width: 36, height: 36, display: 'flex', alignItems: 'center', justifyContent: 'center',
+        border: 'none', background: 'var(--danger)', borderRadius: 10,
+        cursor: 'pointer', color: 'white', transition: 'background 0.15s'
+      }}
     >
-      <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
         <rect x="6" y="6" width="12" height="12" rx="2" />
       </svg>
     </button>
@@ -581,9 +584,9 @@ const Composer: FC = () => {
   const hasAttachments = attachments.length > 0
 
   return (
-    <ComposerPrimitive.Root className="pb-4 pt-2" style={{ paddingLeft: 24, paddingRight: 24 }}>
-      <div style={{ maxWidth: 640, marginLeft: 'auto', marginRight: 'auto' }}>
-        <div style={{ position: 'relative', borderRadius: 16, background: 'var(--bg-surface)', border: '1px solid var(--border)', transition: 'border-color 0.15s' }} className="focus-within:border-[var(--border-light)]">
+    <ComposerPrimitive.Root style={{ padding: '16px 24px 24px', flexShrink: 0, borderTop: '1px solid var(--border-subtle)', background: 'var(--bg-main)' }}>
+      <div style={{ maxWidth: 680, marginLeft: 'auto', marginRight: 'auto' }}>
+        <div style={{ position: 'relative', borderRadius: 24, background: 'var(--bg-surface)', border: '1px solid rgba(255,255,255,0.06)', boxShadow: '0 4px 16px var(--shadow-pill)', transition: 'border-color 0.15s' }} className="focus-within:border-[var(--border-light)]">
           <input
             ref={fileInputRef}
             type="file"
@@ -597,7 +600,7 @@ const Composer: FC = () => {
             rows={1}
             maxRows={8}
             submitMode="enter"
-            style={{ width: '100%', resize: 'none', background: 'transparent', padding: '16px 20px 10px 20px', fontSize: 15, color: 'var(--text-primary)', outline: 'none' }}
+            style={{ width: '100%', resize: 'none', background: 'transparent', padding: '20px 24px 12px', fontSize: 16, color: 'var(--text-primary)', outline: 'none', lineHeight: 1.5 }}
             className="composer-input placeholder-[var(--text-muted)]"
           />
           {/* Attachment previews */}
@@ -643,38 +646,48 @@ const Composer: FC = () => {
               ))}
             </div>
           )}
-          <div style={{ position: 'relative', left: 14, right: 14, padding: '0 0 10px 0', display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginRight: 28 }}>
-            <button
-              onClick={() => fileInputRef.current?.click()}
-              style={{
-                width: 26, height: 26, borderRadius: '50%',
-                background: 'transparent', border: '1px solid rgba(255,255,255,0.15)',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                cursor: 'pointer', color: 'var(--text-muted)',
-                transition: 'all 0.15s'
-              }}
-              className="hover:bg-[rgba(255,255,255,0.08)] hover:border-[rgba(255,255,255,0.25)] hover:text-[var(--text-secondary)]"
-            >
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" />
-              </svg>
-            </button>
-            <div className="flex items-center gap-0.5">
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '4px 12px 10px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+              <button
+                onClick={() => fileInputRef.current?.click()}
+                style={{
+                  padding: '5px 10px', borderRadius: 8, border: 'none',
+                  background: 'transparent',
+                  display: 'flex', alignItems: 'center', gap: 4,
+                  cursor: 'pointer', color: 'var(--text-muted)', fontSize: 12,
+                  transition: 'all 0.15s'
+                }}
+                className="hover:bg-[var(--bg-hover)] hover:text-[var(--text-secondary)]"
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48" />
+                </svg>
+              </button>
               <ProviderDropdown />
               <ModelDropdown />
               <ThinkingToggle />
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
               {isStreaming ? (
                 <StopButton />
               ) : hasAttachments ? (
-                <button onClick={handleImageOnlySend} className="w-7 h-7 rounded-full bg-[var(--accent)] hover:bg-[var(--accent-hover)] flex items-center justify-center text-white transition-colors">
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <button onClick={handleImageOnlySend} style={{
+                  width: 36, height: 36, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  border: 'none', background: 'var(--accent)', borderRadius: 10,
+                  cursor: 'pointer', color: 'white', transition: 'background 0.15s'
+                }} className="hover:bg-[var(--accent-hover)]">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                     <line x1="12" y1="19" x2="12" y2="5" /><polyline points="5 12 12 5 19 12" />
                   </svg>
                 </button>
               ) : (
                 <ComposerPrimitive.Send asChild>
-                  <button onClick={handleSendClick} className="w-7 h-7 rounded-full bg-[var(--accent)] hover:bg-[var(--accent-hover)] disabled:opacity-30 disabled:cursor-not-allowed flex items-center justify-center text-white transition-colors">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <button onClick={handleSendClick} style={{
+                    width: 36, height: 36, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    border: 'none', background: 'var(--accent)', borderRadius: 10,
+                    cursor: 'pointer', color: 'white', transition: 'background 0.15s, opacity 0.15s'
+                  }} className="hover:bg-[var(--accent-hover)] disabled:opacity-30 disabled:cursor-not-allowed">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                       <line x1="12" y1="19" x2="12" y2="5" /><polyline points="5 12 12 5 19 12" />
                     </svg>
                   </button>
@@ -683,7 +696,7 @@ const Composer: FC = () => {
             </div>
           </div>
         </div>
-        <p className="text-center text-[11px] text-[var(--text-muted)] mt-2 opacity-40">
+        <p style={{ marginTop: 10, fontSize: 12, color: 'var(--text-muted)', textAlign: 'center' }}>
           LLM can make mistakes. Please double-check responses.
         </p>
       </div>
@@ -705,7 +718,7 @@ export const AssistantThread: FC = memo(() => (
 
       {/* Tool call / thinking indicator */}
       <div style={{ paddingLeft: 24, paddingRight: 24 }}>
-        <div style={{ maxWidth: 640, marginLeft: 'auto', marginRight: 'auto', paddingLeft: 30 }}>
+        <div style={{ maxWidth: 680, marginLeft: 'auto', marginRight: 'auto' }}>
           <StreamingStatus />
           <ChatErrorBanner />
         </div>
