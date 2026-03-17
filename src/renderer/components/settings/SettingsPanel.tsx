@@ -303,6 +303,25 @@ function MCPTab({ servers, newServerJson, setNewServerJson, onAdd, onRemove, onU
   const [editError, setEditError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
   const [reconnecting, setReconnecting] = useState<string | null>(null)
+  const [aiPrompt, setAiPrompt] = useState('')
+  const [aiLoading, setAiLoading] = useState(false)
+  const [aiError, setAiError] = useState<string | null>(null)
+  const { activeProvider, activeModel } = useAppStore()
+
+  const handleAiAssist = async () => {
+    if (!aiPrompt.trim()) return
+    setAiLoading(true)
+    setAiError(null)
+    try {
+      const result = await window.api.mcp.aiAssist(aiPrompt.trim(), activeProvider, activeModel)
+      setNewServerJson(result)
+      setAiPrompt('')
+    } catch (err) {
+      setAiError(err instanceof Error ? err.message : String(err))
+    } finally {
+      setAiLoading(false)
+    }
+  }
 
   const prettify = (json: string): string => {
     try { return JSON.stringify(JSON.parse(json), null, 2) } catch { return json }
@@ -507,6 +526,49 @@ function MCPTab({ servers, newServerJson, setNewServerJson, onAdd, onRemove, onU
           ))}
         </div>
       )}
+
+      {/* AI Assist */}
+      <div style={{
+        padding: '12px 14px', borderRadius: 12,
+        background: 'linear-gradient(135deg, rgba(139,92,246,0.06), rgba(59,130,246,0.06))',
+        border: '1px solid rgba(139,92,246,0.12)',
+        marginBottom: 16
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8 }}>
+          <SparkleIcon size={13} />
+          <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-secondary)' }}>AI Assist</span>
+        </div>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <input
+            value={aiPrompt}
+            onChange={e => setAiPrompt(e.target.value)}
+            placeholder="e.g. fetch 서버 추가해줘, /path/to/server.py, 깨진 JSON 붙여넣기..."
+            style={{
+              flex: 1, padding: '9px 12px', borderRadius: 8,
+              background: 'var(--bg-main)', border: '1px solid var(--border)',
+              fontSize: 13, color: 'var(--text-primary)', outline: 'none',
+              fontFamily: 'inherit'
+            }}
+            className="placeholder-[var(--text-muted)] focus:border-[var(--accent)]"
+            onKeyDown={e => { if (e.key === 'Enter') handleAiAssist() }}
+          />
+          <button
+            onClick={handleAiAssist}
+            disabled={!aiPrompt.trim() || aiLoading}
+            style={{
+              padding: '9px 16px', borderRadius: 8, border: 'none',
+              background: 'linear-gradient(135deg, #8b5cf6, var(--accent))', color: 'white',
+              fontSize: 13, fontWeight: 500, cursor: aiLoading ? 'wait' : 'pointer',
+              opacity: (!aiPrompt.trim() || aiLoading) ? 0.5 : 1, whiteSpace: 'nowrap'
+            }}
+          >
+            {aiLoading ? 'Generating...' : 'Generate'}
+          </button>
+        </div>
+        {aiError && (
+          <div style={{ marginTop: 8, fontSize: 12, color: 'var(--danger)' }}>{aiError}</div>
+        )}
+      </div>
 
       {/* Add server */}
       <div style={{ marginTop: 8 }}>

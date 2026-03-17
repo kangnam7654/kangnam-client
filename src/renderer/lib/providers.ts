@@ -12,6 +12,7 @@ export interface ModelInfo {
   id: string
   label: string
   desc: string
+  contextWindow: number  // max tokens
 }
 
 export const PROVIDERS: ProviderInfo[] = [
@@ -25,53 +26,69 @@ export const PROVIDERS: ProviderInfo[] = [
 
 export const PROVIDER_MODELS: Record<string, ModelInfo[]> = {
   codex: [
-    { id: 'gpt-5.4', label: 'GPT-5.4', desc: 'Latest flagship' },
-    { id: 'gpt-5.3-codex', label: 'GPT-5.3 Codex', desc: 'Coding optimized' },
-    { id: 'gpt-5.2-codex', label: 'GPT-5.2 Codex', desc: 'Coding optimized' },
-    { id: 'gpt-5.2', label: 'GPT-5.2', desc: 'General purpose' },
-    { id: 'gpt-5.1-codex', label: 'GPT-5.1 Codex', desc: 'Coding' },
-    { id: 'gpt-5.1', label: 'GPT-5.1', desc: 'General purpose' },
-    { id: 'gpt-5-codex', label: 'GPT-5 Codex', desc: 'Legacy' },
-    { id: 'gpt-5', label: 'GPT-5', desc: 'Legacy' }
+    { id: 'gpt-5.4', label: 'GPT-5.4', desc: 'Latest flagship', contextWindow: 128000 },
+    { id: 'gpt-5.3-codex', label: 'GPT-5.3 Codex', desc: 'Coding optimized', contextWindow: 128000 },
+    { id: 'gpt-5.2-codex', label: 'GPT-5.2 Codex', desc: 'Coding optimized', contextWindow: 128000 },
+    { id: 'gpt-5.2', label: 'GPT-5.2', desc: 'General purpose', contextWindow: 128000 },
+    { id: 'gpt-5.1-codex', label: 'GPT-5.1 Codex', desc: 'Coding', contextWindow: 128000 },
+    { id: 'gpt-5.1', label: 'GPT-5.1', desc: 'General purpose', contextWindow: 128000 },
+    { id: 'gpt-5-codex', label: 'GPT-5 Codex', desc: 'Legacy', contextWindow: 128000 },
+    { id: 'gpt-5', label: 'GPT-5', desc: 'Legacy', contextWindow: 128000 }
   ],
   gemini: [
-    { id: 'gemini-3.1-pro-preview', label: 'Gemini 3.1 Pro', desc: 'Frontier reasoning (preview)' },
-    { id: 'gemini-3-flash-preview', label: 'Gemini 3 Flash', desc: 'Fast reasoning (preview)' }
+    { id: 'gemini-3.1-pro-preview', label: 'Gemini 3.1 Pro', desc: 'Frontier reasoning (preview)', contextWindow: 1000000 },
+    { id: 'gemini-3-flash-preview', label: 'Gemini 3 Flash', desc: 'Fast reasoning (preview)', contextWindow: 1000000 }
   ],
   antigravity: [
-    { id: 'gemini-3.1-pro-preview', label: 'Gemini 3.1 Pro', desc: 'Frontier reasoning (preview)' },
-    { id: 'gemini-3-flash-preview', label: 'Gemini 3 Flash', desc: 'Fast reasoning (preview)' },
-    { id: 'claude-sonnet-4-6', label: 'Claude Sonnet 4.6', desc: 'Anthropic coding' },
-    { id: 'claude-sonnet-4-6-thinking', label: 'Claude Sonnet 4.6 Thinking', desc: 'Extended thinking' },
-    { id: 'claude-opus-4-6-thinking', label: 'Claude Opus 4.6 Thinking', desc: 'Highest capability' }
+    { id: 'gemini-3.1-pro-preview', label: 'Gemini 3.1 Pro', desc: 'Frontier reasoning (preview)', contextWindow: 1000000 },
+    { id: 'gemini-3-flash-preview', label: 'Gemini 3 Flash', desc: 'Fast reasoning (preview)', contextWindow: 1000000 },
+    { id: 'claude-sonnet-4-6', label: 'Claude Sonnet 4.6', desc: 'Anthropic coding', contextWindow: 200000 },
+    { id: 'claude-sonnet-4-6-thinking', label: 'Claude Sonnet 4.6 Thinking', desc: 'Extended thinking', contextWindow: 200000 },
+    { id: 'claude-opus-4-6-thinking', label: 'Claude Opus 4.6 Thinking', desc: 'Highest capability', contextWindow: 200000 }
   ],
   copilot: [
-    { id: 'gpt-4.1', label: 'GPT-4.1', desc: 'Default' },
-    { id: 'gpt-5-mini', label: 'GPT-5 Mini', desc: 'Fast, included' },
-    { id: 'gpt-5.4', label: 'GPT-5.4', desc: 'Latest flagship' },
-    { id: 'gpt-5.3-codex', label: 'GPT-5.3 Codex', desc: 'Coding optimized' },
-    { id: 'gpt-5.2-codex', label: 'GPT-5.2 Codex', desc: 'Best coding' },
-    { id: 'gpt-5.2', label: 'GPT-5.2', desc: 'General purpose' },
-    { id: 'gpt-5.1-codex-max', label: 'GPT-5.1 Codex Max', desc: 'Max coding' },
-    { id: 'gpt-5.1-codex', label: 'GPT-5.1 Codex', desc: 'Coding' },
-    { id: 'gpt-5.1-codex-mini', label: 'GPT-5.1 Codex Mini', desc: 'Light coding' },
-    { id: 'gpt-5.1', label: 'GPT-5.1', desc: 'General purpose' },
-    { id: 'claude-opus-4.6', label: 'Claude Opus 4.6', desc: 'Highest capability' },
-    { id: 'claude-sonnet-4.6', label: 'Claude Sonnet 4.6', desc: 'Best value coding' },
-    { id: 'claude-haiku-4.5', label: 'Claude Haiku 4.5', desc: 'Fast, lightweight' },
-    { id: 'gemini-3.1-pro', label: 'Gemini 3.1 Pro', desc: 'Frontier reasoning (preview)' },
-    { id: 'gemini-3-pro', label: 'Gemini 3 Pro', desc: 'Reasoning (preview)' },
-    { id: 'gemini-3-flash', label: 'Gemini 3 Flash', desc: 'Fast reasoning (preview)' },
-    { id: 'grok-code-fast-1', label: 'Grok Code Fast 1', desc: 'xAI fast coding' }
+    { id: 'gpt-4.1', label: 'GPT-4.1', desc: 'Default', contextWindow: 128000 },
+    { id: 'gpt-5-mini', label: 'GPT-5 Mini', desc: 'Fast, included', contextWindow: 128000 },
+    { id: 'gpt-5.4', label: 'GPT-5.4', desc: 'Latest flagship', contextWindow: 128000 },
+    { id: 'gpt-5.3-codex', label: 'GPT-5.3 Codex', desc: 'Coding optimized', contextWindow: 128000 },
+    { id: 'gpt-5.2-codex', label: 'GPT-5.2 Codex', desc: 'Best coding', contextWindow: 128000 },
+    { id: 'gpt-5.2', label: 'GPT-5.2', desc: 'General purpose', contextWindow: 128000 },
+    { id: 'gpt-5.1-codex-max', label: 'GPT-5.1 Codex Max', desc: 'Max coding', contextWindow: 128000 },
+    { id: 'gpt-5.1-codex', label: 'GPT-5.1 Codex', desc: 'Coding', contextWindow: 128000 },
+    { id: 'gpt-5.1-codex-mini', label: 'GPT-5.1 Codex Mini', desc: 'Light coding', contextWindow: 128000 },
+    { id: 'gpt-5.1', label: 'GPT-5.1', desc: 'General purpose', contextWindow: 128000 },
+    { id: 'claude-opus-4.6', label: 'Claude Opus 4.6', desc: 'Highest capability', contextWindow: 200000 },
+    { id: 'claude-sonnet-4.6', label: 'Claude Sonnet 4.6', desc: 'Best value coding', contextWindow: 200000 },
+    { id: 'claude-haiku-4.5', label: 'Claude Haiku 4.5', desc: 'Fast, lightweight', contextWindow: 200000 },
+    { id: 'gemini-3.1-pro', label: 'Gemini 3.1 Pro', desc: 'Frontier reasoning (preview)', contextWindow: 1000000 },
+    { id: 'gemini-3-pro', label: 'Gemini 3 Pro', desc: 'Reasoning (preview)', contextWindow: 1000000 },
+    { id: 'gemini-3-flash', label: 'Gemini 3 Flash', desc: 'Fast reasoning (preview)', contextWindow: 1000000 },
+    { id: 'grok-code-fast-1', label: 'Grok Code Fast 1', desc: 'xAI fast coding', contextWindow: 128000 }
   ],
   claude: [
-    { id: 'claude-opus-4-6', label: 'Claude Opus 4.6', desc: 'Highest capability' },
-    { id: 'claude-sonnet-4-6', label: 'Claude Sonnet 4.6', desc: 'Best value coding' },
-    { id: 'claude-haiku-4-5-20251001', label: 'Claude Haiku 4.5', desc: 'Fast, lightweight' }
+    { id: 'claude-opus-4-6', label: 'Claude Opus 4.6', desc: 'Highest capability', contextWindow: 200000 },
+    { id: 'claude-sonnet-4-6', label: 'Claude Sonnet 4.6', desc: 'Best value coding', contextWindow: 200000 },
+    { id: 'claude-haiku-4-5-20251001', label: 'Claude Haiku 4.5', desc: 'Fast, lightweight', contextWindow: 200000 }
   ],
   mock: [
-    { id: 'mock', label: 'Mock', desc: 'UI testing' }
+    { id: 'mock', label: 'Mock', desc: 'UI testing', contextWindow: 128000 }
   ]
+}
+
+// ── Token estimation ──
+
+export function estimateTokens(text: string): number {
+  if (!text) return 0
+  const koreanChars = (text.match(/[\uac00-\ud7af]/g) || []).length
+  const totalChars = text.length
+  const koreanRatio = totalChars > 0 ? koreanChars / totalChars : 0
+  const charsPerToken = 4 - (koreanRatio * 2.5)
+  return Math.ceil(totalChars / charsPerToken)
+}
+
+export function getContextWindow(provider: string, modelId: string): number {
+  const models = PROVIDER_MODELS[provider] ?? []
+  return models.find(m => m.id === modelId)?.contextWindow ?? 128000
 }
 
 export const DEFAULT_MODELS: Record<string, string> = {

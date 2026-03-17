@@ -105,6 +105,8 @@ interface AppState {
   resetThinkingText: () => void
   chatError: string | null
   setChatError: (err: string | null) => void
+  contextUsage: { used: number; max: number } | null
+  setContextUsage: (usage: { used: number; max: number } | null) => void
 
   // Tool call log (accumulated during streaming turn)
   activeToolCall: { name: string; args: unknown } | null
@@ -205,6 +207,8 @@ export const useAppStore = create<AppState>((set) => ({
   resetThinkingText: () => set({ thinkingText: '' }),
   chatError: null,
   setChatError: (err) => set({ chatError: err }),
+  contextUsage: null,
+  setContextUsage: (usage) => set({ contextUsage: usage }),
 
   // Tool call log
   activeToolCall: null,

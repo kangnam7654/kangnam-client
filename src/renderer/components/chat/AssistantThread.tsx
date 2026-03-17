@@ -350,19 +350,19 @@ const StreamingStatus: FC = () => {
         </div>
       )}
 
-      {/* Waiting indicator */}
+      {/* Waiting indicator — matches Cowork style */}
       {!activeToolCall && !streamingText && (
         <div style={{
           display: 'flex', alignItems: 'center', gap: 8,
-          padding: '4px 0',
-          fontSize: 13, color: 'var(--text-muted)'
+          padding: '8px 0'
         }}>
-          <div style={{ display: 'flex', gap: 3 }}>
-            <span style={{ width: 4, height: 4, borderRadius: '50%', background: 'var(--text-muted)', animation: 'dotBounce 1.4s ease-in-out infinite', animationDelay: '0s' }} />
-            <span style={{ width: 4, height: 4, borderRadius: '50%', background: 'var(--text-muted)', animation: 'dotBounce 1.4s ease-in-out infinite', animationDelay: '0.2s' }} />
-            <span style={{ width: 4, height: 4, borderRadius: '50%', background: 'var(--text-muted)', animation: 'dotBounce 1.4s ease-in-out infinite', animationDelay: '0.4s' }} />
-          </div>
-          <span>{hasThinking ? 'Writing...' : hasLog ? 'Generating response...' : 'Thinking...'}</span>
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" strokeWidth="1.5"
+            style={{ animation: 'pulse 1.5s ease-in-out infinite' }}>
+            <circle cx="12" cy="12" r="10" /><path d="M8 12l2.5 2.5L16 9" />
+          </svg>
+          <span style={{ color: 'var(--text-secondary)', fontSize: 14 }}>
+            {hasThinking ? 'Writing...' : hasLog ? 'Generating response...' : 'Thinking...'}
+          </span>
         </div>
       )}
     </div>
@@ -394,6 +394,43 @@ const ChatErrorBanner: FC = () => {
           <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
         </svg>
       </button>
+    </div>
+  )
+}
+
+// ── Context Bar ───────────────────────────────────────────────
+const ContextBar: FC = () => {
+  const { contextUsage } = useAppStore()
+  if (!contextUsage || contextUsage.max === 0) return null
+
+  const pct = Math.min(100, Math.round((contextUsage.used / contextUsage.max) * 100))
+  if (pct < 5) return null // Don't show when nearly empty
+
+  const color = pct >= 80 ? '#f87171' : pct >= 60 ? '#fbbf24' : 'var(--accent)'
+  const usedK = contextUsage.used >= 1000 ? `${(contextUsage.used / 1000).toFixed(0)}K` : String(contextUsage.used)
+  const maxK = contextUsage.max >= 1000 ? `${(contextUsage.max / 1000).toFixed(0)}K` : String(contextUsage.max)
+
+  return (
+    <div style={{ padding: '0 24px', flexShrink: 0 }}>
+      <div style={{ maxWidth: 680, marginLeft: 'auto', marginRight: 'auto' }}>
+        <div style={{
+          display: 'flex', alignItems: 'center', gap: 8,
+          padding: '6px 0', fontSize: 11, color: 'var(--text-muted)'
+        }}>
+          <div style={{
+            flex: 1, height: 3, borderRadius: 2,
+            background: 'rgba(255,255,255,0.06)', overflow: 'hidden'
+          }}>
+            <div style={{
+              height: '100%', borderRadius: 2, background: color,
+              width: `${pct}%`, transition: 'width 0.3s ease'
+            }} />
+          </div>
+          <span style={{ flexShrink: 0, color: pct >= 80 ? color : undefined }}>
+            {usedK}/{maxK}
+          </span>
+        </div>
+      </div>
     </div>
   )
 }
@@ -646,21 +683,20 @@ const Composer: FC = () => {
               ))}
             </div>
           )}
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '4px 12px 10px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '4px 12px 10px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 2 }}>
               <button
                 onClick={() => fileInputRef.current?.click()}
                 style={{
-                  padding: '5px 10px', borderRadius: 8, border: 'none',
-                  background: 'transparent',
-                  display: 'flex', alignItems: 'center', gap: 4,
-                  cursor: 'pointer', color: 'var(--text-muted)', fontSize: 12,
-                  transition: 'all 0.15s'
+                  width: 28, height: 28, borderRadius: 8, border: 'none',
+                  background: 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  cursor: 'pointer', color: 'var(--text-muted)', transition: 'all 0.15s'
                 }}
                 className="hover:bg-[var(--bg-hover)] hover:text-[var(--text-secondary)]"
+                title="Attach file"
               >
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48" />
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" />
                 </svg>
               </button>
               <ProviderDropdown />
@@ -685,8 +721,9 @@ const Composer: FC = () => {
                   <button onClick={handleSendClick} style={{
                     width: 36, height: 36, display: 'flex', alignItems: 'center', justifyContent: 'center',
                     border: 'none', background: 'var(--accent)', borderRadius: 10,
-                    cursor: 'pointer', color: 'white', transition: 'background 0.15s, opacity 0.15s'
-                  }} className="hover:bg-[var(--accent-hover)] disabled:opacity-30 disabled:cursor-not-allowed">
+                    cursor: 'pointer', color: 'white',
+                    transition: 'background 0.15s, opacity 0.15s'
+                  }} className="disabled:opacity-30 disabled:cursor-not-allowed">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                       <line x1="12" y1="19" x2="12" y2="5" /><polyline points="5 12 12 5 19 12" />
                     </svg>
@@ -727,6 +764,7 @@ export const AssistantThread: FC = memo(() => (
       <div className="min-h-8" />
     </ThreadPrimitive.Viewport>
 
+    <ContextBar />
     <Composer />
   </ThreadPrimitive.Root>
 ))

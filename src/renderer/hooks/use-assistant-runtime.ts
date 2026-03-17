@@ -210,6 +210,12 @@ export function useAssistantRuntime() {
       }
     })
 
+    const unsubContext = window.api.chat.onContextUsage((data) => {
+      if (data.conversationId === conversationIdRef.current) {
+        useAppStore.getState().setContextUsage({ used: data.used, max: data.max })
+      }
+    })
+
     const unsubComplete = window.api.chat.onComplete(async (data) => {
       if (data.conversationId === conversationIdRef.current) {
         const msgs = await window.api.conv.getMessages(data.conversationId)
@@ -233,6 +239,7 @@ export function useAssistantRuntime() {
       unsubStream()
       unsubToolCall()
       unsubThinking()
+      unsubContext()
       unsubComplete()
       unsubError()
     }

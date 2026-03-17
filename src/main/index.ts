@@ -159,7 +159,7 @@ app.whenReady().then(async () => {
   registerAuthHandlers(ipcMain, authManager)
   registerChatHandlers(ipcMain, authManager, mcpManager)
   registerCoworkHandlers(ipcMain, authManager, mcpManager)
-  registerMcpHandlers(ipcMain, mcpManager)
+  registerMcpHandlers(ipcMain, mcpManager, authManager)
   registerSettingsHandlers(ipcMain)
   registerPromptHandlers(ipcMain, authManager)
   registerEvalHandlers(ipcMain, authManager)
@@ -181,6 +181,11 @@ app.whenReady().then(async () => {
 })
 
 app.on('window-all-closed', () => {
+  // Destroy tray to fully release the process (fixes Windows uninstall issue)
+  if (tray) {
+    tray.destroy()
+    tray = null
+  }
   if (process.platform !== 'darwin') {
     app.quit()
   }

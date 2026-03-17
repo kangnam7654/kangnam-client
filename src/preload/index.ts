@@ -55,6 +55,11 @@ const api = {
       const handler = (_: unknown, data: { conversationId: string; chunk: string }) => callback(data)
       ipcRenderer.on('chat:thinking', handler)
       return () => ipcRenderer.removeListener('chat:thinking', handler)
+    },
+    onContextUsage: (callback: (data: { conversationId: string; used: number; max: number }) => void) => {
+      const handler = (_: unknown, data: { conversationId: string; used: number; max: number }) => callback(data)
+      ipcRenderer.on('chat:context-usage', handler)
+      return () => ipcRenderer.removeListener('chat:context-usage', handler)
     }
   },
 
@@ -78,6 +83,7 @@ const api = {
   // MCP
   mcp: {
     listServers: () => ipcRenderer.invoke('mcp:list-servers'),
+    aiAssist: (prompt: string, provider: string, model?: string) => ipcRenderer.invoke('mcp:ai-assist', prompt, provider, model),
     getConfig: (name: string) => ipcRenderer.invoke('mcp:get-config', name),
     addServer: (config: unknown) => ipcRenderer.invoke('mcp:add-server', config),
     reconnectServer: (name: string) => ipcRenderer.invoke('mcp:reconnect-server', name),

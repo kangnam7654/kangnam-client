@@ -84,6 +84,27 @@ export function registerChatHandlers(
       return msg
     })
 
+    // ── Context window management ──
+    const contextWindow = getContextWindowForModel(provider, model)
+    let totalTokens = chatMessages.reduce((sum, m) => sum + estimateTokenCount(m.content), 0)
+
+    // Send context usage to renderer
+    safeSend(win, 'chat:context-usage', { conversationId, used: totalTokens, max: contextWindow })
+
+    // Compact if over 90%
+    if (totalTokens > contextWindow * 0.9 && chatMessages.length > 6) {
+      try {
+        const compacted = await compactConversation(chatMessages, provider, accessToken, model)
+        chatMessages.length = 0
+        chatMessages.push(...compacted)
+        totalTokens = chatMessages.reduce((sum, m) => sum + estimateTokenCount(m.content), 0)
+        safeSend(win, 'chat:context-usage', { conversationId, used: totalTokens, max: contextWindow })
+      } catch (err) {
+        console.error('[Context] Compaction failed:', err)
+        // Fall through — send as-is, may hit API limit
+      }
+    }
+
     const llmProvider = llmRouter.getProvider(provider)
     activeRequests.set(conversationId, provider)
 
@@ -290,4 +311,73 @@ async function executeToolCalls(
   }
 
   return results
+}
+
+// ── Context Window Helpers ──
+
+function estimateTokenCount(text: string): number {
+  if (!text) return 0
+  const koreanChars = (text.match(/[\uac00-\ud7af]/g) || []).length
+  const totalChars = text.length
+  const koreanRatio = totalChars > 0 ? koreanChars / totalChars : 0
+  const charsPerToken = 4 - (koreanRatio * 2.5)
+  return Math.ceil(totalChars / charsPerToken)
+}
+
+const MODEL_CONTEXT_WINDOWS: Record<string, number> = {
+  'claude-opus-4-6': 200000, 'claude-sonnet-4-6': 200000, 'claude-haiku-4-5': 200000,
+  'gpt-5.4': 128000, 'gpt-5.3-codex': 128000, 'gpt-5.2': 128000, 'gpt-4.1': 128000,
+  'gemini-3.1-pro-preview': 1000000, 'gemini-3-flash-preview': 1000000
+}
+
+function getContextWindowForModel(_provider: string, model?: string): number {
+  if (!model) return 128000
+  // Try exact match, then prefix match
+  if (MODEL_CONTEXT_WINDOWS[model]) return MODEL_CONTEXT_WINDOWS[model]
+  for (const [key, val] of Object.entries(MODEL_CONTEXT_WINDOWS)) {
+    if (model.startsWith(key)) return val
+  }
+  return 128000
+}
+
+const COMPACTION_SYSTEM = `Summarize this conversation concisely. Preserve:
+- Key decisions and conclusions
+- User preferences and constraints
+- Technical context (file paths, variable names, APIs, etc.)
+- Unresolved questions or pending tasks
+
+Keep the summary under 500 tokens. Use the same language as the conversation.
+Output ONLY the summary, no preamble.`
+
+async function compactConversation(
+  messages: ChatMessage[],
+  provider: string,
+  accessToken: string,
+  model?: string
+): Promise<ChatMessage[]> {
+  const { callLLM } = require('../skills/skill-ai')
+
+  const systemMsgs = messages.filter(m => m.role === 'system')
+  const nonSystem = messages.filter(m => m.role !== 'system')
+
+  // Keep last 6 messages (3 turns)
+  const keep = nonSystem.slice(-6)
+  const toSummarize = nonSystem.slice(0, -6)
+
+  if (toSummarize.length < 4) return messages
+
+  const transcript = toSummarize
+    .map(m => `[${m.role}]: ${m.content.slice(0, 2000)}`)
+    .join('\n\n')
+
+  const summary = await callLLM(provider, accessToken, [
+    { role: 'system', content: COMPACTION_SYSTEM },
+    { role: 'user', content: transcript }
+  ], model)
+
+  return [
+    ...systemMsgs,
+    { role: 'system' as const, content: `<conversation_summary>\n${summary.trim()}\n</conversation_summary>` },
+    ...keep
+  ]
 }

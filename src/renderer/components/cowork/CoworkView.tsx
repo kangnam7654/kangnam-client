@@ -286,6 +286,19 @@ export function CoworkView() {
             />
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 12px 12px' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                <button
+                  style={{
+                    width: 28, height: 28, borderRadius: 8, border: 'none',
+                    background: 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    cursor: 'pointer', color: 'var(--text-muted)', transition: 'all 0.15s'
+                  }}
+                  className="hover:bg-[var(--bg-hover)] hover:text-[var(--text-secondary)]"
+                  title="Attach file"
+                >
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" />
+                  </svg>
+                </button>
                 <ProviderDropdown />
                 <ModelDropdown />
                 <ThinkingToggle />
@@ -422,6 +435,19 @@ export function CoworkView() {
               />
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '4px 12px 10px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                  <button
+                    style={{
+                      width: 28, height: 28, borderRadius: 8, border: 'none',
+                      background: 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      cursor: 'pointer', color: 'var(--text-muted)', transition: 'all 0.15s'
+                    }}
+                    className="hover:bg-[var(--bg-hover)] hover:text-[var(--text-secondary)]"
+                    title="Attach file"
+                  >
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" />
+                    </svg>
+                  </button>
                   {!coworkIsRunning && (
                     <button
                       onClick={handleNewTask}
