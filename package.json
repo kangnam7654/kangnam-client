@@ -1,6 +1,6 @@
 {
   "name": "kangnam-client",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "Desktop LLM Client with subscription-based providers and MCP support",
   "author": {
     "name": "Kangnam Kim",
@@ -50,6 +50,7 @@
     "rehype-katex": "^7.0.1",
     "remark-gfm": "^4.0.1",
     "remark-math": "^6.0.0",
+    "shiki": "^4.0.2",
     "sql.js": "^1.14.1",
     "tailwind-merge": "^3.5.0",
     "zod": "^4.3.6",

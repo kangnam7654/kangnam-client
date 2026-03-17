@@ -237,18 +237,18 @@ function ConvItem({ conv, isActive, isMenuOpen, isRenaming, menuRef, onSelect, o
             top: '100%',
             marginTop: 2,
             zIndex: 50,
-            minWidth: 150,
+            minWidth: 200,
             background: 'var(--bg-surface)',
             border: '1px solid var(--border)',
-            borderRadius: 10,
+            borderRadius: 12,
             boxShadow: '0 4px 24px var(--shadow-pill)',
             overflow: 'hidden',
-            padding: 4
+            padding: 6
           }}
         >
           <button
             onClick={() => onRenameStart(conv.id)}
-            className="flex items-center gap-2.5 w-full px-3 py-2 rounded-lg text-[13px] text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)] transition-colors text-left"
+            className="flex items-center gap-3 w-full px-3.5 py-3 rounded-lg text-[13.5px] text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)] transition-colors text-left"
           >
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7" />
@@ -258,7 +258,7 @@ function ConvItem({ conv, isActive, isMenuOpen, isRenaming, menuRef, onSelect, o
           </button>
           <button
             onClick={() => onTogglePin(conv.id)}
-            className="flex items-center gap-2.5 w-full px-3 py-2 rounded-lg text-[13px] text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)] transition-colors text-left"
+            className="flex items-center gap-3 w-full px-3.5 py-3 rounded-lg text-[13.5px] text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)] transition-colors text-left"
           >
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <path d="M12 17v5M9 10.76a2 2 0 01-1.11 1.79l-1.78.9A2 2 0 005 15.24V16a1 1 0 001 1h12a1 1 0 001-1v-.76a2 2 0 00-1.11-1.79l-1.78-.9A2 2 0 0115 10.76V7a1 1 0 011-1 1 1 0 001-1V4a1 1 0 00-1-1H8a1 1 0 00-1 1v1a1 1 0 001 1 1 1 0 011 1z" />
@@ -266,8 +266,26 @@ function ConvItem({ conv, isActive, isMenuOpen, isRenaming, menuRef, onSelect, o
             {conv.pinned ? 'Unpin' : 'Pin to top'}
           </button>
           <button
+            onClick={() => { window.api.conv.export(conv.id, 'markdown') }}
+            className="flex items-center gap-3 w-full px-3.5 py-3 rounded-lg text-[13.5px] text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)] transition-colors text-left"
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4" /><polyline points="7 10 12 15 17 10" /><line x1="12" y1="15" x2="12" y2="3" />
+            </svg>
+            Export (.md)
+          </button>
+          <button
+            onClick={() => { window.api.conv.export(conv.id, 'json') }}
+            className="flex items-center gap-3 w-full px-3.5 py-3 rounded-lg text-[13.5px] text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)] transition-colors text-left"
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4" /><polyline points="7 10 12 15 17 10" /><line x1="12" y1="15" x2="12" y2="3" />
+            </svg>
+            Export (.json)
+          </button>
+          <button
             onClick={() => onDelete(conv.id)}
-            className="flex items-center gap-2.5 w-full px-3 py-2 rounded-lg text-[13px] text-[var(--danger)] hover:bg-[rgba(239,68,68,0.12)] transition-colors text-left"
+            className="flex items-center gap-3 w-full px-3.5 py-3 rounded-lg text-[13.5px] text-[var(--danger)] hover:bg-[rgba(239,68,68,0.12)] transition-colors text-left"
           >
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <polyline points="3 6 5 6 21 6" />

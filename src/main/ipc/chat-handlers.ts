@@ -228,6 +228,52 @@ export function registerChatHandlers(
   ipcMain.handle('conv:toggle-pin', (_event, id: string) => togglePin(id))
   ipcMain.handle('conv:delete-all', () => deleteAllConversations())
   ipcMain.handle('conv:search', (_event, query: string) => searchMessages(query))
+
+  ipcMain.handle('conv:export', async (event, id: string, format: 'markdown' | 'json') => {
+    const { dialog } = require('electron')
+    const conv = getConversation(id)
+    if (!conv) throw new Error('Conversation not found')
+    const msgs = getMessages(id)
+
+    const safeName = conv.title.replace(/[^a-zA-Z0-9가-힣 _-]/g, '').slice(0, 50).trim() || 'conversation'
+
+    if (format === 'json') {
+      const data = JSON.stringify({ conversation: conv, messages: msgs }, null, 2)
+      const win = BrowserWindow.fromWebContents(event.sender)
+      const result = await dialog.showSaveDialog(win!, {
+        defaultPath: `${safeName}.json`,
+        filters: [{ name: 'JSON', extensions: ['json'] }]
+      })
+      if (!result.canceled && result.filePath) {
+        const { writeFileSync } = require('fs')
+        writeFileSync(result.filePath, data, 'utf-8')
+      }
+    } else {
+      // Markdown
+      let md = `# ${conv.title}\n\n`
+      md += `> Provider: ${conv.provider} | Created: ${new Date(conv.created_at * 1000).toLocaleString()}\n\n---\n\n`
+      for (const m of msgs) {
+        if (m.role === 'system') continue
+        if (m.role === 'user') {
+          md += `## User\n\n${m.content}\n\n`
+        } else if (m.role === 'assistant') {
+          md += `## Assistant\n\n${m.content}\n\n`
+        } else if (m.role === 'tool') {
+          const name = m.tool_name ? `\`${m.tool_name}\`` : 'Tool'
+          md += `<details>\n<summary>${name} result</summary>\n\n\`\`\`\n${m.content}\n\`\`\`\n\n</details>\n\n`
+        }
+      }
+      const win = BrowserWindow.fromWebContents(event.sender)
+      const result = await dialog.showSaveDialog(win!, {
+        defaultPath: `${safeName}.md`,
+        filters: [{ name: 'Markdown', extensions: ['md'] }]
+      })
+      if (!result.canceled && result.filePath) {
+        const { writeFileSync } = require('fs')
+        writeFileSync(result.filePath, md, 'utf-8')
+      }
+    }
+  })
 }
 
 /**

@@ -1,4 +1,4 @@
-import { FC, memo, useState, useRef } from 'react'
+import { FC, memo, useState, useRef, useEffect } from 'react'
 import { ProviderDropdown, ModelDropdown, ThinkingToggle } from '../InputControls'
 import {
   ThreadPrimitive,
@@ -435,19 +435,67 @@ const ContextBar: FC = () => {
   )
 }
 
-// ── Code Block ────────────────────────────────────────────────
+// ── Code Block (Shiki) ────────────────────────────────────────
+import { createHighlighter, type Highlighter } from 'shiki'
+
+let highlighterPromise: Promise<Highlighter> | null = null
+function getHighlighter(): Promise<Highlighter> {
+  if (!highlighterPromise) {
+    highlighterPromise = createHighlighter({
+      themes: ['github-dark'],
+      langs: [
+        'javascript', 'typescript', 'python', 'rust', 'go', 'java',
+        'c', 'cpp', 'csharp', 'ruby', 'php', 'swift', 'kotlin',
+        'html', 'css', 'json', 'yaml', 'toml', 'xml', 'markdown',
+        'bash', 'shell', 'sql', 'graphql', 'dockerfile',
+        'jsx', 'tsx'
+      ]
+    })
+  }
+  return highlighterPromise
+}
+
 interface SyntaxHighlighterProps {
   language?: string
   code: string
 }
 
-const CodeBlock: FC<SyntaxHighlighterProps> = ({ language, code }) => (
-  <pre className="my-4 rounded-xl bg-[#1a1a1a] border border-[var(--border)] overflow-x-auto">
-    <code className={`block p-5 text-[13px] leading-[1.7] font-mono text-[var(--text-primary)] ${language ? `language-${language}` : ''}`}>
-      {code}
-    </code>
-  </pre>
-)
+const CodeBlock: FC<SyntaxHighlighterProps> = ({ language, code }) => {
+  const [html, setHtml] = useState<string | null>(null)
+
+  useEffect(() => {
+    let cancelled = false
+    getHighlighter().then(highlighter => {
+      if (cancelled) return
+      const lang = language && highlighter.getLoadedLanguages().includes(language) ? language : 'text'
+      const result = highlighter.codeToHtml(code, {
+        lang,
+        theme: 'github-dark'
+      })
+      setHtml(result)
+    }).catch(() => { /* fallback to plain */ })
+    return () => { cancelled = true }
+  }, [code, language])
+
+  if (html) {
+    return (
+      <div
+        className="my-4 rounded-xl overflow-x-auto shiki-block"
+        style={{ fontSize: 13, lineHeight: 1.7 }}
+        dangerouslySetInnerHTML={{ __html: html }}
+      />
+    )
+  }
+
+  // Fallback while loading
+  return (
+    <pre className="my-4 rounded-xl bg-[#1a1a1a] border border-[var(--border)] overflow-x-auto">
+      <code className="block p-5 text-[13px] leading-[1.7] font-mono text-[var(--text-primary)]">
+        {code}
+      </code>
+    </pre>
+  )
+}
 
 interface CodeHeaderProps {
   language?: string

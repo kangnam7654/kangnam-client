@@ -289,3 +289,18 @@ body {
   0%, 80%, 100% { transform: scale(0.6); opacity: 0.4; }
   40% { transform: scale(1); opacity: 1; }
 }
+
+/* Shiki code blocks */
+.shiki-block pre.shiki {
+  margin: 0;
+  padding: 20px;
+  border-radius: 12px;
+  overflow-x: auto;
+  border: 1px solid var(--border);
+}
+
+.shiki-block code {
+  font-family: 'SF Mono', Monaco, Menlo, monospace;
+  font-size: 13px;
+  line-height: 1.7;
+}

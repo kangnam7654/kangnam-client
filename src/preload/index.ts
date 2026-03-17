@@ -72,6 +72,7 @@ const api = {
     updateTitle: (id: string, title: string) => ipcRenderer.invoke('conv:update-title', id, title),
     togglePin: (id: string) => ipcRenderer.invoke('conv:toggle-pin', id),
     deleteAll: () => ipcRenderer.invoke('conv:delete-all'),
+    export: (id: string, format: 'markdown' | 'json') => ipcRenderer.invoke('conv:export', id, format),
     search: (query: string) => ipcRenderer.invoke('conv:search', query),
     onTitleUpdated: (callback: (data: { conversationId: string; title: string }) => void) => {
       const handler = (_: unknown, data: { conversationId: string; title: string }) => callback(data)
