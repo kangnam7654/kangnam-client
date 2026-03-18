@@ -17,7 +17,7 @@ const CODEX = {
 
 const GEMINI = {
   clientId: '681255809395-oo8ft2oprdrnp9e3aqf6av3hmdib135j.apps.googleusercontent.com',
-  clientSecret: '***REMOVED***',
+  clientSecret: process.env.GEMINI_CLIENT_SECRET ?? '',
   authUrl: 'https://accounts.google.com/o/oauth2/v2/auth',
   tokenUrl: 'https://oauth2.googleapis.com/token',
   redirectPath: '/oauth2callback',
@@ -26,7 +26,7 @@ const GEMINI = {
 
 const ANTIGRAVITY = {
   clientId: '1071006060591-tmhssin2h21lcre235vtolojh4g403ep.apps.googleusercontent.com',
-  clientSecret: '***REMOVED***',
+  clientSecret: process.env.ANTIGRAVITY_CLIENT_SECRET ?? '',
   authUrl: 'https://accounts.google.com/o/oauth2/v2/auth',
   tokenUrl: 'https://oauth2.googleapis.com/token',
   redirectPort: 51121,

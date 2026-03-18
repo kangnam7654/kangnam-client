@@ -69,6 +69,8 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAURI_SIGNING_PRIVATE_KEY: ''
+          GEMINI_CLIENT_SECRET: ${{ secrets.GEMINI_CLIENT_SECRET }}
+          ANTIGRAVITY_CLIENT_SECRET: ${{ secrets.ANTIGRAVITY_CLIENT_SECRET }}
         with:
           tagName: ${{ github.ref_name }}
           releaseName: '${{ github.ref_name }}'

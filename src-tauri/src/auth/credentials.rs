@@ -22,7 +22,7 @@ pub const CODEX: OAuthCredentials = OAuthCredentials {
 
 pub const GEMINI: OAuthCredentials = OAuthCredentials {
     client_id: "681255809395-oo8ft2oprdrnp9e3aqf6av3hmdib135j.apps.googleusercontent.com",
-    client_secret: Some("***REMOVED***"),
+    client_secret: option_env!("GEMINI_CLIENT_SECRET"),
     auth_url: Some("https://accounts.google.com/o/oauth2/v2/auth"),
     token_url: "https://oauth2.googleapis.com/token",
     redirect_port: None, // Dynamic port
@@ -32,7 +32,7 @@ pub const GEMINI: OAuthCredentials = OAuthCredentials {
 
 pub const ANTIGRAVITY: OAuthCredentials = OAuthCredentials {
     client_id: "1071006060591-tmhssin2h21lcre235vtolojh4g403ep.apps.googleusercontent.com",
-    client_secret: Some("***REMOVED***"),
+    client_secret: option_env!("ANTIGRAVITY_CLIENT_SECRET"),
     auth_url: Some("https://accounts.google.com/o/oauth2/v2/auth"),
     token_url: "https://oauth2.googleapis.com/token",
     redirect_port: Some(51121),
