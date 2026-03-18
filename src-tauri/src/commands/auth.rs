@@ -17,11 +17,12 @@ pub async fn auth_connect(
 }
 
 #[tauri::command]
-pub fn auth_disconnect(provider: String, state: State<'_, AppState>, app: AppHandle) {
+pub fn auth_disconnect(provider: String, state: State<'_, AppState>, app: AppHandle) -> Result<(), String> {
     state.auth.disconnect(&provider, &state.db, &app);
+    Ok(())
 }
 
 #[tauri::command]
-pub fn auth_status(state: State<'_, AppState>) -> Vec<AuthStatus> {
-    state.auth.get_status(&state.db)
+pub fn auth_status(state: State<'_, AppState>) -> Result<Vec<AuthStatus>, String> {
+    Ok(state.auth.get_status(&state.db))
 }

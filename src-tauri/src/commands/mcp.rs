@@ -15,7 +15,7 @@ pub async fn mcp_add_server(
 ) -> Result<(), String> {
     state
         .mcp
-        .request("mcp:add-server", serde_json::to_value(&config).unwrap())
+        .request("mcp:add-server", serde_json::to_value(&config).map_err(|e| e.to_string())?)
         .await?;
     Ok(())
 }
@@ -81,8 +81,8 @@ pub async fn mcp_get_config(
     configs
         .into_iter()
         .find(|c| c.name == name)
-        .map(|c| serde_json::to_value(c).unwrap())
         .ok_or(format!("Server '{name}' not found"))
+        .and_then(|c| serde_json::to_value(c).map_err(|e| e.to_string()))
 }
 
 #[tauri::command]

@@ -166,12 +166,13 @@ pub async fn chat_send(
 }
 
 #[tauri::command]
-pub fn chat_stop(conversation_id: String, state: State<'_, AppState>) {
-    let provider = ACTIVE_REQUESTS.lock().unwrap_or_else(|e| e.into_inner()).get(&conversation_id).cloned();
+pub fn chat_stop(conversation_id: String, state: State<'_, AppState>) -> Result<(), String> {
+    let provider = ACTIVE_REQUESTS.lock().map_err(|e| e.to_string())?.get(&conversation_id).cloned();
     if let Some(provider) = provider {
         state.router.abort(&provider);
-        ACTIVE_REQUESTS.lock().unwrap_or_else(|e| e.into_inner()).remove(&conversation_id);
+        ACTIVE_REQUESTS.lock().map_err(|e| e.to_string())?.remove(&conversation_id);
     }
+    Ok(())
 }
 
 async fn run_agent_loop(

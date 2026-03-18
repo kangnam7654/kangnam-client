@@ -8,7 +8,8 @@ import {
   useMessagePartText,
   useMessagePartImage,
   useComposerRuntime,
-  useMessage
+  useMessage,
+  type TextMessagePartComponent
 } from '@assistant-ui/react'
 import { MarkdownTextPrimitive } from '@assistant-ui/react-markdown'
 import { useAppStore, type AttachmentData } from '../../stores/app-store'
@@ -122,7 +123,7 @@ const AssistantMessage: FC = () => {
         <MessagePrimitive.Content
           components={{
             Text: AssistantTextPart
-          } as any}
+          }}
         />
       </div>
       <AssistantActionBar />
@@ -131,7 +132,7 @@ const AssistantMessage: FC = () => {
   )
 }
 
-const AssistantTextPart: FC = () => (
+const AssistantTextPart: TextMessagePartComponent = () => (
   <MarkdownTextPrimitive
     className="aui-markdown"
     smooth
@@ -560,6 +561,14 @@ interface ComposerAttachment {
 }
 
 const StopButton: FC = () => {
+  const reloadTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  useEffect(() => {
+    return () => {
+      if (reloadTimeoutRef.current) clearTimeout(reloadTimeoutRef.current)
+    }
+  }, [])
+
   const handleStop = async () => {
     const state = useAppStore.getState()
     const convId = state.activeConversationId
@@ -589,7 +598,8 @@ const StopButton: FC = () => {
     }
     // Reload from DB after backend saves partial response
     if (convId) {
-      setTimeout(async () => {
+      if (reloadTimeoutRef.current) clearTimeout(reloadTimeoutRef.current)
+      reloadTimeoutRef.current = setTimeout(async () => {
         const msgs = await window.api.conv.getMessages(convId)
         useAppStore.getState().setMessages(msgs)
       }, 500)

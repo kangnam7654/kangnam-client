@@ -7,6 +7,8 @@ import {
 } from '@assistant-ui/react'
 import { useAppStore, type Message, type AttachmentData } from '../stores/app-store'
 
+type ContentPart = Extract<ThreadMessageLike['content'], readonly any[]>[number]
+
 /**
  * Convert our DB Message format to assistant-ui ThreadMessageLike.
  * Tool messages are skipped — they're folded into the preceding assistant message's tool-call results.
@@ -29,7 +31,7 @@ function convertMessage(msg: Message): ThreadMessageLike {
   }
 
   // Build content parts, including images from attachments
-  const contentParts: Array<{ type: 'text'; text: string } | { type: 'image'; image: string }> = []
+  const contentParts: ContentPart[] = []
 
   // Add image attachments first
   if (msg.attachments) {
@@ -53,7 +55,7 @@ function convertMessage(msg: Message): ThreadMessageLike {
     return {
       role: msg.role === 'system' ? 'system' : msg.role as 'user' | 'assistant',
       id: msg.id,
-      content: contentParts as any,
+      content: contentParts,
       createdAt: new Date(msg.created_at * 1000)
     }
   }
@@ -83,19 +85,12 @@ function buildThreadMessages(messages: Message[], streamingText: string, isStrea
 
     if (msg.role === 'assistant') {
       // Check if following messages are tool results
-      const toolResults: Array<{
-        type: 'tool-call'
-        toolCallId: string
-        toolName: string
-        args: Record<string, unknown>
-        argsText: string
-        result: string
-      }> = []
+      const toolResults: ContentPart[] = []
 
       let j = i + 1
       while (j < messages.length && messages[j].role === 'tool') {
         const toolMsg = messages[j]
-        let parsedArgs: Record<string, unknown> = {}
+        let parsedArgs = {}
         try { if (toolMsg.tool_args) parsedArgs = JSON.parse(toolMsg.tool_args) } catch { /* ignore */ }
         toolResults.push({
           type: 'tool-call',
@@ -110,17 +105,7 @@ function buildThreadMessages(messages: Message[], streamingText: string, isStrea
 
       if (toolResults.length > 0) {
         // Assistant message with tool calls
-        const parts: Array<
-          { type: 'text'; text: string } |
-          {
-            type: 'tool-call'
-            toolCallId: string
-            toolName: string
-            args: Record<string, unknown>
-            argsText: string
-            result: string
-          }
-        > = []
+        const parts: ContentPart[] = []
         if (msg.content && msg.content !== '[tool call]') {
           parts.push({ type: 'text' as const, text: msg.content })
         }
@@ -129,7 +114,7 @@ function buildThreadMessages(messages: Message[], streamingText: string, isStrea
         result.push({
           role: 'assistant',
           id: msg.id,
-          content: parts as any,
+          content: parts,
           createdAt: new Date(msg.created_at * 1000),
           status: { type: 'complete', reason: 'stop' }
         })
@@ -181,6 +166,14 @@ export function useAssistantRuntime() {
 
   const conversationIdRef = useRef(activeConversationId)
   conversationIdRef.current = activeConversationId
+
+  const reloadTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  useEffect(() => {
+    return () => {
+      if (reloadTimeoutRef.current) clearTimeout(reloadTimeoutRef.current)
+    }
+  }, [])
 
   // IPC event subscriptions
   useEffect(() => {
@@ -333,7 +326,8 @@ export function useAssistantRuntime() {
     }
     // Reload from DB after backend saves the partial response
     if (convId) {
-      setTimeout(async () => {
+      if (reloadTimeoutRef.current) clearTimeout(reloadTimeoutRef.current)
+      reloadTimeoutRef.current = setTimeout(async () => {
         const msgs = await window.api.conv.getMessages(convId)
         useAppStore.getState().setMessages(msgs)
       }, 500)

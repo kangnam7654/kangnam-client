@@ -309,7 +309,13 @@ const api = {
   }
 }
 
+declare global {
+  interface Window {
+    api: typeof api
+  }
+}
+
 // Expose as window.api for compatibility with existing components
-;(window as any).api = api
+window.api = api
 
 export type TauriAPI = typeof api
