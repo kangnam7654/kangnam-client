@@ -1,17 +1,10 @@
 import { useState, useRef, useEffect } from 'react'
 import { useAppStore } from '../../stores/app-store'
-
-const PROVIDERS = [
-  { name: 'codex', label: 'OpenAI Codex', shortLabel: 'Codex', color: '#10a37f', icon: 'M13 10V3L4 14h7v7l9-11h-7z' },
-  { name: 'gemini', label: 'Google Gemini', shortLabel: 'Gemini', color: '#4285f4', icon: 'M12 3v18m0-18c4.97 0 9 2.69 9 6s-4.03 6-9 6-9-2.69-9-6 4.03-6 9-6z' },
-  { name: 'antigravity', label: 'Antigravity', shortLabel: 'Antigravity', color: '#ea4335', icon: 'M12 2L2 19.5h20L12 2zm0 4l7 12H5l7-12z' },
-  { name: 'copilot', label: 'GitHub Copilot', shortLabel: 'Copilot', color: '#6e40c9', icon: 'M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 14H9v-2h2v2zm4 0h-2v-2h2v2zm1.5-4.5c-.4.5-1 .9-1.5 1.2V13h-2v-.8c0-.7.4-1.3 1-1.7.5-.3.8-.6 1-1 .2-.4.2-.8 0-1.2-.3-.5-.9-.8-1.5-.8-.8 0-1.5.5-1.7 1.2L10 8.3C10.5 6.9 11.8 6 13.3 6c1.1 0 2.1.5 2.7 1.4.6.9.7 2 .2 3z' },
-  { name: 'claude', label: 'Anthropic Claude', shortLabel: 'Claude', color: '#d97706', icon: 'M12 3l8 4.5v9L12 21l-8-4.5v-9L12 3zm0 2.3L6 8.5v7L12 18.7l6-3.2v-7L12 5.3z' },
-  { name: 'mock', label: 'Mock (UI Test)', shortLabel: 'Mock', color: '#f59e0b', icon: 'M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z' }
-]
+import { getVisibleProviders } from '../../lib/providers'
 
 export function ProviderSelector() {
-  const { activeProvider, setActiveProvider, authStatuses } = useAppStore()
+  const { activeProvider, setActiveProvider, authStatuses, devMode } = useAppStore()
+  const PROVIDERS = getVisibleProviders(devMode)
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
 

@@ -14,6 +14,26 @@ export default function App() {
     document.documentElement.setAttribute('data-theme', theme)
   }, [theme])
 
+  // Secret dev mode toggle: Ctrl+Shift+D (Cmd+Shift+D on Mac)
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 'D') {
+        e.preventDefault()
+        const store = useAppStore.getState()
+        store.toggleDevMode()
+        const next = useAppStore.getState().devMode
+        console.log(`[Dev Mode] ${next ? 'ENABLED' : 'DISABLED'}`)
+      }
+      // Toggle sidebar: Cmd+\ (Mac) / Ctrl+\ (Windows/Linux)
+      if ((e.ctrlKey || e.metaKey) && e.key === '\\') {
+        e.preventDefault()
+        useAppStore.getState().toggleSidebar()
+      }
+    }
+    window.addEventListener('keydown', handler)
+    return () => window.removeEventListener('keydown', handler)
+  }, [])
+
   useEffect(() => {
     // Load initial auth status
     window.api.auth.status().then(setAuthStatuses)

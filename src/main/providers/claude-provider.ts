@@ -134,6 +134,9 @@ export class ClaudeProvider implements LLMProvider {
     }
     if (isOAT) {
       headers['Authorization'] = `Bearer ${accessToken}`
+      // Claude Code identity headers — required for Sonnet/Opus access with OAT tokens
+      headers['user-agent'] = 'claude-cli/2.1.77'
+      headers['x-app'] = 'cli'
     } else {
       headers['x-api-key'] = accessToken
     }
@@ -143,6 +146,7 @@ export class ClaudeProvider implements LLMProvider {
     if (isOAT) {
       betas.push('claude-code-20250219', 'oauth-2025-04-20')
     }
+    betas.push('fine-grained-tool-streaming-2025-05-14')
     if (enableThinking && tools.length > 0) {
       betas.push(CLAUDE_INTERLEAVED_THINKING_BETA)
     }
@@ -159,8 +163,29 @@ export class ClaudeProvider implements LLMProvider {
 
     if (!response.ok) {
       const errorText = await response.text()
+      const usedModel = body.model as string
+
+      // OAT tokens may hit subscription usage limits for higher-tier models.
+      // When this happens, retry with Haiku which has separate/higher limits.
+      if (response.status === 400 && isOAT && usedModel !== 'claude-haiku-4-5') {
+        console.warn(`[Claude] ${usedModel} returned 400 (likely usage limit). Retrying with haiku...`)
+        body.model = 'claude-haiku-4-5'
+        // Remove thinking for haiku fallback (simpler request)
+        delete body.thinking
+        callbacks.onToken('[Switched to Haiku — usage limit reached for ' + usedModel + ']\n\n')
+
+        const retryResponse = await fetch(CLAUDE_API_URL, {
+          method: 'POST',
+          headers,
+          body: JSON.stringify(body),
+          signal: this.controller.signal
+        })
+        if (retryResponse.ok) {
+          return this.parseSSEStream(retryResponse, callbacks)
+        }
+      }
+
       console.error(`[Claude] API error ${response.status}:`, errorText)
-      console.error(`[Claude] Request body:`, JSON.stringify({ model: body.model, max_tokens: body.max_tokens, thinking: body.thinking, tools: (body.tools as unknown[])?.length ?? 0 }))
       throw new Error(`Claude API error ${response.status}: ${errorText}`)
     }
 

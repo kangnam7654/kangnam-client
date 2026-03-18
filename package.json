@@ -1,6 +1,6 @@
 {
   "name": "kangnam-client",
-  "version": "1.0.3",
+  "version": "2.0.0",
   "description": "Desktop LLM Client with subscription-based providers and MCP support",
   "author": {
     "name": "Kangnam Kim",
@@ -18,7 +18,12 @@
     "package:all": "electron-vite build && electron-builder --mac --win --linux",
     "typecheck:main": "tsc --noEmit -p tsconfig.node.json",
     "typecheck:renderer": "tsc --noEmit -p tsconfig.web.json",
-    "typecheck": "npm run typecheck:main && npm run typecheck:renderer"
+    "typecheck": "npm run typecheck:main && npm run typecheck:renderer",
+    "tauri": "cargo tauri",
+    "tauri:dev": "cargo tauri dev",
+    "tauri:build": "cargo tauri build",
+    "tauri:dev:frontend": "vite --config vite.config.ts",
+    "tauri:build:frontend": "vite build --config vite.config.ts"
   },
   "keywords": [],
   "license": "ISC",
@@ -43,6 +48,8 @@
     "@fontsource/pretendard": "^5.2.5",
     "@modelcontextprotocol/sdk": "^1.27.1",
     "@tailwindcss/postcss": "^4.2.1",
+    "@tauri-apps/api": "^2.10.1",
+    "@tauri-apps/cli": "^2.10.1",
     "clsx": "^2.1.1",
     "react": "^19.2.4",
     "react-dom": "^19.2.4",

@@ -130,6 +130,11 @@ interface AppState {
   activePromptId: string | null
   setActivePromptId: (id: string | null) => void
 
+  // Sidebar
+  sidebarCollapsed: boolean
+  setSidebarCollapsed: (v: boolean) => void
+  toggleSidebar: () => void
+
   // Settings panel
   showSettings: boolean
   setShowSettings: (v: boolean) => void
@@ -139,6 +144,11 @@ interface AppState {
   // Theme
   theme: 'light' | 'dark'
   setTheme: (t: 'light' | 'dark') => void
+
+  // Dev mode (shows hidden providers: gemini, antigravity, claude OAT, mock)
+  devMode: boolean
+  setDevMode: (v: boolean) => void
+  toggleDevMode: () => void
 
   // Eval state
   showEval: boolean
@@ -238,6 +248,11 @@ export const useAppStore = create<AppState>((set) => ({
   activePromptId: null,
   setActivePromptId: (id) => set({ activePromptId: id }),
 
+  // Sidebar
+  sidebarCollapsed: false,
+  setSidebarCollapsed: (v) => set({ sidebarCollapsed: v }),
+  toggleSidebar: () => set((s) => ({ sidebarCollapsed: !s.sidebarCollapsed })),
+
   // Settings
   showSettings: false,
   setShowSettings: (v) => set({ showSettings: v }),
@@ -250,6 +265,18 @@ export const useAppStore = create<AppState>((set) => ({
     localStorage.setItem('kangnam-theme', t)
     set({ theme: t })
   },
+
+  // Dev mode — persisted in localStorage, activated via Ctrl+Shift+D
+  devMode: localStorage.getItem('kangnam-dev-mode') === 'true',
+  setDevMode: (v) => {
+    localStorage.setItem('kangnam-dev-mode', v ? 'true' : 'false')
+    set({ devMode: v })
+  },
+  toggleDevMode: () => set((s) => {
+    const next = !s.devMode
+    localStorage.setItem('kangnam-dev-mode', next ? 'true' : 'false')
+    return { devMode: next }
+  }),
 
   // Eval
   showEval: false,

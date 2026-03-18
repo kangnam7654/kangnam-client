@@ -8,12 +8,12 @@ interface MCPServerStatus {
   error?: string
 }
 
-const PROVIDER_INFO: Record<string, { label: string; description: string; color: string }> = {
+const PROVIDER_INFO: Record<string, { label: string; description: string; color: string; devOnly?: boolean }> = {
   codex: { label: 'OpenAI Codex', description: 'ChatGPT Plus/Pro subscription', color: '#10a37f' },
-  gemini: { label: 'Google Gemini', description: 'Google AI Pro subscription', color: '#4285f4' },
-  antigravity: { label: 'Antigravity', description: 'Google Antigravity (Gemini + Claude)', color: '#ea4335' },
+  gemini: { label: 'Google Gemini', description: 'Google AI Pro subscription', color: '#4285f4', devOnly: true },
+  antigravity: { label: 'Antigravity', description: 'Google Antigravity (Gemini + Claude)', color: '#ea4335', devOnly: true },
   copilot: { label: 'GitHub Copilot', description: 'Copilot subscription (device flow)', color: '#6e40c9' },
-  claude: { label: 'Anthropic Claude', description: 'Setup token or API key', color: '#d97706' }
+  claude: { label: 'Anthropic Claude', description: 'API key (console.anthropic.com)', color: '#d97706' }
 }
 
 const TABS = [
@@ -220,6 +220,8 @@ function ProvidersTab({ authStatuses, connecting, connectError, copilotCode, cla
         {authStatuses.map(status => {
           const info = PROVIDER_INFO[status.provider]
           if (!info) return null
+          const devMode = useAppStore.getState().devMode
+          if (info.devOnly && !devMode) return null
           const isConnecting = connecting === status.provider
           const isClaude = status.provider === 'claude'
           return (
@@ -239,7 +241,7 @@ function ProvidersTab({ authStatuses, connecting, connectError, copilotCode, cla
                       type="password"
                       value={claudeSetupToken}
                       onChange={(event) => onClaudeSetupTokenChange(event.target.value)}
-                      placeholder="Paste sk-ant-oat... or sk-ant-api03-..."
+                      placeholder="Leave empty to auto-detect from Claude Code"
                       autoCapitalize="off"
                       autoCorrect="off"
                       spellCheck={false}
@@ -255,7 +257,7 @@ function ProvidersTab({ authStatuses, connecting, connectError, copilotCode, cla
                       }}
                     />
                     <p style={{ fontSize: 11.5, color: 'var(--text-muted)', marginTop: 7 }}>
-                      <code>claude setup-token</code> or API key from <code>console.anthropic.com</code>
+                      Auto-detects from Claude Code keychain, or paste <code>setup-token</code> / API key
                     </p>
                   </div>
                 )}
@@ -278,7 +280,7 @@ function ProvidersTab({ authStatuses, connecting, connectError, copilotCode, cla
                 }}
                 className={isConnecting ? 'hover:bg-[rgba(239,68,68,0.2)]' : status.connected ? 'hover:bg-[rgba(239,68,68,0.2)]' : 'hover:opacity-85'}
               >
-                {isConnecting ? 'Cancel' : status.connected ? 'Disconnect' : isClaude ? 'Save token' : 'Connect'}
+                {isConnecting ? 'Cancel' : status.connected ? 'Disconnect' : 'Connect'}
               </button>
             </div>
           )

@@ -1,4 +1,5 @@
 import { BrowserWindow, shell } from 'electron'
+import { execFileSync } from 'child_process'
 import { deleteToken, getToken, listTokenProviders, saveToken } from './token-store'
 import { generatePKCE, generateState } from './pkce'
 import { waitForOAuthCallback, startOAuthServer } from './oauth-server'
@@ -39,6 +40,11 @@ const COPILOT = {
   tokenUrl: 'https://github.com/login/oauth/access_token',
   copilotTokenUrl: 'https://api.github.com/copilot_internal/v2/token',
   scope: 'read:user'
+}
+
+const CLAUDE_OAUTH = {
+  clientId: '9d1c250a-e61b-44d9-88ed-5944d1962f5e',
+  tokenUrl: 'https://platform.claude.com/v1/oauth/token'
 }
 
 export interface AuthStatus {
@@ -101,6 +107,7 @@ export class AuthManager {
   /**
    * Get a valid access token for the given provider.
    * Automatically refreshes expired tokens.
+   * For Claude OAT tokens, auto-refreshes from keychain when expired.
    */
   async getAccessToken(provider: string): Promise<string | null> {
     const token = getToken(provider)
@@ -110,6 +117,12 @@ export class AuthManager {
 
     // Check if token expires within 5 minutes
     if (token.expires_at && now > token.expires_at - 300) {
+      // For Claude OAT tokens: refresh via OAuth endpoint or keychain
+      if (provider === 'claude' && token.access_token.startsWith('sk-ant-oat')) {
+        const refreshed = await this.refreshClaudeOAuthToken(token.refresh_token)
+        if (refreshed) return refreshed
+      }
+
       try {
         return await this.refreshToken(provider, token.refresh_token)
       } catch (err) {
@@ -570,22 +583,129 @@ export class AuthManager {
   }
 
   private async saveClaudeSetupToken(rawToken?: string): Promise<void> {
-    const token = this.normalizeClaudeToken(rawToken)
+    // If no token provided, try to read from Claude Code keychain
+    let token: string
+    let expiresAt: number | null = null
+    let authMethod: string
+
+    let refreshToken: string | null = null
+
+    if (!rawToken?.trim()) {
+      const keychain = this.readClaudeCodeKeychain()
+      if (!keychain) {
+        throw new Error('No token provided and Claude Code credentials not found in keychain. Enter a setup token or API key.')
+      }
+      token = keychain.accessToken
+      expiresAt = keychain.expiresAt ?? null
+      refreshToken = keychain.refreshToken ?? null
+      authMethod = 'keychain'
+      console.log('[Claude] Using token from Claude Code keychain')
+    } else {
+      token = this.normalizeClaudeToken(rawToken)
+      authMethod = token.startsWith('sk-ant-oat') ? 'setup-token' : 'api-key'
+    }
 
     // Verify token with a minimal API call before saving
     await this.verifyClaudeToken(token)
 
-    const authMethod = token.startsWith('sk-ant-oat') ? 'setup-token' : 'api-key'
-
     saveToken({
       provider: 'claude',
       access_token: token,
-      refresh_token: null,
-      expires_at: null,
+      refresh_token: refreshToken,
+      expires_at: expiresAt,
       metadata: { authMethod }
     })
 
     this.notifyConnected('claude')
+  }
+
+  /**
+   * Read Claude Code OAuth credentials from macOS Keychain.
+   * Claude Code stores its OAuth token in the keychain under "Claude Code-credentials".
+   */
+  private readClaudeCodeKeychain(): { accessToken: string; refreshToken?: string; expiresAt?: number; scopes?: string[] } | null {
+    if (process.platform !== 'darwin') return null
+
+    try {
+      const raw = execFileSync(
+        'security',
+        ['find-generic-password', '-s', 'Claude Code-credentials', '-w'],
+        { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'], timeout: 5000 }
+      )
+      const parsed = JSON.parse(raw.trim()) as Record<string, unknown>
+      const oauth = parsed?.claudeAiOauth as Record<string, unknown> | undefined
+      if (!oauth || typeof oauth !== 'object') return null
+
+      const accessToken = oauth.accessToken
+      if (typeof accessToken !== 'string' || !accessToken.trim()) return null
+
+      const expiresAt = typeof oauth.expiresAt === 'number'
+        ? Math.floor(oauth.expiresAt / 1000)  // Convert ms to seconds
+        : undefined
+      const scopes = Array.isArray(oauth.scopes)
+        ? oauth.scopes.filter((v): v is string => typeof v === 'string')
+        : undefined
+
+      const refreshToken = typeof oauth.refreshToken === 'string' ? oauth.refreshToken : undefined
+
+      return { accessToken, refreshToken, expiresAt, scopes }
+    } catch {
+      return null
+    }
+  }
+
+  /**
+   * Refresh Claude OAT token via OAuth endpoint or keychain fallback.
+   */
+  private async refreshClaudeOAuthToken(refreshToken: string | null): Promise<string | null> {
+    // Method 1: Use refresh token with OAuth endpoint
+    if (refreshToken?.startsWith('sk-ant-ort')) {
+      try {
+        const response = await fetch(CLAUDE_OAUTH.tokenUrl, {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({
+            grant_type: 'refresh_token',
+            refresh_token: refreshToken,
+            client_id: CLAUDE_OAUTH.clientId
+          })
+        })
+        if (response.ok) {
+          const data = (await response.json()) as { access_token: string; refresh_token?: string; expires_in?: number }
+          console.log('[Claude] OAuth token refreshed successfully')
+          saveToken({
+            provider: 'claude',
+            access_token: data.access_token,
+            refresh_token: data.refresh_token ?? refreshToken,
+            expires_at: data.expires_in ? Math.floor(Date.now() / 1000) + data.expires_in : null,
+            metadata: { authMethod: 'oauth-refresh' }
+          })
+          return data.access_token
+        }
+      } catch (err) {
+        console.error('[Claude] OAuth refresh failed:', err)
+      }
+    }
+
+    // Method 2: Fallback to keychain
+    try {
+      const keychain = this.readClaudeCodeKeychain()
+      if (keychain) {
+        console.log('[Claude] Refreshing OAT token from keychain')
+        saveToken({
+          provider: 'claude',
+          access_token: keychain.accessToken,
+          refresh_token: null,
+          expires_at: keychain.expiresAt ?? null,
+          metadata: { authMethod: 'keychain' }
+        })
+        return keychain.accessToken
+      }
+    } catch (err) {
+      console.error('[Claude] Keychain refresh failed:', err)
+    }
+
+    return null
   }
 
   private async verifyClaudeToken(token: string): Promise<void> {
@@ -617,6 +737,10 @@ export class AuthManager {
     }
     if (response.status === 403) {
       throw new Error('Token forbidden — 403. This token may not have API access.')
+    }
+    if (response.status === 400) {
+      const body = await response.text().catch(() => '')
+      throw new Error(`Token rejected (400). It may be expired. ${body}`)
     }
     if (response.status >= 500) {
       throw new Error(`Anthropic API error ${response.status}. Try again later.`)
