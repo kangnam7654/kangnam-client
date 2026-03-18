@@ -126,4 +126,4 @@ src/renderer/              # React UI
 
 ## License
 
-Private — All rights reserved.
+[MIT](LICENSE)
