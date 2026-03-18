@@ -143,7 +143,7 @@ impl LLMProvider for ClaudeProvider {
         reasoning_effort: Option<&str>,
     ) -> Result<SendResult, String> {
         let (abort_tx, mut abort_rx) = tokio::sync::watch::channel(false);
-        *self.abort.lock().unwrap() = Some(abort_tx);
+        *self.abort.lock().unwrap_or_else(|e| e.into_inner()) = Some(abort_tx);
 
         let system_prompt: String = messages
             .iter()
@@ -243,7 +243,7 @@ impl LLMProvider for ClaudeProvider {
     }
 
     fn abort(&self) {
-        if let Some(tx) = self.abort.lock().unwrap().take() {
+        if let Some(tx) = self.abort.lock().unwrap_or_else(|e| e.into_inner()).take() {
             let _ = tx.send(true);
         }
     }

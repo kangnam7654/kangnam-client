@@ -10,7 +10,7 @@ pub fn eval_set_create(
     name: Option<String>,
     state: State<'_, AppState>,
 ) -> Result<serde_json::Value, String> {
-    let conn = state.db.lock().unwrap();
+    let conn = state.db.lock().unwrap_or_else(|e| e.into_inner());
     let id = uuid::Uuid::new_v4().to_string();
     let now = chrono::Utc::now().timestamp();
     let set_name = name.unwrap_or_else(|| "Default".to_string());
@@ -30,7 +30,7 @@ pub fn eval_set_list(
     skill_id: String,
     state: State<'_, AppState>,
 ) -> Result<serde_json::Value, String> {
-    let conn = state.db.lock().unwrap();
+    let conn = state.db.lock().unwrap_or_else(|e| e.into_inner());
     let mut stmt = conn
         .prepare(
             "SELECT id, skill_id, name, created_at, updated_at \
@@ -55,7 +55,7 @@ pub fn eval_set_list(
 
 #[tauri::command]
 pub fn eval_set_delete(id: String, state: State<'_, AppState>) -> Result<(), String> {
-    let conn = state.db.lock().unwrap();
+    let conn = state.db.lock().unwrap_or_else(|e| e.into_inner());
     conn.execute("DELETE FROM skill_eval_sets WHERE id = ?1", params![id])
         .map_err(|e| e.to_string())?;
     Ok(())
@@ -69,7 +69,7 @@ pub fn eval_case_add(
     should_trigger: bool,
     state: State<'_, AppState>,
 ) -> Result<serde_json::Value, String> {
-    let conn = state.db.lock().unwrap();
+    let conn = state.db.lock().unwrap_or_else(|e| e.into_inner());
     let id = uuid::Uuid::new_v4().to_string();
     let sort: i64 = conn
         .query_row(
@@ -96,7 +96,7 @@ pub fn eval_case_bulk_add(
     cases: Vec<serde_json::Value>,
     state: State<'_, AppState>,
 ) -> Result<serde_json::Value, String> {
-    let conn = state.db.lock().unwrap();
+    let conn = state.db.lock().unwrap_or_else(|e| e.into_inner());
     let mut added = Vec::new();
     for case in &cases {
         let id = uuid::Uuid::new_v4().to_string();
@@ -136,7 +136,7 @@ pub fn eval_case_update(
     should_trigger: bool,
     state: State<'_, AppState>,
 ) -> Result<(), String> {
-    let conn = state.db.lock().unwrap();
+    let conn = state.db.lock().unwrap_or_else(|e| e.into_inner());
     conn.execute(
         "UPDATE skill_eval_cases SET prompt = ?1, expected = ?2, should_trigger = ?3 WHERE id = ?4",
         params![prompt, expected, should_trigger as i64, id],
@@ -147,7 +147,7 @@ pub fn eval_case_update(
 
 #[tauri::command]
 pub fn eval_case_delete(id: String, state: State<'_, AppState>) -> Result<(), String> {
-    let conn = state.db.lock().unwrap();
+    let conn = state.db.lock().unwrap_or_else(|e| e.into_inner());
     conn.execute("DELETE FROM skill_eval_cases WHERE id = ?1", params![id])
         .map_err(|e| e.to_string())?;
     Ok(())
@@ -158,7 +158,7 @@ pub fn eval_case_list(
     eval_set_id: String,
     state: State<'_, AppState>,
 ) -> Result<serde_json::Value, String> {
-    let conn = state.db.lock().unwrap();
+    let conn = state.db.lock().unwrap_or_else(|e| e.into_inner());
     let mut stmt = conn
         .prepare(
             "SELECT id, eval_set_id, prompt, expected, should_trigger, sort_order \
@@ -193,7 +193,7 @@ pub async fn eval_run_start(
 ) -> Result<serde_json::Value, String> {
     // Load skill info
     let (skill_name, skill_desc, skill_body) = {
-        let conn = state.db.lock().unwrap();
+        let conn = state.db.lock().unwrap_or_else(|e| e.into_inner());
         let row = conn
             .query_row(
                 "SELECT title, description, content FROM prompts WHERE id = ?1",
@@ -206,7 +206,7 @@ pub async fn eval_run_start(
 
     // Load cases
     let cases: Vec<(String, String, String, bool)> = {
-        let conn = state.db.lock().unwrap();
+        let conn = state.db.lock().unwrap_or_else(|e| e.into_inner());
         let mut stmt = conn
             .prepare(
                 "SELECT id, prompt, expected, should_trigger FROM skill_eval_cases WHERE eval_set_id = ?1 ORDER BY sort_order ASC",
@@ -236,7 +236,7 @@ pub async fn eval_run_start(
     let now = chrono::Utc::now().timestamp();
     let total_cases = cases.len() as i64;
     {
-        let conn = state.db.lock().unwrap();
+        let conn = state.db.lock().unwrap_or_else(|e| e.into_inner());
         conn.execute(
             "INSERT INTO skill_eval_runs (id, eval_set_id, skill_id, skill_name, skill_desc, skill_body, provider, model, status, total_cases, completed_cases, created_at) \
              VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, 'running', ?9, 0, ?10)",
@@ -411,7 +411,7 @@ pub async fn eval_run_start(
 
 #[tauri::command]
 pub fn eval_run_stop(run_id: String, state: State<'_, AppState>) -> Result<(), String> {
-    let conn = state.db.lock().unwrap();
+    let conn = state.db.lock().unwrap_or_else(|e| e.into_inner());
     conn.execute(
         "UPDATE skill_eval_runs SET status = 'stopped' WHERE id = ?1 AND status = 'running'",
         params![run_id],
@@ -425,7 +425,7 @@ pub fn eval_run_list(
     eval_set_id: String,
     state: State<'_, AppState>,
 ) -> Result<serde_json::Value, String> {
-    let conn = state.db.lock().unwrap();
+    let conn = state.db.lock().unwrap_or_else(|e| e.into_inner());
     let mut stmt = conn
         .prepare(
             "SELECT id, eval_set_id, skill_id, skill_name, provider, model, status, \
@@ -461,7 +461,7 @@ pub fn eval_run_get(
     run_id: String,
     state: State<'_, AppState>,
 ) -> Result<serde_json::Value, String> {
-    let conn = state.db.lock().unwrap();
+    let conn = state.db.lock().unwrap_or_else(|e| e.into_inner());
     conn.query_row(
         "SELECT id, eval_set_id, skill_id, skill_name, provider, model, status, \
          trigger_accuracy, quality_mean, total_cases, completed_cases, created_at \
@@ -492,7 +492,7 @@ pub fn eval_run_results(
     run_id: String,
     state: State<'_, AppState>,
 ) -> Result<serde_json::Value, String> {
-    let conn = state.db.lock().unwrap();
+    let conn = state.db.lock().unwrap_or_else(|e| e.into_inner());
     let mut stmt = conn
         .prepare(
             "SELECT id, run_id, case_id, did_trigger, trigger_correct, \
@@ -529,7 +529,7 @@ pub fn eval_run_stats(
     run_id: String,
     state: State<'_, AppState>,
 ) -> Result<serde_json::Value, String> {
-    let conn = state.db.lock().unwrap();
+    let conn = state.db.lock().unwrap_or_else(|e| e.into_inner());
 
     let run = conn
         .query_row(
@@ -578,7 +578,7 @@ pub fn eval_run_stats(
 
 #[tauri::command]
 pub fn eval_run_delete(run_id: String, state: State<'_, AppState>) -> Result<(), String> {
-    let conn = state.db.lock().unwrap();
+    let conn = state.db.lock().unwrap_or_else(|e| e.into_inner());
     conn.execute("DELETE FROM skill_eval_runs WHERE id = ?1", params![run_id])
         .map_err(|e| e.to_string())?;
     Ok(())
@@ -591,7 +591,7 @@ pub fn eval_result_feedback(
     rating: i64,
     state: State<'_, AppState>,
 ) -> Result<(), String> {
-    let conn = state.db.lock().unwrap();
+    let conn = state.db.lock().unwrap_or_else(|e| e.into_inner());
     conn.execute(
         "UPDATE skill_eval_results SET feedback = ?1, feedback_rating = ?2 WHERE id = ?3",
         params![feedback, rating, result_id],

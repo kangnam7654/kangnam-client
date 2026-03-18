@@ -38,7 +38,7 @@ impl LLMProvider for AntigravityProvider {
         reasoning_effort: Option<&str>,
     ) -> Result<SendResult, String> {
         let (abort_tx, mut abort_rx) = tokio::sync::watch::channel(false);
-        *self.abort.lock().unwrap() = Some(abort_tx);
+        *self.abort.lock().unwrap_or_else(|e| e.into_inner()) = Some(abort_tx);
 
         let last_msg = messages.last().map(|m| m.content.as_str()).unwrap_or("");
 
@@ -50,7 +50,7 @@ impl LLMProvider for AntigravityProvider {
             }
         });
 
-        if let Some(ref iid) = *self.interaction_id.lock().unwrap() {
+        if let Some(ref iid) = *self.interaction_id.lock().unwrap_or_else(|e| e.into_inner()) {
             body["previousInteractionId"] = serde_json::json!(iid);
         }
 
@@ -107,7 +107,7 @@ impl LLMProvider for AntigravityProvider {
 
                                 // Track interaction ID
                                 if let Some(iid) = parsed.get("interactionId").and_then(|v| v.as_str()) {
-                                    *self.interaction_id.lock().unwrap() = Some(iid.to_string());
+                                    *self.interaction_id.lock().unwrap_or_else(|e| e.into_inner()) = Some(iid.to_string());
                                 }
 
                                 if let Some(candidates) = parsed.get("candidates").and_then(|v| v.as_array()) {
@@ -142,6 +142,6 @@ impl LLMProvider for AntigravityProvider {
     }
 
     fn abort(&self) {
-        if let Some(tx) = self.abort.lock().unwrap().take() { let _ = tx.send(true); }
+        if let Some(tx) = self.abort.lock().unwrap_or_else(|e| e.into_inner()).take() { let _ = tx.send(true); }
     }
 }

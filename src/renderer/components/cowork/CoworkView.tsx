@@ -29,13 +29,13 @@ function renderMarkdown(raw: string): string {
     .replace(/```(\w*)\n([\s\S]*?)```/g, (_, _lang, code) =>
       `<pre style="background:var(--bg-code);color:var(--text-primary);padding:14px 16px;border-radius:8px;overflow-x:auto;font-size:12px;margin:10px 0;font-family:Monaco,Menlo,monospace;line-height:1.5"><code>${escapeHtml(code.trim())}</code></pre>`)
     // Inline code
-    .replace(/`([^`\n]+)`/g, '<code style="background:var(--bg-code-inline);padding:2px 6px;border-radius:4px;font-size:0.85em;font-family:Monaco,Menlo,monospace;color:var(--text-code-inline)">$1</code>')
+    .replace(/`([^`\n]+)`/g, (_, c) => `<code style="background:var(--bg-code-inline);padding:2px 6px;border-radius:4px;font-size:0.85em;font-family:Monaco,Menlo,monospace;color:var(--text-code-inline)">${escapeHtml(c)}</code>`)
     // Bold / italic
-    .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
+    .replace(/\*\*([^*]+)\*\*/g, (_, c) => `<strong>${escapeHtml(c)}</strong>`)
     // Headings
-    .replace(/^### (.+)$/gm, '<h3 style="font-size:15px;font-weight:600;margin:16px 0 8px">$1</h3>')
-    .replace(/^## (.+)$/gm, '<h2 style="font-size:17px;font-weight:600;margin:20px 0 8px">$1</h2>')
-    .replace(/^# (.+)$/gm, '<h1 style="font-size:20px;font-weight:600;margin:20px 0 8px">$1</h1>')
+    .replace(/^### (.+)$/gm, (_, c) => `<h3 style="font-size:15px;font-weight:600;margin:16px 0 8px">${escapeHtml(c)}</h3>`)
+    .replace(/^## (.+)$/gm, (_, c) => `<h2 style="font-size:17px;font-weight:600;margin:20px 0 8px">${escapeHtml(c)}</h2>`)
+    .replace(/^# (.+)$/gm, (_, c) => `<h1 style="font-size:20px;font-weight:600;margin:20px 0 8px">${escapeHtml(c)}</h1>`)
     // Newlines
     .replace(/\n/g, '<br />')
   return html

@@ -55,13 +55,13 @@ impl AuthManager {
     }
 
     pub fn disconnect(&self, provider: &str, db: &Mutex<Connection>, app: &AppHandle) {
-        let conn = db.lock().unwrap();
+        let conn = db.lock().unwrap_or_else(|e| e.into_inner());
         token_store::delete_token(&conn, provider);
         let _ = app.emit("auth:on-disconnected", provider);
     }
 
     pub fn get_status(&self, db: &Mutex<Connection>) -> Vec<AuthStatus> {
-        let conn = db.lock().unwrap();
+        let conn = db.lock().unwrap_or_else(|e| e.into_inner());
         let providers = ["codex", "gemini", "antigravity", "copilot", "claude"];
         let connected = token_store::list_token_providers(&conn);
 
@@ -90,7 +90,7 @@ impl AuthManager {
         app: &AppHandle,
     ) -> Option<String> {
         let token = {
-            let conn = db.lock().unwrap();
+            let conn = db.lock().unwrap_or_else(|e| e.into_inner());
             token_store::get_token(&conn, provider)?
         };
 
@@ -188,7 +188,7 @@ impl AuthManager {
         let tokens: TokenResponse = token_resp.json().await.map_err(|e| e.to_string())?;
         let now = chrono::Utc::now().timestamp();
 
-        let conn = db.lock().unwrap();
+        let conn = db.lock().unwrap_or_else(|e| e.into_inner());
         token_store::save_token(
             &conn,
             &StoredToken {
@@ -266,7 +266,7 @@ impl AuthManager {
         let tokens: TokenResponse = token_resp.json().await.map_err(|e| e.to_string())?;
         let now = chrono::Utc::now().timestamp();
 
-        let conn = db.lock().unwrap();
+        let conn = db.lock().unwrap_or_else(|e| e.into_inner());
         token_store::save_token(
             &conn,
             &StoredToken {
@@ -344,7 +344,7 @@ impl AuthManager {
         let tokens: TokenResponse = token_resp.json().await.map_err(|e| e.to_string())?;
         let now = chrono::Utc::now().timestamp();
 
-        let conn = db.lock().unwrap();
+        let conn = db.lock().unwrap_or_else(|e| e.into_inner());
         token_store::save_token(
             &conn,
             &StoredToken {
@@ -410,7 +410,7 @@ impl AuthManager {
         let copilot_token = self.exchange_copilot_token(&github_token).await?;
         let now = chrono::Utc::now().timestamp();
 
-        let conn = db.lock().unwrap();
+        let conn = db.lock().unwrap_or_else(|e| e.into_inner());
         token_store::save_token(
             &conn,
             &StoredToken {
@@ -534,7 +534,7 @@ impl AuthManager {
         // Verify token
         self.verify_claude_token(&token).await?;
 
-        let conn = db.lock().unwrap();
+        let conn = db.lock().unwrap_or_else(|e| e.into_inner());
         token_store::save_token(
             &conn,
             &StoredToken {
@@ -618,7 +618,7 @@ impl AuthManager {
                 if resp.status().is_success() {
                     let data: TokenResponse = resp.json().await.ok()?;
                     let now = chrono::Utc::now().timestamp();
-                    let conn = db.lock().unwrap();
+                    let conn = db.lock().unwrap_or_else(|e| e.into_inner());
                     token_store::save_token(
                         &conn,
                         &StoredToken {
@@ -636,7 +636,7 @@ impl AuthManager {
 
         // Method 2: Fallback to keychain
         if let Some(keychain) = Self::read_claude_code_keychain() {
-            let conn = db.lock().unwrap();
+            let conn = db.lock().unwrap_or_else(|e| e.into_inner());
             token_store::save_token(
                 &conn,
                 &StoredToken {
@@ -769,7 +769,7 @@ impl AuthManager {
         let tokens: TokenResponse = resp.json().await.map_err(|e| e.to_string())?;
         let now = chrono::Utc::now().timestamp();
 
-        let conn = db.lock().unwrap();
+        let conn = db.lock().unwrap_or_else(|e| e.into_inner());
         token_store::save_token(
             &conn,
             &StoredToken {
@@ -813,7 +813,7 @@ impl AuthManager {
         let tokens: TokenResponse = resp.json().await.map_err(|e| e.to_string())?;
         let now = chrono::Utc::now().timestamp();
 
-        let conn = db.lock().unwrap();
+        let conn = db.lock().unwrap_or_else(|e| e.into_inner());
         token_store::save_token(
             &conn,
             &StoredToken {
@@ -836,7 +836,7 @@ impl AuthManager {
         let copilot_token = self.exchange_copilot_token(github_token).await?;
         let now = chrono::Utc::now().timestamp();
 
-        let conn = db.lock().unwrap();
+        let conn = db.lock().unwrap_or_else(|e| e.into_inner());
         token_store::save_token(
             &conn,
             &StoredToken {

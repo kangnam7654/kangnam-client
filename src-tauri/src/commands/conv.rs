@@ -5,49 +5,49 @@ use crate::state::AppState;
 
 #[tauri::command]
 pub fn conv_list(state: State<'_, AppState>) -> Vec<Conversation> {
-    let conn = state.db.lock().unwrap();
+    let conn = state.db.lock().unwrap_or_else(|e| e.into_inner());
     conversations::list_conversations(&conn)
 }
 
 #[tauri::command]
 pub fn conv_create(provider: String, state: State<'_, AppState>) -> Conversation {
-    let conn = state.db.lock().unwrap();
+    let conn = state.db.lock().unwrap_or_else(|e| e.into_inner());
     conversations::create_conversation(&conn, &provider, None)
 }
 
 #[tauri::command]
 pub fn conv_delete(id: String, state: State<'_, AppState>) {
-    let conn = state.db.lock().unwrap();
+    let conn = state.db.lock().unwrap_or_else(|e| e.into_inner());
     conversations::delete_conversation(&conn, &id);
 }
 
 #[tauri::command]
 pub fn conv_get_messages(id: String, state: State<'_, AppState>) -> Vec<Message> {
-    let conn = state.db.lock().unwrap();
+    let conn = state.db.lock().unwrap_or_else(|e| e.into_inner());
     conversations::get_messages(&conn, &id)
 }
 
 #[tauri::command]
 pub fn conv_update_title(id: String, title: String, state: State<'_, AppState>) {
-    let conn = state.db.lock().unwrap();
+    let conn = state.db.lock().unwrap_or_else(|e| e.into_inner());
     conversations::update_title(&conn, &id, &title);
 }
 
 #[tauri::command]
 pub fn conv_toggle_pin(id: String, state: State<'_, AppState>) {
-    let conn = state.db.lock().unwrap();
+    let conn = state.db.lock().unwrap_or_else(|e| e.into_inner());
     conversations::toggle_pin(&conn, &id);
 }
 
 #[tauri::command]
 pub fn conv_delete_all(state: State<'_, AppState>) {
-    let conn = state.db.lock().unwrap();
+    let conn = state.db.lock().unwrap_or_else(|e| e.into_inner());
     conversations::delete_all_conversations(&conn);
 }
 
 #[tauri::command]
 pub fn conv_export(id: String, format: String, state: State<'_, AppState>) -> Result<String, String> {
-    let conn = state.db.lock().unwrap();
+    let conn = state.db.lock().unwrap_or_else(|e| e.into_inner());
     let conv = conversations::get_conversation(&conn, &id)
         .ok_or("Conversation not found")?;
     let messages = conversations::get_messages(&conn, &id);
@@ -80,6 +80,6 @@ pub fn conv_export(id: String, format: String, state: State<'_, AppState>) -> Re
 
 #[tauri::command]
 pub fn conv_search(query: String, state: State<'_, AppState>) -> Vec<SearchResult> {
-    let conn = state.db.lock().unwrap();
+    let conn = state.db.lock().unwrap_or_else(|e| e.into_inner());
     conversations::search_messages(&conn, &query)
 }

@@ -32,7 +32,7 @@ impl LLMProvider for CopilotProvider {
         _reasoning_effort: Option<&str>,
     ) -> Result<SendResult, String> {
         let (abort_tx, mut abort_rx) = tokio::sync::watch::channel(false);
-        *self.abort.lock().unwrap() = Some(abort_tx);
+        *self.abort.lock().unwrap_or_else(|e| e.into_inner()) = Some(abort_tx);
 
         let formatted: Vec<serde_json::Value> = messages.iter().map(|m| {
             let mut msg = serde_json::json!({
@@ -156,6 +156,6 @@ impl LLMProvider for CopilotProvider {
     }
 
     fn abort(&self) {
-        if let Some(tx) = self.abort.lock().unwrap().take() { let _ = tx.send(true); }
+        if let Some(tx) = self.abort.lock().unwrap_or_else(|e| e.into_inner()).take() { let _ = tx.send(true); }
     }
 }

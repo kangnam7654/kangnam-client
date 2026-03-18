@@ -31,7 +31,7 @@ pub async fn chat_send(
 
     // Inject skill instructions if prompt_id provided
     if let Some(ref pid) = prompt_id {
-        let conn = state.db.lock().unwrap();
+        let conn = state.db.lock().unwrap_or_else(|e| e.into_inner());
         if let Some(instructions) = crate::db::skills::get_skill_instructions(&conn, pid) {
             conversations::add_message(&conn, &conversation_id, "system", &instructions, None, None, None, None, None);
         }
@@ -39,7 +39,7 @@ pub async fn chat_send(
 
     // Save user message
     {
-        let conn = state.db.lock().unwrap();
+        let conn = state.db.lock().unwrap_or_else(|e| e.into_inner());
         conversations::add_message(
             &conn,
             &conversation_id,
@@ -67,7 +67,7 @@ pub async fn chat_send(
 
     // Build message history
     let chat_messages = {
-        let conn = state.db.lock().unwrap();
+        let conn = state.db.lock().unwrap_or_else(|e| e.into_inner());
         let db_msgs = conversations::get_messages(&conn, &conversation_id);
         db_msgs
             .iter()
@@ -130,7 +130,7 @@ pub async fn chat_send(
     )
     .await;
 
-    ACTIVE_REQUESTS.lock().unwrap().remove(&conversation_id);
+    ACTIVE_REQUESTS.lock().unwrap_or_else(|e| e.into_inner()).remove(&conversation_id);
 
     match result {
         Ok(_) => {
@@ -167,10 +167,10 @@ pub async fn chat_send(
 
 #[tauri::command]
 pub fn chat_stop(conversation_id: String, state: State<'_, AppState>) {
-    let provider = ACTIVE_REQUESTS.lock().unwrap().get(&conversation_id).cloned();
+    let provider = ACTIVE_REQUESTS.lock().unwrap_or_else(|e| e.into_inner()).get(&conversation_id).cloned();
     if let Some(provider) = provider {
         state.router.abort(&provider);
-        ACTIVE_REQUESTS.lock().unwrap().remove(&conversation_id);
+        ACTIVE_REQUESTS.lock().unwrap_or_else(|e| e.into_inner()).remove(&conversation_id);
     }
 }
 
@@ -237,7 +237,7 @@ async fn run_agent_loop(
         if result.stop_reason == StopReason::ToolUse && !result.tool_calls.is_empty() {
             // Save assistant message
             {
-                let conn = state.db.lock().unwrap();
+                let conn = state.db.lock().unwrap_or_else(|e| e.into_inner());
                 let content = if full_response.is_empty() { "[tool call]" } else { &full_response };
                 conversations::add_message(&conn, conversation_id, "assistant", content, None, None, None, None, None);
             }
@@ -255,7 +255,7 @@ async fn run_agent_loop(
                     Err(e) => format!("Error executing tool {}: {e}", tc.name),
                 };
                 {
-                    let conn = state.db.lock().unwrap();
+                    let conn = state.db.lock().unwrap_or_else(|e| e.into_inner());
                     conversations::add_message(
                         &conn,
                         conversation_id,
@@ -295,7 +295,7 @@ async fn run_agent_loop(
 
         // End turn — save final response
         if !full_response.is_empty() {
-            let conn = state.db.lock().unwrap();
+            let conn = state.db.lock().unwrap_or_else(|e| e.into_inner());
             conversations::add_message(&conn, conversation_id, "assistant", &full_response, None, None, None, None, None);
         }
         let _ = app.emit("chat:complete", serde_json::json!({ "conversationId": conversation_id }));

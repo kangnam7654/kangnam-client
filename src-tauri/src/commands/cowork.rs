@@ -35,11 +35,11 @@ pub async fn cowork_start(
         .ok_or(format!("Unknown provider: {provider}"))?;
 
     // Abort any existing session
-    if let Some(tx) = COWORK_ABORT.lock().unwrap().take() {
+    if let Some(tx) = COWORK_ABORT.lock().unwrap_or_else(|e| e.into_inner()).take() {
         let _ = tx.send(true);
     }
     let (abort_tx, abort_rx) = tokio::sync::watch::channel(false);
-    *COWORK_ABORT.lock().unwrap() = Some(abort_tx);
+    *COWORK_ABORT.lock().unwrap_or_else(|e| e.into_inner()) = Some(abort_tx);
 
     // Get MCP tools
     let mcp_tools = state.mcp.list_tools().await.unwrap_or_default();
@@ -91,7 +91,7 @@ pub async fn cowork_start(
     .await;
 
     // Store messages for follow-up
-    *COWORK_MESSAGES.lock().unwrap() = messages;
+    *COWORK_MESSAGES.lock().unwrap_or_else(|e| e.into_inner()) = messages;
 
     match result {
         Ok(_) => Ok(()),
@@ -111,14 +111,14 @@ pub async fn cowork_start(
 
 #[tauri::command]
 pub fn cowork_stop(_state: State<'_, AppState>) {
-    if let Some(tx) = COWORK_ABORT.lock().unwrap().take() {
+    if let Some(tx) = COWORK_ABORT.lock().unwrap_or_else(|e| e.into_inner()).take() {
         let _ = tx.send(true);
     }
 }
 
 #[tauri::command]
 pub fn cowork_follow_up(instruction: String) -> Result<(), String> {
-    let mut msgs = COWORK_MESSAGES.lock().unwrap();
+    let mut msgs = COWORK_MESSAGES.lock().unwrap_or_else(|e| e.into_inner());
     msgs.push(ChatMessage {
         role: "user".to_string(),
         content: instruction,
