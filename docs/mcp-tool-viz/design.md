@@ -5,18 +5,21 @@
 채팅에서 MCP 툴 호출 시 **툴 이름, 인자, 실행 결과**를 사용자에게 보여주는 기능.
 현재는 "Tool executed"라는 일반 텍스트만 표시됨.
 
+**성공 기준**: 모든 MCP 툴 호출이 툴 이름, 입력 인자(JSON), 실행 결과를 접기/펼치기 가능한 UI로 표시되며, DB에 영구 저장되어 대화 재로드 시에도 유지된다.
+
 ## 현재 상태
 
 ### 데이터 흐름
 
-```
-LLM 응답 (tool_use) → chat-handlers.ts → chat:tool-call IPC → renderer (StreamingStatus)
-                     ↓
-              executeToolCalls() → MCP 서버 → 결과
-                     ↓
-              addMessage(role='tool', content=결과, tool_use_id=id)
-                     ↓
-              chat:complete → renderer reloads from DB
+```mermaid
+flowchart TD
+    A["LLM 응답 (tool_use)"] --> B["chat-handlers.ts"]
+    B --> C["chat:tool-call IPC → Renderer"]
+    B --> D["executeToolCalls()"]
+    D --> E["MCP 서버"]
+    E --> F["결과"]
+    F --> G["addMessage(role='tool', content=결과, tool_use_id)"]
+    G --> H["chat:complete → Renderer reloads from DB"]
 ```
 
 ### 문제점
@@ -116,6 +119,8 @@ toolResults.push({
 
 ### 5. 의사결정 근거
 
-- **DB 컬럼 추가** vs JSON in content: 컬럼이 쿼리/인덱스 친화적이고 기존 content 포맷 안 깨짐
-- **접힌 상태 기본**: 툴 결과가 수천 글자일 수 있어 항상 펼치면 가독성 저하
-- **서버 prefix 제거**: `fetch__fetch` 같은 내부 네이밍은 UX에 불필요
+| 결정 | 채택 방안 | 기각 대안 | 기각 이유 |
+|------|-----------|-----------|-----------|
+| 도구 정보 저장 | DB 컬럼 추가 (tool_name, tool_args) | content JSON 내 포함 | 컬럼이 쿼리/인덱스 친화적이고 기존 content 포맷 안 깨짐 |
+| 기본 UI 상태 | 접힌 상태 (이름 + 상태만) | 항상 펼침 | 툴 결과가 수천 글자일 수 있어 항상 펼치면 가독성 저하 |
+| 서버 prefix | 제거 (toolName만 표시) | 전체 표시 (serverName__toolName) | `fetch__fetch` 같은 내부 네이밍은 사용자에게 불필요한 노이즈 |

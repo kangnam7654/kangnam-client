@@ -1,10 +1,12 @@
 # Global Prompts (Skills) Feature Design
 
-## 1. Overview
+## 1. 목적
 
 사용자가 전역 프롬프트(시스템 프롬프트/스킬)를 생성·관리하고, 대화 시작 시 선택하여 주입할 수 있는 기능.
 
 Claude Desktop의 CLAUDE.md, Claude Code의 Skills와 유사한 역할.
+
+**성공 기준**: 사용자가 프롬프트를 CRUD로 관리하고, WelcomeScreen 칩 클릭으로 선택하면 해당 프롬프트가 system message로 대화에 주입된다.
 
 ## 2. 핵심 기능
 
@@ -19,14 +21,13 @@ Claude Desktop의 CLAUDE.md, Claude Code의 Skills와 유사한 역할.
 
 ### 3.1 데이터 흐름
 
-```
-[Settings > Prompts] → CRUD → DB (prompts 테이블)
-                                ↓
-[WelcomeScreen] ← prompts:list → 칩 렌더링
-                                ↓
-사용자 클릭 → activePromptId 설정
-                                ↓
-[chat:send / cowork:start] → system prompt 주입
+```mermaid
+flowchart TD
+    A["Settings > Prompts"] -->|CRUD| B["DB (prompts 테이블)"]
+    B -->|"prompts:list"| C["WelcomeScreen 칩 렌더링"]
+    C -->|"사용자 클릭"| D["activePromptId 설정"]
+    D --> E["chat:send / cowork:start"]
+    E --> F["system prompt 주입"]
 ```
 
 ### 3.2 DB 스키마
@@ -178,7 +179,15 @@ if (promptId) {
 }
 ```
 
-## 9. 구현 순서
+## 9. 의사결정 근거
+
+| 결정 | 채택 방안 | 기각 대안 | 기각 이유 |
+|------|-----------|-----------|-----------|
+| 프롬프트 구조 | 플랫 리스트 (sort_order) | 폴더/카테고리 계층 | 초기 프롬프트 수가 적어 계층 불필요, sort_order로 순서 관리 충분 |
+| 선택 UI | WelcomeScreen 칩 | Composer 드롭다운 | 시각적 발견성(discoverability) 우수, 클릭 한 번으로 선택 가능 |
+| 저장소 | SQLite 테이블 | 로컬 .md 파일 | 기존 DB 인프라 활용, 정렬/검색 쿼리 지원 |
+
+## 10. 구현 순서
 
 1. **DB 마이그레이션** — prompts 테이블 생성
 2. **IPC 핸들러** — CRUD + reorder

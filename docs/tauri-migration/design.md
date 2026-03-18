@@ -6,29 +6,35 @@ Electron (200MB+, 300MB RAM) → Tauri + Rust (15MB, 30MB RAM)로 전환.
 기존 React 프론트엔드 유지, 백엔드만 Rust로 재작성.
 MCP는 Node.js 사이드카로 분리.
 
+**성공 기준**: 앱 크기 65MB 이하, RAM 사용량 50MB 이하를 달성하면서 기존 Electron 버전의 모든 기능(5개 provider OAuth, MCP, Cowork, Skills, Eval)이 동일하게 동작한다.
+
 ## 아키텍처
 
-```
-┌─────────────────────────────────────────────────────────┐
-│  Webview (React — 기존 renderer 코드 재사용)             │
-│  ┌─────────────┬──────────────┬────────────────────┐    │
-│  │ ChatView    │ CoworkView   │ SettingsPanel      │    │
-│  │ Sidebar     │ EvalWorkbench│ AssistantThread     │    │
-│  └─────────────┴──────────────┴────────────────────┘    │
-│           │ Tauri invoke() + listen()                    │
-├───────────┼─────────────────────────────────────────────┤
-│  Rust Backend (Tauri core)                              │
-│  ┌──────────┬──────────┬──────────┬──────────────┐     │
-│  │ auth     │ providers│ db       │ ipc commands │     │
-│  │ (OAuth)  │ (LLM)   │ (SQLite) │              │     │
-│  └──────────┴──────────┴──────────┴──────┬───────┘     │
-│                                          │ JSON-RPC     │
-│  ┌───────────────────────────────────────┴───────┐     │
-│  │ MCP Sidecar (Node.js)                         │     │
-│  │  @modelcontextprotocol/sdk                    │     │
-│  │  stdio / http / sse transport                 │     │
-│  └───────────────────────────────────────────────┘     │
-└─────────────────────────────────────────────────────────┘
+```mermaid
+graph TB
+    subgraph Webview["Webview (React — 기존 renderer 코드 재사용)"]
+        ChatView
+        CoworkView
+        SettingsPanel
+        EvalWorkbench
+        Sidebar
+    end
+
+    Webview -->|"Tauri invoke() + listen()"| RustBackend
+
+    subgraph RustBackend["Rust Backend (Tauri core)"]
+        auth["auth (OAuth)"]
+        providers["providers (LLM)"]
+        db["db (rusqlite)"]
+        commands["ipc commands"]
+    end
+
+    RustBackend -->|JSON-RPC| MCPSidecar
+
+    subgraph MCPSidecar["MCP Sidecar (Node.js)"]
+        sdk["@modelcontextprotocol/sdk"]
+        transport["stdio / http / sse transport"]
+    end
 ```
 
 ## 레이어별 상세
@@ -446,16 +452,11 @@ async fn chat_send(
 21. Context Window 관리
 22. 빌드 + 패키징 (Mac/Win/Linux)
 
-## 의사결정
+## 의사결정 근거
 
-### Q: 왜 MCP를 Rust로 재구현하지 않나?
-A: @modelcontextprotocol/sdk는 stdio child process 관리, JSON-RPC 2.0 프로토콜, 다양한 transport (stdio/http/sse) 등 복잡한 기능을 포함. Rust 재구현 시 2-3주 추가. 사이드카 방식이 리스크 최소화.
-
-### Q: 프론트엔드를 왜 그대로 두나?
-A: React 컴포넌트, Zustand 스토어, CSS는 Webview에서 동일하게 동작. `window.api` → `invoke/listen` 매핑만 하면 됨. 재작성할 이유 없음.
-
-### Q: 시스템 WebView 호환성 문제는?
-A: Tauri 2는 macOS (WebKit), Windows (WebView2/Edge), Linux (WebKitGTK)를 사용. 모던 CSS/JS는 모두 지원. React 19 + Tailwind 4 호환 확인 필요.
-
-### Q: Bun vs pkg?
-A: Bun 번들이 ~15MB로 훨씬 작음. Bun이 설치된 빌드 환경 필요. 크로스 컴파일도 지원. Bun 권장.
+| 결정 | 채택 방안 | 기각 대안 | 기각 이유 |
+|------|-----------|-----------|-----------|
+| MCP 구현 방식 | Node.js 사이드카 | Rust 재구현 | @modelcontextprotocol/sdk의 stdio/JSON-RPC/다양한 transport 복잡도 높음. Rust 재구현 시 2-3주 추가. 사이드카가 리스크 최소화 |
+| 프론트엔드 전략 | 기존 React 코드 재사용 | 전체 재작성 | React 컴포넌트, Zustand 스토어, CSS는 Webview에서 동일 동작. `window.api` → `invoke/listen` 어댑터만 교체하면 됨 |
+| 사이드카 번들러 | Bun | pkg (Node.js) | Bun 번들 ~15MB vs pkg ~50MB. 크로스 컴파일 지원. 빌드 환경에 Bun 필요하지만 크기 이점이 큼 |
+| WebView 호환성 | 시스템 WebView (Tauri 기본) | Chromium 번들 | macOS(WebKit), Windows(WebView2), Linux(WebKitGTK) 모두 모던 CSS/JS 지원. React 19 + Tailwind 4 호환 확인 필요하나 앱 크기 대폭 감소 |

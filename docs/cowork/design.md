@@ -1,8 +1,10 @@
 # Cowork Feature Design
 
-## 1. Overview
+## 1. 목적
 
 Chat 탭 옆의 **Cowork** 탭을 활성화하여, 단순 대화가 아닌 **자율적 멀티스텝 태스크 실행** 모드를 제공한다.
+
+**성공 기준**: 사용자가 자연어로 태스크를 입력하면 LLM이 계획을 수립하고, MCP 도구를 사용하여 3단계 이상의 작업을 사용자 개입 없이 자동 완료할 수 있다.
 
 참고: [open-claude-cowork](https://github.com/ComposioHQ/open-claude-cowork)
 
@@ -20,36 +22,44 @@ Chat 탭 옆의 **Cowork** 탭을 활성화하여, 단순 대화가 아닌 **자
 
 ### 3.1 기존 인프라 재활용
 
-```
-기존                              추가
-├── Providers (Codex, Gemini...) → 그대로 사용
-├── MCP Manager                  → 그대로 사용 (도구 실행)
-├── Agent Loop (chat-handlers)   → Cowork용 확장 핸들러
-├── IPC Bridge                   → cowork: 네임스페이스 추가
-└── Zustand Store                → cowork 상태 추가
-```
+| 기존 모듈 | Cowork에서 | 변경 |
+|-----------|-----------|------|
+| Providers (Codex, Gemini...) | 그대로 사용 | 없음 |
+| MCP Manager | 그대로 사용 (도구 실행) | 없음 |
+| Agent Loop (chat-handlers) | Cowork용 확장 핸들러 | cowork-handlers.ts 추가 |
+| IPC Bridge | cowork: 네임스페이스 추가 | preload 확장 |
+| Zustand Store | cowork 상태 추가 | app-store 확장 |
 
 ### 3.2 데이터 흐름
 
-```
-[Cowork 탭] → 태스크 입력
-    ↓
-IPC: cowork:start(taskDescription, provider, model)
-    ↓
-[Main Process] cowork-handlers.ts
-    ├── System prompt: "계획 세우고 자율 실행" 모드
-    ├── Agent loop (기존 것 확장)
-    │   ├── 1차: 계획 생성 (텍스트로 파싱)
-    │   ├── N차: 각 스텝 실행 (MCP 도구 호출)
-    │   └── 완료 시 결과 전달
-    └── 스트리밍 이벤트 전송
-        ├── cowork:plan → 계획 표시
-        ├── cowork:step-start → 스텝 시작
-        ├── cowork:stream → 텍스트 스트리밍
-        ├── cowork:tool-call → 도구 호출 표시
-        ├── cowork:tool-result → 도구 결과 표시
-        ├── cowork:step-complete → 스텝 완료
-        └── cowork:complete → 태스크 완료
+```mermaid
+sequenceDiagram
+    participant U as Cowork 탭
+    participant R as Renderer
+    participant M as Main Process
+    participant LLM as LLM Provider
+    participant MCP as MCP Server
+
+    U->>R: 태스크 입력
+    R->>M: IPC: cowork:start(task, provider, model)
+    M->>LLM: 시스템 프롬프트 + 태스크 전송
+    LLM-->>M: 계획 생성 (PLAN: 접두사)
+    M->>R: cowork:plan (steps[])
+
+    loop 각 스텝 실행
+        M->>R: cowork:step-start (step N)
+        LLM-->>M: 텍스트 스트리밍
+        M->>R: cowork:stream (chunk)
+        LLM-->>M: tool_use 요청
+        M->>R: cowork:tool-call (name, input)
+        M->>MCP: callTool(name, args)
+        MCP-->>M: 결과
+        M->>R: cowork:tool-result (result)
+        M->>LLM: 도구 결과 전달
+        M->>R: cowork:step-complete (step N)
+    end
+
+    M->>R: cowork:complete (summary)
 ```
 
 ### 3.3 시스템 프롬프트
@@ -244,7 +254,16 @@ async function runCoworkTask(task, provider, accessToken, model, tools, win) {
 }
 ```
 
-## 9. 구현 순서
+## 9. 의사결정 근거
+
+| 결정 | 채택 방안 | 기각 대안 | 기각 이유 |
+|------|-----------|-----------|-----------|
+| Agent loop 구조 | 기존 chat-handlers 확장 | 별도 agent 프레임워크 (LangChain 등) | 외부 의존성 증가, 기존 인프라로 충분 |
+| Plan 파싱 방식 | 텍스트 접두사 파싱 ("PLAN:") | 구조화된 JSON 출력 | 모든 LLM에서 호환, 스트리밍 중 파싱 가능 |
+| UI 구조 | 2-pane (메인 + 사이드바) | 단일 스트림 뷰 | 계획/진행상황을 독립적으로 추적 가능 |
+| DOM 렌더링 | 청크별 독립 렌더링 | 전체 재렌더링 | 성능 — 이전 마크다운 재렌더링 방지 |
+
+## 10. 구현 순서
 
 1. **Store + IPC 기반** — activeView, cowork 상태, IPC 브릿지
 2. **TopBar 탭 전환** — Chat / Cowork / Code 탭 클릭 동작
