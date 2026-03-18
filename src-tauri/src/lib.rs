@@ -159,12 +159,15 @@ pub fn run() {
 fn tauri_plugin_single_instance() -> tauri::plugin::TauriPlugin<tauri::Wry> {
     tauri::plugin::Builder::new("single-instance")
         .on_event(|app, event| {
+            // Reopen is macOS-only (dock icon click when app is running)
+            #[cfg(target_os = "macos")]
             if let tauri::RunEvent::Reopen { .. } = event {
                 if let Some(win) = app.get_webview_window("main") {
                     let _ = win.show();
                     let _ = win.set_focus();
                 }
             }
+            let _ = (app, event); // suppress unused warnings on non-macOS
         })
         .build()
 }
