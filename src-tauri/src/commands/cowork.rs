@@ -111,7 +111,7 @@ pub async fn cowork_start(
 
 #[tauri::command]
 pub fn cowork_stop(_state: State<'_, AppState>) -> Result<(), String> {
-    if let Some(tx) = COWORK_ABORT.lock().map_err(|e| e.to_string())?.take() {
+    if let Some(tx) = COWORK_ABORT.lock().unwrap_or_else(|e| e.into_inner()).take() {
         let _ = tx.send(true);
     }
     Ok(())

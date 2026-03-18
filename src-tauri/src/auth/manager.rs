@@ -681,13 +681,11 @@ impl AuthManager {
 
         match resp.status().as_u16() {
             401 => {
-                let body = resp.text().await.unwrap_or_default();
-                Err(format!("Invalid token — 401 Unauthorized. {body}"))
+                Err("Invalid token — 401 Unauthorized. Please re-authenticate.".to_string())
             }
             403 => Err("Token forbidden — 403. This token may not have API access.".to_string()),
             400 => {
-                let body = resp.text().await.unwrap_or_default();
-                Err(format!("Token rejected (400). It may be expired. {body}"))
+                Err("Token rejected (400). It may be expired. Please re-authenticate.".to_string())
             }
             s if s >= 500 => Err(format!("Anthropic API error {s}. Try again later.")),
             _ => Ok(()), // 200 or other success codes

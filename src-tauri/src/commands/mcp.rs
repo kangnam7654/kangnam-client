@@ -15,7 +15,7 @@ pub async fn mcp_add_server(
 ) -> Result<(), String> {
     state
         .mcp
-        .request("mcp:add-server", serde_json::to_value(&config).map_err(|e| e.to_string())?)
+        .request("mcp:add-server", serde_json::to_value(&config).map_err(|_| "Failed to serialize server config".to_string())?)
         .await?;
     Ok(())
 }
@@ -77,12 +77,12 @@ pub async fn mcp_get_config(
         .request("mcp:server-configs", serde_json::json!({}))
         .await?;
     let configs: Vec<ServerConfig> =
-        serde_json::from_value(configs).map_err(|e| e.to_string())?;
+        serde_json::from_value(configs).map_err(|_| "Invalid server configuration data".to_string())?;
     configs
         .into_iter()
         .find(|c| c.name == name)
         .ok_or(format!("Server '{name}' not found"))
-        .and_then(|c| serde_json::to_value(c).map_err(|e| e.to_string()))
+        .and_then(|c| serde_json::to_value(c).map_err(|_| "Failed to serialize server config".to_string()))
 }
 
 #[tauri::command]
