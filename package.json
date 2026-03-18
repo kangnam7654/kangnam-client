@@ -1,6 +1,6 @@
 {
   "name": "kangnam-client",
-  "version": "2.0.0",
+  "version": "1.0.4",
   "description": "Desktop LLM Client with subscription-based providers and MCP support",
   "author": {
     "name": "Kangnam Kim",
