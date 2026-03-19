@@ -1,0 +1,79 @@
+graph TB
+    subgraph Tauri["Tauri 2 App"]
+        subgraph WebView["WebView (React 19)"]
+            UI["Chat UI<br/>(assistant-ui)"]
+            Sidebar["Sidebar<br/>대화 목록"]
+            Settings["Settings<br/>Provider/MCP 설정"]
+            Cowork["Cowork<br/>자율 태스크"]
+            Store["Zustand Store<br/>상태 관리"]
+
+            UI --> Store
+            Sidebar --> Store
+            Settings --> Store
+            Cowork --> Store
+        end
+
+        Commands["Tauri Commands<br/>(invoke / listen)"]
+        Store --> Commands
+
+        subgraph Rust["Rust Backend"]
+            subgraph Auth["Auth (OAuth)"]
+                CodexAuth["Codex<br/>(PKCE)"]
+                GeminiAuth["Gemini<br/>(PKCE + secret)"]
+                AntiAuth["Antigravity<br/>(PKCE + secret)"]
+                CopilotAuth["Copilot<br/>(Device Flow)"]
+                ClaudeAuth["Claude<br/>(Setup Token)"]
+            end
+
+            subgraph Router["LLM Router"]
+                CodexProv["Codex Provider"]
+                GeminiProv["Gemini Provider"]
+                AntiProv["Antigravity Provider"]
+                CopilotProv["Copilot Provider"]
+                ClaudeProv["Claude Provider"]
+            end
+
+            subgraph MCPMod["MCP Manager"]
+                Sidecar["Node.js Sidecar<br/>(JSON-RPC stdin/stdout)"]
+                ToolAdapter["Tool Schema<br/>Adapter"]
+            end
+
+            DB[("rusqlite<br/>대화 히스토리")]
+            TokenStore["Token Store<br/>(keyring — OS 키체인)"]
+
+            Auth --> TokenStore
+            Router --> Auth
+            MCPMod --> ToolAdapter
+        end
+
+        Commands --> Rust
+    end
+
+    subgraph External["External Services"]
+        OpenAI["OpenAI API<br/>(Codex)"]
+        Google["Google API<br/>(Gemini / Antigravity)"]
+        GitHub["GitHub API<br/>(Copilot)"]
+        Anthropic["Anthropic API<br/>(Claude)"]
+        MCPServer1["MCP Server<br/>(filesystem)"]
+        MCPServer2["MCP Server<br/>(github)"]
+    end
+
+    CodexProv --> OpenAI
+    GeminiProv --> Google
+    AntiProv --> Google
+    CopilotProv --> GitHub
+    ClaudeProv --> Anthropic
+    Sidecar --> MCPServer1
+    Sidecar --> MCPServer2
+
+    classDef webview fill:#1a1a2e,stroke:#e94560,color:#fff
+    classDef rust fill:#16213e,stroke:#0f3460,color:#fff
+    classDef external fill:#0f3460,stroke:#533483,color:#fff
+    classDef store fill:#533483,stroke:#e94560,color:#fff
+
+    class UI,Sidebar,Settings,Cowork webview
+    class CodexAuth,GeminiAuth,AntiAuth,CopilotAuth,ClaudeAuth rust
+    class CodexProv,GeminiProv,AntiProv,CopilotProv,ClaudeProv rust
+    class Sidecar,ToolAdapter rust
+    class OpenAI,Google,GitHub,Anthropic,MCPServer1,MCPServer2 external
+    class Store,DB,TokenStore store
