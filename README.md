@@ -1,66 +1,174 @@
 # Kangnam Client
 
-**A desktop LLM chat app that uses the subscriptions you already pay for.**
+A desktop LLM (Large Language Model) chat app that connects to providers through your existing subscriptions. No API keys required.
 
 [한국어 문서 (Korean)](docs/README_ko.md)
 
 ---
 
-## Why Kangnam Client?
+## Why This Exists
 
-You already pay for ChatGPT Plus or GitHub Copilot. Those subscriptions give you access to powerful LLMs. But using them programmatically usually means paying *again* for API keys.
+This project started while building an Unreal Engine MCP server. During that work, it became clear that non-developers should also be able to use MCP (Model Context Protocol -- a standard that lets LLMs call external tools). The problem: existing MCP clients like Claude Desktop and terminal-based tools assume technical knowledge.
 
-Kangnam Client takes a different approach. Log in with your existing subscription account, and chat through a fast, native desktop app. No API keys. No extra billing. You use what you already have.
+Kangnam Client came from that idea. It is a desktop app that tries to make MCP accessible to everyone. You log in with a subscription account you already have, and the app handles the rest.
+
+It is a personal project, not a commercial product. It works, but it has rough edges.
 
 ---
 
-## How It Works
+## What It Does
 
-Kangnam Client connects to LLM providers through their subscription authentication flow -- the same login you use on the web. The app runs as a native desktop application built with Tauri 2 (a framework that pairs a Rust backend with your system's web view).
+Kangnam Client is a desktop chat application built with Tauri 2 (Rust backend + system WebView). It connects to LLM providers through their subscription authentication flows -- the same login you use on the web. You do not need separate API keys.
 
-Here is the flow:
+The app also includes a built-in MCP server manager. MCP lets LLMs call external tools like file systems, databases, or APIs. You can add and manage MCP servers through the settings panel.
 
-1. **Open the app** and choose a provider (Codex or Copilot).
-2. **Log in** with your existing subscription account via OAuth (a secure login protocol that never exposes your password to the app).
-3. **Start chatting.** Responses stream in real time, rendered with full Markdown support.
-4. **Connect MCP (Model Context Protocol) servers** (optional) to give the LLM access to external tools like file systems, databases, or APIs.
+---
 
-```text
-[Your Subscription] --> [OAuth Login] --> [Kangnam Client] --> [LLM API]
-                                               |
-                                          [MCP Servers] (optional tools)
-```
+## Prerequisites
+
+### Required Knowledge
+
+- Basic command-line usage (running commands in a terminal)
+- An active subscription to at least one supported provider (see table below)
+
+### Required Tools
+
+Install these before proceeding:
+
+| Tool | Minimum Version | Installation |
+|------|----------------|-------------|
+| Node.js | 20+ | [nodejs.org](https://nodejs.org) |
+| Rust | 1.75+ (edition 2021) | [rustup.rs](https://rustup.rs) |
+| npm | 10+ | Included with Node.js |
+
+### Platform-Specific Requirements
+
+| Platform | Required | Install Command |
+|----------|----------|----------------|
+| macOS | Xcode Command Line Tools | `xcode-select --install` |
+| Linux (Debian/Ubuntu) | webkit2gtk, build essentials | `sudo apt install libwebkit2gtk-4.1-dev build-essential curl wget file libxdo-dev libssl-dev libayatana-appindicator3-dev librsvg2-dev` |
+| Linux (Fedora) | webkit2gtk, development tools | `sudo dnf install webkit2gtk4.1-devel openssl-devel curl wget file libappindicator-gtk3-devel librsvg2-devel` |
+| Windows | WebView2 Runtime | Pre-installed on Windows 10/11. See [Tauri docs](https://v2.tauri.app/start/prerequisites/) if missing. |
+
+---
+
+## Supported Providers
+
+Five providers are implemented. Each requires its own subscription.
+
+| Provider | Auth Method | Subscription Required |
+|----------|------------|----------------------|
+| OpenAI Codex | PKCE OAuth | ChatGPT Plus / Pro |
+| Gemini CLI | PKCE + client_secret | Google AI Pro |
+| Antigravity | PKCE + client_secret | Google subscription |
+| GitHub Copilot | Device Flow | Copilot subscription |
+| Claude | Setup Token | Claude Max |
+
+**Auth method definitions:**
+
+- **PKCE OAuth** (Proof Key for Code Exchange): A secure login flow that proves the app's identity without exposing a secret. The app opens a browser window for login and receives a token via a local callback.
+- **Device Flow**: You visit a URL and enter a code to authorize the app. No browser redirect is needed.
+- **Setup Token**: A one-time token you paste into the app to authenticate.
 
 ---
 
 ## Features
 
-### Multi-Provider Chat
+- **Multi-provider chat** -- Switch between providers in a single app. Responses stream in real time.
+- **MCP server manager** -- Add and manage MCP servers. Supports stdio (local process), HTTP, and SSE (Server-Sent Events) transports.
+- **Tool call visualization** -- When the LLM uses an MCP tool, the call appears inline as a collapsible card showing inputs and outputs.
+- **Cowork mode** -- The LLM executes multi-step tasks autonomously using MCP tools. A progress sidebar shows each step in real time.
 
-Switch between LLM providers within a single app. Each provider uses its own authentication method.
+  Example: You type "Find all TODO comments in my project and create a summary file." The LLM reads your filesystem via MCP, searches for TODOs, and writes a `todo-summary.md` -- each step visible in the progress sidebar.
 
-| Provider | Subscription Required | Auth Method |
-|----------|----------------------|-------------|
-| **OpenAI Codex** | ChatGPT Plus / Pro | PKCE OAuth (a secure code-exchange flow that proves the app's identity without exposing a client secret) |
-| **GitHub Copilot** | Copilot subscription | Device Flow (you enter a code on GitHub's website to authorize the app) |
+- **Skill system** -- Reusable prompt templates (instructions that customize LLM behavior for a specific task). Ships with 14 built-in presets. You can create your own.
 
-### MCP Integration
+  Example: The built-in "Code Review" skill instructs the LLM to check for bugs, style issues, and security concerns. Select it from the skill dropdown before starting a conversation, and the LLM follows those instructions throughout.
 
-MCP (Model Context Protocol) lets LLMs call external tools -- read files, query databases, or interact with APIs. Kangnam Client includes a built-in MCP server manager.
+- **Eval workbench** -- Test and benchmark skills with structured evaluation runs.
 
-- Supports all transport types: stdio, HTTP, and SSE (Server-Sent Events).
-- Visualizes tool calls inline -- see the tool name, arguments, and results in a collapsible view.
-- Includes AI Assist that auto-generates MCP server configurations.
-- Compatible with Claude Desktop's MCP config format.
+  Example: Create an eval set with 5 test prompts and a grading rubric. The workbench sends each prompt to the LLM using the selected skill, scores responses against your rubric, and shows pass/fail results.
+- **Context window management** -- A token usage bar shows how much of the model's context window (the maximum text the model can process at once) is used. At 90% usage, the app auto-compresses the conversation.
+- **Rich rendering** -- Markdown, code highlighting via [Shiki](https://shiki.style/) (25+ languages), and math via [KaTeX](https://katex.org/).
+- **Conversation history** -- Search past conversations with Cmd/Ctrl+F. Export as Markdown or JSON.
+- **System tray + themes** -- Runs in the system tray. Supports dark and light themes.
 
-**MCP server config example:**
+---
 
-The app stores server configurations in a JSON file that follows Claude Desktop's `mcpServers` format. Add servers through the Settings panel, or edit the config file directly.
+## Screenshots
 
-Config file location:
-- **macOS**: `~/Library/Application Support/kangnam-client/mcp-config.json`
-- **Windows**: `%APPDATA%/kangnam-client/mcp-config.json`
-- **Linux**: `~/.config/kangnam-client/mcp-config.json`
+> Screenshots will be added here.
+
+---
+
+## Getting Started
+
+### Step 1: Clone the repository
+
+```bash
+git clone https://github.com/kangnam7654/kangnam-client.git
+cd kangnam-client
+```
+
+### Step 2: Install dependencies
+
+```bash
+npm install
+```
+
+This installs both the frontend (React) and sidecar (a helper process that runs alongside the main app to bridge MCP communication) dependencies. Expect output like:
+
+```text
+added 1200+ packages in 30s
+```
+
+### Step 3: Run in development mode
+
+```bash
+npm run tauri:dev
+```
+
+This starts the Vite dev server and compiles the Rust backend. The first build compiles all Rust dependencies (300+ crates, which are Rust packages) and takes 2-5 minutes. Subsequent builds start in seconds.
+
+After startup, expect output like:
+
+```text
+  VITE v7.x.x  ready in 300 ms
+
+  ->  Local:   http://localhost:1420/
+
+        Info Watching /Users/you/kangnam-client/src-tauri for changes...
+   Compiling kangnam-client v0.1.0
+    Finished `dev` profile target(s) in 3.21s
+```
+
+The app window opens automatically. Select a provider from the sidebar and log in.
+
+### Step 4: Build for production
+
+```bash
+npm run tauri:build
+```
+
+Find the built application in `src-tauri/target/release/bundle/`.
+
+---
+
+## MCP Configuration
+
+The app stores MCP server configurations in a JSON file. The format follows Claude Desktop's `mcpServers` structure.
+
+### Config file locations
+
+| Platform | Path |
+|----------|------|
+| macOS | `~/Library/Application Support/kangnam-client/mcp-config.json` |
+| Windows | `%APPDATA%/kangnam-client/mcp-config.json` |
+| Linux | `~/.config/kangnam-client/mcp-config.json` |
+
+You can add servers through the Settings panel or edit the file directly.
+
+### Example configuration
 
 ```json
 {
@@ -90,211 +198,13 @@ Config file location:
 }
 ```
 
-Each server entry supports three transport types:
-- **stdio**: Runs a local process. Requires `command` and optional `args` and `env`.
-- **http**: Connects to a remote HTTP endpoint. Requires `url` and optional `headers`.
-- **sse**: Connects via Server-Sent Events. Requires `url` and optional `headers`.
+### Transport types
 
-**Tool call visualization:**
+Each server entry uses one of three transport types:
 
-When the LLM uses an MCP tool, the app displays the call inline as a collapsible card. Click the card to expand the full input and output.
-
-```text
-+----------------------------------------------------------+
-| [wrench icon] filesystem__read_file          [check mark] |
-|   file_path: /Users/me/projects/src/main.rs               |
-+----------------------------------------------------------+
-  (click to expand)
-  INPUT:
-    { "path": "/Users/me/projects/src/main.rs" }
-  OUTPUT:
-    fn main() {
-        println!("Hello, world!");
-    }
-+----------------------------------------------------------+
-```
-
-### Rich Chat UI
-
-The chat interface goes beyond plain text. It renders Markdown, highlights code in 25+ languages using [Shiki](https://shiki.style/) (a syntax highlighter powered by VS Code's TextMate grammars), and displays math with [KaTeX](https://katex.org/) (a fast LaTeX math renderer).
-
-- Streaming responses with real-time Markdown rendering.
-- Code highlighting with Shiki (github-dark theme, 25+ languages supported).
-- Live display of the model's thinking/reasoning process.
-- File and image attachments.
-- In-chat search with Cmd/Ctrl+F.
-- Export conversations as Markdown or JSON.
-
-### Context Window Management
-
-A token usage bar shows how much of the model's context window (the maximum amount of text the model can process at once) you have used. When usage reaches 90%, the app automatically compresses the conversation using LLM-generated summaries.
-
-### Cowork Mode
-
-Cowork mode lets the LLM execute multi-step tasks autonomously using MCP tools. Think of it as giving the LLM a to-do list and watching it work through each step.
-
-- Autonomous task execution powered by MCP tools.
-- Real-time progress sidebar showing each step.
-- Multi-turn follow-up conversations within a task.
-
-**Example: ask Cowork to analyze a project**
-
-Enter a task description and the LLM builds a plan, then executes each step using available MCP tools.
-
-```text
-YOU: "Analyze the error handling in my Rust project at ~/projects/my-app"
-
-COWORK PROGRESS PANEL:
-  Steps (3)
-  +-----------------------------------------+
-  | [check] 1. Read project file structure  |
-  | [>>>]   2. Analyze error handling code  |  <- in progress
-  | [  ]    3. Generate summary report      |
-  +-----------------------------------------+
-
-  Tool Calls (4)
-  +-----------------------------------------+
-  | [check] filesystem__list_directory      |
-  |         path: ~/projects/my-app/src     |
-  +-----------------------------------------+
-  | [check] filesystem__read_file           |
-  |         file_path: src/main.rs          |
-  +-----------------------------------------+
-  | [check] filesystem__read_file           |
-  |         file_path: src/error.rs         |
-  +-----------------------------------------+
-  | [>>>]   filesystem__search_files        |  <- running
-  |         pattern: unwrap\(\)             |
-  +-----------------------------------------+
-```
-
-When the task completes, Cowork emits a summary. You can send follow-up messages to refine the results.
-
-### Skill System
-
-Skills are reusable prompt templates (a set of instructions that customize LLM behavior for a specific task). The app ships with 14 built-in presets and lets you create your own.
-
-- 14 built-in preset skills.
-- AI-powered skill creation, refinement, and evaluation.
-- Eval Workbench for testing and benchmarking skill performance.
-- Tree-based reference management.
-
-**Built-in skill examples:**
-
-| Skill | What it does |
-|-------|-------------|
-| Agent Creator | Generates a new Claude Code custom agent definition file |
-| Code Reviewer | Reviews code for bugs, performance, and best practices |
-| Technical Writer | Writes documentation following structured quality criteria |
-
-**Creating a custom skill:**
-
-Describe what you want in natural language. The AI generates the skill name, description, and instructions.
-
-```text
-YOU: "I need a skill that translates Korean technical docs to English
-      while preserving code blocks and markdown formatting."
-
-AI generates:
-  Name:         "Korean Tech Translator"
-  Description:  "Translates Korean technical documentation to English..."
-  Instructions: "You are a professional technical translator specializing
-                 in Korean-to-English translation. Preserve all code blocks,
-                 markdown formatting, and technical terms. ..."
-```
-
-You can then refine the skill with feedback, attach reference documents, and benchmark it using the Eval Workbench.
-
----
-
-## Screenshots
-
-> TODO: Add screenshots
-
----
-
-## Getting Started
-
-### Prerequisites
-
-Install these tools before proceeding:
-
-| Tool | Minimum Version | Installation |
-|------|----------------|-------------|
-| Node.js | 20+ | [nodejs.org](https://nodejs.org) |
-| Rust | 1.75+ (edition 2021) | [rustup.rs](https://rustup.rs) |
-| npm | 10+ | Included with Node.js |
-
-**Platform-specific requirements:**
-
-| Platform | Required Tools | Install Command |
-|----------|---------------|----------------|
-| macOS | Xcode Command Line Tools | `xcode-select --install` |
-| Linux (Debian/Ubuntu) | webkit2gtk, build essentials | `sudo apt install libwebkit2gtk-4.1-dev build-essential curl wget file libxdo-dev libssl-dev libayatana-appindicator3-dev librsvg2-dev` |
-| Linux (Fedora) | webkit2gtk, development tools | `sudo dnf install webkit2gtk4.1-devel openssl-devel curl wget file libappindicator-gtk3-devel librsvg2-devel` |
-| Windows | WebView2 Runtime | Pre-installed on Windows 10/11. See [Tauri docs](https://v2.tauri.app/start/prerequisites/) if missing. |
-
-You also need an active subscription to at least one supported provider (ChatGPT Plus/Pro or GitHub Copilot).
-
-### Step 1: Clone the Repository
-
-```bash
-git clone https://github.com/kangnam7654/kangnam-client.git
-cd kangnam-client
-```
-
-### Step 2: Install Dependencies
-
-```bash
-npm install
-```
-
-After installation completes, expect output similar to:
-
-```text
-added 1200+ packages in 30s
-```
-
-This installs both the frontend (React) and sidecar (MCP bridge) dependencies.
-
-### Step 3: Run in Development Mode
-
-```bash
-npm run tauri:dev
-```
-
-This starts the Vite dev server for the frontend and compiles the Rust backend. On first run, Rust compilation takes 2-5 minutes. Subsequent runs start in seconds.
-
-After startup, expect to see output similar to this:
-
-```text
-  VITE v7.x.x  ready in 300 ms
-
-  ->  Local:   http://localhost:1420/
-
-        Info Watching /Users/you/kangnam-client/src-tauri for changes...
-   Compiling kangnam-client v0.1.0
-    Finished `dev` profile target(s) in 3.21s
-```
-
-The Tauri app window opens automatically. Select a provider from the sidebar and log in with your subscription account.
-
-### Step 4: Build for Production
-
-```bash
-npm run tauri:build
-```
-
-After the build completes, expect output similar to:
-
-```text
-    Finished `release` profile target(s) in 2m 15s
-    Bundling kangnam-client.app
-    Finished 1 bundle at:
-        src-tauri/target/release/bundle/macos/kangnam-client.app
-```
-
-Find the built application in `src-tauri/target/release/bundle/`.
+- **stdio** -- Runs a local process. Requires `command`. Optional: `args`, `env`.
+- **http** -- Connects to a remote HTTP endpoint. Requires `url`. Optional: `headers`.
+- **sse** -- Connects via Server-Sent Events (a protocol for streaming data from server to client over HTTP). Requires `url`. Optional: `headers`.
 
 ---
 
@@ -303,22 +213,22 @@ Find the built application in `src-tauri/target/release/bundle/`.
 | Layer | Technology |
 |-------|-----------|
 | Desktop | Tauri 2 (Rust backend + system WebView) |
-| UI | React 19 + Tailwind CSS 4 |
-| State | Zustand 5 |
-| DB | rusqlite (native SQLite, bundled) |
-| Token Storage | keyring (OS keychain) |
-| HTTP | reqwest + eventsource-stream (SSE) |
-| MCP | Node.js sidecar (@modelcontextprotocol/sdk) |
-| Markdown | @assistant-ui/react-markdown + remark-gfm + KaTeX |
-| Code Highlighting | Shiki |
-| Language | Rust (backend) + TypeScript (frontend) |
+| Frontend | React 19 + Vite 7 + Tailwind CSS v4 |
+| State management | Zustand 5 |
+| Database | rusqlite (native SQLite, bundled with the app) |
+| Token storage | keyring (OS keychain) |
+| HTTP | reqwest + eventsource-stream (SSE streaming) |
+| MCP bridge | Node.js sidecar (@modelcontextprotocol/sdk) |
+| Code highlighting | Shiki |
+| Math rendering | KaTeX |
+| Languages | Rust (backend) + TypeScript (frontend) |
 
 ---
 
 ## Project Structure
 
 ```text
-src-tauri/                    # Rust Backend (Tauri 2)
+src-tauri/                    # Rust backend (Tauri 2)
   src/
     lib.rs                    # Tauri builder (tray, commands, plugins)
     state.rs                  # AppState (DB, MCP, Auth)
@@ -331,18 +241,44 @@ src-tauri/                    # Rust Backend (Tauri 2)
   prompts/                    # System prompt templates
   data/                       # Preset skills (JSON)
 sidecar/                      # MCP bridge (Node.js)
-src/renderer/                 # React UI
+src/renderer/                 # React frontend
   components/
-    chat/                     # ChatView, AssistantThread, ChatSearchBar
-    cowork/                   # CoworkView, ProgressPanel, InlineToolCall
-    eval/                     # EvalWorkbench, EvalRunner, EvalBenchmark
-    settings/                 # SettingsPanel
-    sidebar/                  # Sidebar, ConversationList
-  hooks/                      # use-assistant-runtime
-  lib/                        # providers config, utilities
-  stores/                     # Zustand app-store
-  styles/                     # globals.css
+    chat/                     # Chat UI, assistant thread, search bar
+    cowork/                   # Cowork mode, progress panel, tool calls
+    eval/                     # Eval workbench, runner, benchmarks
+    settings/                 # Settings panel
+    sidebar/                  # Sidebar, conversation list
+  hooks/                      # assistant-ui runtime
+  lib/                        # Provider configs, utilities
+  stores/                     # Zustand app store
+  styles/                     # Global CSS
+docs/                         # Design documents
 ```
+
+---
+
+## Current Status
+
+This is a personal project in active development.
+
+### What is done
+
+- Phases 1-4: Auth, chat, MCP integration, cowork mode, skill system, eval workbench, search
+- Phase 5: Tauri migration (moved from Electron to Tauri 2, full Rust backend)
+- All five providers are implemented and working
+
+### What is in progress (Phase 6: Polish)
+
+- Keyboard shortcuts
+- Auto-update mechanism
+- MCP sidecar bundling (currently requires Node.js on the user's machine)
+- Cross-platform build pipeline
+
+### Known limitations
+
+- The app requires Node.js installed on the user's machine for MCP to work. Sidecar bundling is planned but not done yet.
+- No pre-built binaries are available yet for all platforms.
+- The Electron codebase (`src/main/`) still exists in the repo but is no longer used. It will be removed in a future cleanup.
 
 ---
 
@@ -358,9 +294,9 @@ src/renderer/                 # React UI
 xcode-select --install
 ```
 
-### `npm run tauri:dev` fails with "webkit2gtk not found" on Linux
+### "webkit2gtk not found" on Linux
 
-**Symptom:** The Rust build step fails searching for `webkit2gtk-4.1`.
+**Symptom:** The Rust build fails searching for `webkit2gtk-4.1`.
 
 **Fix:** Install the required system libraries. On Debian/Ubuntu:
 
@@ -370,9 +306,9 @@ sudo apt install libwebkit2gtk-4.1-dev build-essential libssl-dev
 
 ### MCP sidecar fails to start
 
-**Symptom:** MCP tools are not available. The app shows "MCP sidecar not found."
+**Symptom:** MCP tools are unavailable. The app shows "MCP sidecar not found."
 
-**Fix:** Verify that Node.js 20+ is installed and `npx` is available in your PATH:
+**Fix:** Verify that Node.js 20+ is installed and `npx` is in your PATH:
 
 ```bash
 node --version   # Should show v20.x or higher
@@ -385,9 +321,9 @@ If `npx` is not found, reinstall Node.js from [nodejs.org](https://nodejs.org).
 
 **Symptom:** Clicking "Log in" does nothing or shows a blank window.
 
-**Fix:** Check that no other application is using the OAuth callback port. Codex uses port 1455. Close any conflicting processes and try again.
+**Fix:** Check that no other application is using the OAuth callback port. Codex uses port 1455. Close any conflicting processes and retry.
 
-### First Rust build takes a long time
+### First build takes a long time
 
 **Symptom:** `npm run tauri:dev` appears stuck during initial compilation.
 
@@ -397,34 +333,23 @@ If `npx` is not found, reinstall Node.js from [nodejs.org](https://nodejs.org).
 
 ## Design Documents
 
-These documents describe the architecture and design decisions behind each feature.
+These documents describe the architecture and decisions behind each feature.
 
 | Document | Path |
 |----------|------|
-| Context Window Management | `docs/context-window/design.md` |
-| Cowork Mode | `docs/cowork/design.md` |
-| MCP AI Assist | `docs/mcp-ai-assist/design.md` |
-| MCP Tool Visualization | `docs/mcp-tool-viz/design.md` |
-| Skill System | `docs/prompts/design.md` |
-| Chat Search | `docs/search/design.md` |
-| Tauri Migration | `docs/tauri-migration/design.md` |
-
----
-
-## Downloads
-
-Download pre-built binaries from [GitHub Releases](https://github.com/kangnam7654/kangnam-client/releases).
-
-Available platforms:
-- **macOS** (Apple Silicon / Intel)
-- **Windows** (x64)
-- **Linux** (x64)
+| Context Window Management | [`docs/context-window/design.md`](docs/context-window/design.md) |
+| Cowork Mode | [`docs/cowork/design.md`](docs/cowork/design.md) |
+| MCP AI Assist | [`docs/mcp-ai-assist/design.md`](docs/mcp-ai-assist/design.md) |
+| MCP Tool Visualization | [`docs/mcp-tool-viz/design.md`](docs/mcp-tool-viz/design.md) |
+| Skill System | [`docs/prompts/design.md`](docs/prompts/design.md) |
+| Chat Search | [`docs/search/design.md`](docs/search/design.md) |
+| Tauri Migration | [`docs/tauri-migration/design.md`](docs/tauri-migration/design.md) |
 
 ---
 
 ## Contributing
 
-Contributions are welcome. Here is how to get involved:
+Contributions are welcome.
 
 1. Fork the repository.
 2. Create a feature branch: `git checkout -b feature/your-feature-name`.
