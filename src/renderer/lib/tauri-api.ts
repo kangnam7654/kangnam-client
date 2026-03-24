@@ -1,6 +1,5 @@
 /**
  * Tauri API adapter — provides window.api compatible interface
- * Replace ipc.ts import to switch from Electron to Tauri
  */
 import { invoke } from '@tauri-apps/api/core'
 import { listen, type UnlistenFn } from '@tauri-apps/api/event'

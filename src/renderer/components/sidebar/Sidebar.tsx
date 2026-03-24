@@ -1,5 +1,5 @@
 import { useEffect, useCallback } from 'react'
-import { useAppStore } from '../../stores/app-store'
+import { useAppStore, type Conversation } from '../../stores/app-store'
 import { ConversationList } from './ConversationList'
 
 export function Sidebar() {
@@ -10,7 +10,7 @@ export function Sidebar() {
   } = useAppStore()
 
   const loadConversations = useCallback(async () => {
-    const convs = await window.api.conv.list()
+    const convs = await window.api.conv.list() as Conversation[]
     setConversations(convs)
   }, [setConversations])
 
@@ -46,6 +46,7 @@ export function Sidebar() {
           <button
             onClick={handleNewChat}
             className="no-drag"
+            aria-label="New chat"
             style={{
               flex: 1,
               display: 'flex', alignItems: 'center', gap: 10,
@@ -71,6 +72,7 @@ export function Sidebar() {
           <button
             onClick={() => setShowSearch(true)}
             className="no-drag"
+            aria-label="Search conversations"
             style={{
               display: 'flex', alignItems: 'center', justifyContent: 'center',
               width: 40, height: 40,
@@ -94,6 +96,7 @@ export function Sidebar() {
           <button
             onClick={toggleSidebar}
             className="no-drag"
+            aria-label="Toggle sidebar"
             title="Hide sidebar (Cmd+\)"
             style={{
               display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -126,6 +129,7 @@ export function Sidebar() {
           <button
             onClick={() => { setSettingsTab('providers'); setShowSettings(true) }}
             className="sidebar-item w-full"
+            aria-label="Settings"
           >
             <div className="w-7 h-7 rounded-full bg-[var(--accent)] flex items-center justify-center text-white text-[11px] font-semibold shrink-0">
               U
@@ -146,6 +150,7 @@ export function Sidebar() {
       {sidebarCollapsed && (
         <button
           onClick={toggleSidebar}
+          aria-label="Toggle sidebar"
           title="Show sidebar (Cmd+\)"
           style={{
             position: 'fixed',

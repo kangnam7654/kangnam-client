@@ -29,7 +29,7 @@ export function EvalBenchmark({ evalSetId, onViewRun }: Props) {
   const loadRuns = async () => {
     setLoading(true)
     try {
-      const r = await window.api.eval.runList(evalSetId)
+      const r = await window.api.eval.runList(evalSetId) as EvalRun[]
       setRuns(r)
     } finally {
       setLoading(false)

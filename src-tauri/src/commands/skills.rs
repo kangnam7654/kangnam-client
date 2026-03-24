@@ -6,7 +6,7 @@ use crate::state::AppState;
 #[tauri::command]
 pub fn prompts_list(state: State<'_, AppState>) -> Result<Vec<Skill>, String> {
     let conn = state.db.lock().unwrap_or_else(|e| e.into_inner());
-    Ok(skills::list_skills(&conn))
+    skills::list_skills(&conn).map_err(|e| e.to_string())
 }
 
 #[tauri::command]
@@ -16,7 +16,10 @@ pub fn prompts_get(id: String, state: State<'_, AppState>) -> Result<Option<Skil
 }
 
 #[tauri::command]
-pub fn prompts_get_instructions(id: String, state: State<'_, AppState>) -> Result<Option<String>, String> {
+pub fn prompts_get_instructions(
+    id: String,
+    state: State<'_, AppState>,
+) -> Result<Option<String>, String> {
     let conn = state.db.lock().unwrap_or_else(|e| e.into_inner());
     Ok(skills::get_skill_instructions(&conn, &id))
 }
@@ -32,7 +35,7 @@ pub fn prompts_create(
     state: State<'_, AppState>,
 ) -> Result<Skill, String> {
     let conn = state.db.lock().unwrap_or_else(|e| e.into_inner());
-    Ok(skills::create_skill(
+    skills::create_skill(
         &conn,
         &name,
         &description,
@@ -40,7 +43,8 @@ pub fn prompts_create(
         argument_hint.as_deref(),
         model.as_deref(),
         user_invocable,
-    ))
+    )
+    .map_err(|e| e.to_string())
 }
 
 #[tauri::command]
@@ -78,7 +82,10 @@ pub fn prompts_delete(id: String, state: State<'_, AppState>) -> Result<(), Stri
 // ── Reference commands ──
 
 #[tauri::command]
-pub fn prompts_ref_list(skill_id: String, state: State<'_, AppState>) -> Result<Vec<SkillReference>, String> {
+pub fn prompts_ref_list(
+    skill_id: String,
+    state: State<'_, AppState>,
+) -> Result<Vec<SkillReference>, String> {
     let conn = state.db.lock().unwrap_or_else(|e| e.into_inner());
     Ok(skills::list_skill_references(&conn, &skill_id))
 }
@@ -91,11 +98,16 @@ pub fn prompts_ref_add(
     state: State<'_, AppState>,
 ) -> Result<SkillReference, String> {
     let conn = state.db.lock().unwrap_or_else(|e| e.into_inner());
-    Ok(skills::add_skill_reference(&conn, &skill_id, &name, &content))
+    skills::add_skill_reference(&conn, &skill_id, &name, &content).map_err(|e| e.to_string())
 }
 
 #[tauri::command]
-pub fn prompts_ref_update(id: String, name: String, content: String, state: State<'_, AppState>) -> Result<(), String> {
+pub fn prompts_ref_update(
+    id: String,
+    name: String,
+    content: String,
+    state: State<'_, AppState>,
+) -> Result<(), String> {
     let conn = state.db.lock().unwrap_or_else(|e| e.into_inner());
     skills::update_skill_reference(&conn, &id, &name, &content);
     Ok(())

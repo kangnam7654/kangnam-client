@@ -25,7 +25,7 @@ export function EvalSetEditor({ evalSetId, skillId, onRunEval }: Props) {
   const loadCases = async () => {
     setLoading(true)
     try {
-      const result = await window.api.eval.caseList(evalSetId)
+      const result = await window.api.eval.caseList(evalSetId) as EvalCase[]
       setCases(result)
     } finally {
       setLoading(false)
@@ -38,7 +38,7 @@ export function EvalSetEditor({ evalSetId, skillId, onRunEval }: Props) {
   const noTriggerCases = cases.filter(c => !c.shouldTrigger)
 
   const handleAdd = async (shouldTrigger: boolean) => {
-    const newCase = await window.api.eval.caseAdd(evalSetId, '', '', shouldTrigger)
+    const newCase = await window.api.eval.caseAdd(evalSetId, '', '', shouldTrigger) as EvalCase
     setCases([...cases, newCase])
   }
 
@@ -64,18 +64,18 @@ export function EvalSetEditor({ evalSetId, skillId, onRunEval }: Props) {
   const handleAiGenerate = async () => {
     setGenerating(true)
     try {
-      const skill = await window.api.prompts.get(skillId)
+      const skill = await window.api.prompts.get(skillId) as { name: string; description: string; instructions: string } | null
       if (!skill) return
       const testCases = await window.api.eval.aiGenerate(
         { name: skill.name, description: skill.description, instructions: skill.instructions },
         activeProvider, activeModel
-      )
+      ) as Array<{ prompt: string; expectedBehavior: string; shouldTrigger: boolean }>
       const mapped = testCases.map((tc: { prompt: string; expectedBehavior: string; shouldTrigger: boolean }) => ({
         prompt: tc.prompt,
         expected: tc.expectedBehavior,
         shouldTrigger: tc.shouldTrigger
       }))
-      const added = await window.api.eval.caseBulkAdd(evalSetId, mapped)
+      const added = await window.api.eval.caseBulkAdd(evalSetId, mapped) as EvalCase[]
       setCases([...cases, ...added])
     } finally {
       setGenerating(false)

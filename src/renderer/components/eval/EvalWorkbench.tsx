@@ -42,15 +42,15 @@ export function EvalWorkbench() {
     if (!evalSelectedSkillId) return
     setLoading(true)
     try {
-      const s = await window.api.prompts.get(evalSelectedSkillId)
+      const s = await window.api.prompts.get(evalSelectedSkillId) as Skill | null
       setSkill(s)
 
       // Get or create default eval set
-      const sets = await window.api.eval.setList(evalSelectedSkillId)
+      const sets = await window.api.eval.setList(evalSelectedSkillId) as EvalSet[]
       if (sets.length > 0) {
         setEvalSet(sets[0])
       } else {
-        const newSet = await window.api.eval.setCreate(evalSelectedSkillId, 'Default')
+        const newSet = await window.api.eval.setCreate(evalSelectedSkillId, 'Default') as EvalSet
         setEvalSet(newSet)
       }
     } finally {
@@ -66,7 +66,7 @@ export function EvalWorkbench() {
 
   const handleRunEval = async () => {
     if (!evalSet || !skill) return
-    const run = await window.api.eval.runStart(evalSet.id, skill.id, activeProvider, activeModel)
+    const run = await window.api.eval.runStart(evalSet.id, skill.id, activeProvider, activeModel) as { id: string }
     setRunningRunId(run.id)
     setSubView('running')
   }

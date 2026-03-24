@@ -21,11 +21,7 @@ impl AppState {
         std::fs::create_dir_all(&data_dir)?;
 
         let db_path = data_dir.join("kangnam-client.db");
-        let mut conn = Connection::open(&db_path)?;
-
-        // Enable WAL mode for better concurrent read performance
-        conn.pragma_update(None, "journal_mode", "WAL")?;
-        conn.pragma_update(None, "foreign_keys", "ON")?;
+        let mut conn = db::connection::open_database(&db_path)?;
 
         db::schema::run_migrations(&mut conn)?;
 

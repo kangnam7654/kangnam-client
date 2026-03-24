@@ -1,5 +1,7 @@
 import { FC, memo, useState, useRef, useEffect } from 'react'
 import { ProviderDropdown, ModelDropdown, ThinkingToggle } from '../InputControls'
+import { fileToDataUrl } from '../../lib/utils'
+import { Starburst } from '../shared/Starburst'
 import {
   ThreadPrimitive,
   ComposerPrimitive,
@@ -12,40 +14,7 @@ import {
   type TextMessagePartComponent
 } from '@assistant-ui/react'
 import { MarkdownTextPrimitive } from '@assistant-ui/react-markdown'
-import { useAppStore, type AttachmentData } from '../../stores/app-store'
-
-function fileToDataUrl(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader()
-    reader.onload = () => resolve(reader.result as string)
-    reader.onerror = reject
-    reader.readAsDataURL(file)
-  })
-}
-
-function Starburst({ size = 20, animated = false }: { size?: number; animated?: boolean }) {
-  const c = size / 2
-  const spokes = 16
-  const outerR = c * 0.92
-  const innerR = c * 0.38
-  let d = ''
-  for (let i = 0; i < spokes; i++) {
-    const outerAngle = (Math.PI * 2 * i) / spokes - Math.PI / 2
-    const innerAngle = (Math.PI * 2 * (i + 0.5)) / spokes - Math.PI / 2
-    const ox = c + outerR * Math.cos(outerAngle)
-    const oy = c + outerR * Math.sin(outerAngle)
-    const ix = c + innerR * Math.cos(innerAngle)
-    const iy = c + innerR * Math.sin(innerAngle)
-    d += (i === 0 ? 'M' : 'L') + `${ox.toFixed(1)},${oy.toFixed(1)}L${ix.toFixed(1)},${iy.toFixed(1)}`
-  }
-  d += 'Z'
-  return (
-    <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} fill="none"
-      style={animated ? { animation: 'starburstPulse 0.8s ease-in-out infinite' } : undefined}>
-      <path d={d} fill="var(--accent)" />
-    </svg>
-  )
-}
+import { useAppStore, type AttachmentData, type Message } from '../../stores/app-store'
 
 // ── User Message ──────────────────────────────────────────────
 const UserMessage: FC = () => (
@@ -245,8 +214,8 @@ function ToolCallBlock({ toolName, toolArgs, result }: {
 
 // ── Tool name formatter ─────────────────────────────────────
 function formatToolName(name: string): string {
-  // "fetch__fetch" → "fetch", "server__tool_name" → "tool_name"
-  return name.includes('__') ? name.split('__').pop()! : name
+  const clean = name.includes('__') ? name.split('__').pop()! : name
+  return clean.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')
 }
 
 // ── Streaming Status Indicator ───────────────────────────────
@@ -463,6 +432,7 @@ interface SyntaxHighlighterProps {
 
 const CodeBlock: FC<SyntaxHighlighterProps> = ({ language, code }) => {
   const [html, setHtml] = useState<string | null>(null)
+  const [copied, setCopied] = useState(false)
 
   useEffect(() => {
     let cancelled = false
@@ -478,22 +448,57 @@ const CodeBlock: FC<SyntaxHighlighterProps> = ({ language, code }) => {
     return () => { cancelled = true }
   }, [code, language])
 
+  const handleCopy = () => {
+    navigator.clipboard.writeText(code)
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2000)
+  }
+
   if (html) {
     return (
-      <div
-        className="my-4 rounded-xl overflow-x-auto shiki-block"
-        style={{ fontSize: 13, lineHeight: 1.7 }}
-        dangerouslySetInnerHTML={{ __html: html }}
-      />
+      <div className="my-4 shiki-block" style={{ position: 'relative' }}>
+        <div
+          style={{ fontSize: 13, lineHeight: 1.7, overflowX: 'auto' }}
+          dangerouslySetInnerHTML={{ __html: html }}
+        />
+        <button
+          onClick={handleCopy}
+          aria-label="Copy code"
+          style={{
+            position: 'absolute', top: 8, right: 8,
+            background: 'var(--bg-hover)', border: '1px solid var(--border)',
+            borderRadius: 6, padding: '4px 8px', cursor: 'pointer',
+            fontSize: 11, color: 'var(--text-secondary)',
+            opacity: 0, transition: 'opacity 0.15s',
+          }}
+          className="code-copy-btn"
+        >
+          {copied ? 'Copied!' : 'Copy'}
+        </button>
+      </div>
     )
   }
 
   // Fallback while loading
   return (
-    <pre className="my-4 rounded-xl bg-[#1a1a1a] border border-[var(--border)] overflow-x-auto">
+    <pre className="my-4 rounded-xl bg-[#1a1a1a] border border-[var(--border)] overflow-x-auto" style={{ position: 'relative' }}>
       <code className="block p-5 text-[13px] leading-[1.7] font-mono text-[var(--text-primary)]">
         {code}
       </code>
+      <button
+        onClick={handleCopy}
+        aria-label="Copy code"
+        style={{
+          position: 'absolute', top: 8, right: 8,
+          background: 'var(--bg-hover)', border: '1px solid var(--border)',
+          borderRadius: 6, padding: '4px 8px', cursor: 'pointer',
+          fontSize: 11, color: 'var(--text-secondary)',
+          opacity: 0, transition: 'opacity 0.15s',
+        }}
+        className="code-copy-btn"
+      >
+        {copied ? 'Copied!' : 'Copy'}
+      </button>
     </pre>
   )
 }
@@ -584,6 +589,8 @@ const StopButton: FC = () => {
         role: 'assistant' as const,
         content: state.streamingText,
         tool_use_id: null,
+        tool_name: null,
+        tool_args: null,
         token_count: null,
         attachments: null,
         created_at: Math.floor(Date.now() / 1000)
@@ -600,7 +607,7 @@ const StopButton: FC = () => {
     if (convId) {
       if (reloadTimeoutRef.current) clearTimeout(reloadTimeoutRef.current)
       reloadTimeoutRef.current = setTimeout(async () => {
-        const msgs = await window.api.conv.getMessages(convId)
+        const msgs = await window.api.conv.getMessages(convId) as Message[]
         useAppStore.getState().setMessages(msgs)
       }, 500)
     }

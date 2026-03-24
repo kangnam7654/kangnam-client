@@ -5,7 +5,7 @@ import {
   type AppendMessage,
   type ExternalStoreAdapter
 } from '@assistant-ui/react'
-import { useAppStore, type Message, type AttachmentData } from '../stores/app-store'
+import { useAppStore, type Message, type AttachmentData, type Conversation } from '../stores/app-store'
 
 type ContentPart = Extract<ThreadMessageLike['content'], readonly any[]>[number]
 
@@ -211,10 +211,10 @@ export function useAssistantRuntime() {
 
     const unsubComplete = window.api.chat.onComplete(async (data) => {
       if (data.conversationId === conversationIdRef.current) {
-        const msgs = await window.api.conv.getMessages(data.conversationId)
+        const msgs = await window.api.conv.getMessages(data.conversationId) as Message[]
         useAppStore.setState({ messages: msgs, isStreaming: false, streamingText: '', activeToolCall: null })
         useAppStore.getState().clearToolCallLog()
-        const convs = await window.api.conv.list()
+        const convs = await window.api.conv.list() as Conversation[]
         useAppStore.getState().setConversations(convs)
       }
     })
@@ -222,7 +222,7 @@ export function useAssistantRuntime() {
     const unsubError = window.api.chat.onError(async (data) => {
       if (data.conversationId === conversationIdRef.current) {
         console.error('Chat error:', data.error)
-        const msgs = await window.api.conv.getMessages(data.conversationId)
+        const msgs = await window.api.conv.getMessages(data.conversationId) as Message[]
         useAppStore.setState({ messages: msgs, isStreaming: false, streamingText: '', activeToolCall: null, chatError: data.error })
         useAppStore.getState().clearToolCallLog()
       }
@@ -288,6 +288,8 @@ export function useAssistantRuntime() {
       role: 'user',
       content: displayText,
       tool_use_id: null,
+      tool_name: null,
+      tool_args: null,
       token_count: null,
       attachments: attachmentsJson ?? null,
       created_at: Math.floor(Date.now() / 1000)
@@ -300,7 +302,7 @@ export function useAssistantRuntime() {
   const onCancel = useCallback(async () => {
     const convId = conversationIdRef.current
     if (convId) {
-      window.api.chat.stop(convId)
+      window.api.chat.stop(convId).catch(console.error)
     }
     // Convert streaming text into a temporary local message to avoid
     // an intermediate render with missing content (causes index out of bounds)
@@ -312,6 +314,8 @@ export function useAssistantRuntime() {
         role: 'assistant',
         content: state.streamingText,
         tool_use_id: null,
+        tool_name: null,
+        tool_args: null,
         token_count: null,
         attachments: null,
         created_at: Math.floor(Date.now() / 1000)
@@ -328,7 +332,7 @@ export function useAssistantRuntime() {
     if (convId) {
       if (reloadTimeoutRef.current) clearTimeout(reloadTimeoutRef.current)
       reloadTimeoutRef.current = setTimeout(async () => {
-        const msgs = await window.api.conv.getMessages(convId)
+        const msgs = await window.api.conv.getMessages(convId) as Message[]
         useAppStore.getState().setMessages(msgs)
       }, 500)
     }

@@ -159,9 +159,13 @@ impl AuthManager {
 
         open::that(&auth_url).map_err(|e| format!("Failed to open browser: {e}"))?;
 
-        let result = callback_handle
-            .await
-            .map_err(|e| format!("Callback task failed: {e}"))??;
+        let result = tokio::time::timeout(
+            std::time::Duration::from_secs(120),
+            callback_handle,
+        )
+        .await
+        .map_err(|_| "OAuth login timed out after 120 seconds. Please try again.".to_string())?
+        .map_err(|e| format!("Callback task failed: {e}"))??;
 
         if result.state != state {
             return Err("OAuth state mismatch — possible CSRF attack".to_string());
@@ -181,8 +185,8 @@ impl AuthManager {
             .map_err(|e| format!("Token request failed: {e}"))?;
 
         if !token_resp.status().is_success() {
-            let text = token_resp.text().await.unwrap_or_default();
-            return Err(format!("Codex token exchange failed: {text}"));
+            let status = token_resp.status();
+            return Err(format!("Codex token exchange failed (HTTP {})", status));
         }
 
         let tokens: TokenResponse = token_resp.json().await.map_err(|e| e.to_string())?;
@@ -234,9 +238,13 @@ impl AuthManager {
 
         open::that(&auth_url).map_err(|e| format!("Failed to open browser: {e}"))?;
 
-        let result = callback_handle
-            .await
-            .map_err(|e| format!("Callback task failed: {e}"))??;
+        let result = tokio::time::timeout(
+            std::time::Duration::from_secs(120),
+            callback_handle,
+        )
+        .await
+        .map_err(|_| "OAuth login timed out after 120 seconds. Please try again.".to_string())?
+        .map_err(|e| format!("Callback task failed: {e}"))??;
 
         if result.state != state {
             return Err("OAuth state mismatch".to_string());
@@ -249,7 +257,7 @@ impl AuthManager {
             .body(format!(
                 "grant_type=authorization_code&client_id={}&client_secret={}&code={}&redirect_uri={}&code_verifier={}",
                 GEMINI.client_id,
-                GEMINI.client_secret.unwrap(),
+                GEMINI.client_secret.ok_or("Gemini OAuth not available (missing client secret)")?,
                 result.code,
                 urlencoding::encode(&redirect_uri),
                 pkce.code_verifier
@@ -259,8 +267,8 @@ impl AuthManager {
             .map_err(|e| format!("Token request failed: {e}"))?;
 
         if !token_resp.status().is_success() {
-            let text = token_resp.text().await.unwrap_or_default();
-            return Err(format!("Gemini token exchange failed: {text}"));
+            let status = token_resp.status();
+            return Err(format!("Gemini token exchange failed (HTTP {})", status));
         }
 
         let tokens: TokenResponse = token_resp.json().await.map_err(|e| e.to_string())?;
@@ -312,9 +320,13 @@ impl AuthManager {
 
         open::that(&auth_url).map_err(|e| format!("Failed to open browser: {e}"))?;
 
-        let result = callback_handle
-            .await
-            .map_err(|e| format!("Callback task failed: {e}"))??;
+        let result = tokio::time::timeout(
+            std::time::Duration::from_secs(120),
+            callback_handle,
+        )
+        .await
+        .map_err(|_| "OAuth login timed out after 120 seconds. Please try again.".to_string())?
+        .map_err(|e| format!("Callback task failed: {e}"))??;
 
         if result.state != state {
             return Err("OAuth state mismatch".to_string());
@@ -327,7 +339,7 @@ impl AuthManager {
             .body(format!(
                 "grant_type=authorization_code&client_id={}&client_secret={}&code={}&redirect_uri={}&code_verifier={}",
                 ANTIGRAVITY.client_id,
-                ANTIGRAVITY.client_secret.unwrap(),
+                ANTIGRAVITY.client_secret.ok_or("Antigravity OAuth not available (missing client secret)")?,
                 result.code,
                 urlencoding::encode(&redirect_uri),
                 pkce.code_verifier
@@ -337,8 +349,8 @@ impl AuthManager {
             .map_err(|e| format!("Token request failed: {e}"))?;
 
         if !token_resp.status().is_success() {
-            let text = token_resp.text().await.unwrap_or_default();
-            return Err(format!("Antigravity token exchange failed: {text}"));
+            let status = token_resp.status();
+            return Err(format!("Antigravity token exchange failed (HTTP {})", status));
         }
 
         let tokens: TokenResponse = token_resp.json().await.map_err(|e| e.to_string())?;
@@ -487,8 +499,8 @@ impl AuthManager {
             .map_err(|e| format!("Copilot token exchange failed: {e}"))?;
 
         if !resp.status().is_success() {
-            let text = resp.text().await.unwrap_or_default();
-            return Err(format!("Copilot token exchange failed: {text}"));
+            let status = resp.status();
+            return Err(format!("Copilot token exchange failed (HTTP {})", status));
         }
 
         let data: serde_json::Value = resp.json().await.map_err(|e| e.to_string())?;
@@ -725,14 +737,20 @@ impl AuthManager {
         match provider {
             "codex" => self.refresh_codex_token(rt, db).await,
             "gemini" => {
-                self.refresh_google_token("gemini", GEMINI.client_id, GEMINI.client_secret.unwrap(), rt, db)
-                    .await
+                self.refresh_google_token(
+                    "gemini",
+                    GEMINI.client_id,
+                    GEMINI.client_secret.ok_or("Gemini OAuth not available (missing client secret)")?,
+                    rt,
+                    db,
+                )
+                .await
             }
             "antigravity" => {
                 self.refresh_google_token(
                     "antigravity",
                     ANTIGRAVITY.client_id,
-                    ANTIGRAVITY.client_secret.unwrap(),
+                    ANTIGRAVITY.client_secret.ok_or("Antigravity OAuth not available (missing client secret)")?,
                     rt,
                     db,
                 )

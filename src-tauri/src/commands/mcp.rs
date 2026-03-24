@@ -3,6 +3,28 @@ use tauri::State;
 use crate::mcp::types::*;
 use crate::state::AppState;
 
+const VALID_TRANSPORT_TYPES: &[&str] = &["stdio", "http", "sse"];
+
+fn validate_server_config(config: &ServerConfig) -> Result<(), String> {
+    if !VALID_TRANSPORT_TYPES.contains(&config.transport_type.as_str()) {
+        return Err(format!(
+            "Invalid transport type '{}'. Must be one of: stdio, http, sse",
+            config.transport_type
+        ));
+    }
+    if config.transport_type == "stdio" {
+        match config.command.as_deref() {
+            None | Some("") => {
+                return Err(
+                    "Command is required for stdio transport and cannot be empty".to_string(),
+                );
+            }
+            _ => {}
+        }
+    }
+    Ok(())
+}
+
 #[tauri::command]
 pub async fn mcp_list_servers(state: State<'_, AppState>) -> Result<Vec<ServerStatus>, String> {
     state.mcp.server_status().await
@@ -13,6 +35,7 @@ pub async fn mcp_add_server(
     config: ServerConfig,
     state: State<'_, AppState>,
 ) -> Result<(), String> {
+    validate_server_config(&config)?;
     state
         .mcp
         .request("mcp:add-server", serde_json::to_value(&config).map_err(|_| "Failed to serialize server config".to_string())?)
@@ -38,6 +61,7 @@ pub async fn mcp_update_server(
     config: ServerConfig,
     state: State<'_, AppState>,
 ) -> Result<(), String> {
+    validate_server_config(&config)?;
     state
         .mcp
         .request(

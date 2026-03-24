@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
-import { useAppStore } from '../../stores/app-store'
+import { useAppStore, type Conversation } from '../../stores/app-store'
 
 export function ConversationList() {
   const { conversations, activeConversationId, setActiveConversationId, setConversations } = useAppStore()
@@ -27,7 +27,7 @@ export function ConversationList() {
   const handleDelete = async (id: string) => {
     setMenuOpenId(null)
     await window.api.conv.delete(id)
-    const convs = await window.api.conv.list()
+    const convs = await window.api.conv.list() as Conversation[]
     setConversations(convs)
     if (activeConversationId === id) {
       setActiveConversationId(null)
@@ -37,7 +37,7 @@ export function ConversationList() {
   const handleTogglePin = async (id: string) => {
     setMenuOpenId(null)
     await window.api.conv.togglePin(id)
-    const convs = await window.api.conv.list()
+    const convs = await window.api.conv.list() as Conversation[]
     setConversations(convs)
   }
 
@@ -51,7 +51,7 @@ export function ConversationList() {
     const trimmed = newTitle.trim()
     if (!trimmed) return
     await window.api.conv.updateTitle(id, trimmed)
-    const convs = await window.api.conv.list()
+    const convs = await window.api.conv.list() as Conversation[]
     setConversations(convs)
   }
 
@@ -154,8 +154,11 @@ function ConvItem({ conv, isActive, isMenuOpen, isRenaming, menuRef, onSelect, o
 
   return (
     <div style={{ position: 'relative', marginBottom: 2 }}>
-      <button
+      <div
+        role="button"
+        tabIndex={0}
         onClick={() => onSelect(conv.id)}
+        onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onSelect(conv.id) } }}
         style={{
           display: 'flex', alignItems: 'center', gap: 10,
           width: '100%', padding: '10px 12px',
@@ -204,11 +207,12 @@ function ConvItem({ conv, isActive, isMenuOpen, isRenaming, menuRef, onSelect, o
             }}
           />
         ) : (
-          <span style={{ flex: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{conv.title}</span>
+          <span style={{ flex: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={conv.title}>{conv.title}</span>
         )}
         {!isRenaming && (
-          <span
+          <button
             onClick={(e) => onMenuToggle(e, conv.id)}
+            aria-label="Conversation menu"
             style={{
               padding: 4, border: 'none', background: 'transparent',
               cursor: 'pointer', borderRadius: 4,
@@ -220,12 +224,12 @@ function ConvItem({ conv, isActive, isMenuOpen, isRenaming, menuRef, onSelect, o
             }}
             className={`${isMenuOpen ? '' : 'opacity-0 group-hover:opacity-100'} hover:bg-[var(--bg-hover)]`}
           >
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
               <circle cx="12" cy="12" r="1" /><circle cx="19" cy="12" r="1" /><circle cx="5" cy="12" r="1" />
             </svg>
-          </span>
+          </button>
         )}
-      </button>
+      </div>
 
       {/* Dropdown menu */}
       {isMenuOpen && (

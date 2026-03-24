@@ -27,28 +27,34 @@ pub struct Skill {
     pub references: Vec<SkillReference>,
 }
 
-fn get_refs_for_skill(conn: &Connection, skill_id: &str) -> Vec<SkillReference> {
-    let mut stmt = conn
-        .prepare("SELECT id, skill_id, name, content, sort_order FROM skill_references WHERE skill_id = ?1 ORDER BY sort_order ASC")
-        .unwrap();
-    stmt.query_map(params![skill_id], |row| {
-        Ok(SkillReference {
-            id: row.get(0)?,
-            skill_id: row.get(1)?,
-            name: row.get(2)?,
-            content: row.get(3)?,
-            sort_order: row.get(4)?,
-        })
-    })
-    .unwrap()
-    .filter_map(|r| r.ok())
-    .collect()
+fn get_refs_for_skill(
+    conn: &Connection,
+    skill_id: &str,
+) -> Result<Vec<SkillReference>, rusqlite::Error> {
+    let mut stmt = conn.prepare(
+        "SELECT id, skill_id, name, content, sort_order \
+         FROM skill_references WHERE skill_id = ?1 ORDER BY sort_order ASC",
+    )?;
+    let rows = stmt
+        .query_map(params![skill_id], |row| {
+            Ok(SkillReference {
+                id: row.get(0)?,
+                skill_id: row.get(1)?,
+                name: row.get(2)?,
+                content: row.get(3)?,
+                sort_order: row.get(4)?,
+            })
+        })?
+        .filter_map(|r| r.ok())
+        .collect();
+    Ok(rows)
 }
 
-pub fn list_skills(conn: &Connection) -> Vec<Skill> {
-    let mut stmt = conn
-        .prepare("SELECT id, title, description, content, argument_hint, model, user_invocable FROM prompts ORDER BY sort_order ASC, title ASC")
-        .unwrap();
+pub fn list_skills(conn: &Connection) -> Result<Vec<Skill>, rusqlite::Error> {
+    let mut stmt = conn.prepare(
+        "SELECT id, title, description, content, argument_hint, model, user_invocable \
+         FROM prompts ORDER BY sort_order ASC, title ASC",
+    )?;
     let skills: Vec<(String, String, String, String, Option<String>, Option<String>, i64)> = stmt
         .query_map([], |row| {
             Ok((
@@ -60,15 +66,15 @@ pub fn list_skills(conn: &Connection) -> Vec<Skill> {
                 row.get(5)?,
                 row.get(6)?,
             ))
-        })
-        .unwrap()
+        })?
         .filter_map(|r| r.ok())
         .collect();
 
     // Batch-load all references
-    let mut ref_stmt = conn
-        .prepare("SELECT id, skill_id, name, content, sort_order FROM skill_references ORDER BY sort_order ASC")
-        .unwrap();
+    let mut ref_stmt = conn.prepare(
+        "SELECT id, skill_id, name, content, sort_order \
+         FROM skill_references ORDER BY sort_order ASC",
+    )?;
     let all_refs: Vec<SkillReference> = ref_stmt
         .query_map([], |row| {
             Ok(SkillReference {
@@ -78,8 +84,7 @@ pub fn list_skills(conn: &Connection) -> Vec<Skill> {
                 content: row.get(3)?,
                 sort_order: row.get(4)?,
             })
-        })
-        .unwrap()
+        })?
         .filter_map(|r| r.ok())
         .collect();
 
@@ -89,7 +94,7 @@ pub fn list_skills(conn: &Connection) -> Vec<Skill> {
         refs_by_skill.entry(r.skill_id.clone()).or_default().push(r);
     }
 
-    skills
+    let result = skills
         .into_iter()
         .map(|(id, title, desc, content, hint, model, invocable)| Skill {
             references: refs_by_skill.remove(&id).unwrap_or_default(),
@@ -101,17 +106,19 @@ pub fn list_skills(conn: &Connection) -> Vec<Skill> {
             model,
             user_invocable: invocable == 1,
         })
-        .collect()
+        .collect();
+    Ok(result)
 }
 
 pub fn get_skill(conn: &Connection, id: &str) -> Option<Skill> {
     conn.query_row(
-        "SELECT id, title, description, content, argument_hint, model, user_invocable FROM prompts WHERE id = ?1",
+        "SELECT id, title, description, content, argument_hint, model, user_invocable \
+         FROM prompts WHERE id = ?1",
         params![id],
         |row| {
             let skill_id: String = row.get(0)?;
             Ok(Skill {
-                id: skill_id.clone(),
+                id: skill_id,
                 name: row.get(1)?,
                 description: row.get(2)?,
                 instructions: row.get(3)?,
@@ -124,7 +131,7 @@ pub fn get_skill(conn: &Connection, id: &str) -> Option<Skill> {
     )
     .ok()
     .map(|mut s| {
-        s.references = get_refs_for_skill(conn, &s.id);
+        s.references = get_refs_for_skill(conn, &s.id).unwrap_or_default();
         s
     })
 }
@@ -152,16 +159,27 @@ pub fn create_skill(
     argument_hint: Option<&str>,
     model: Option<&str>,
     user_invocable: Option<bool>,
-) -> Skill {
+) -> Result<Skill, rusqlite::Error> {
     let id = Uuid::new_v4().to_string();
     let now = chrono::Utc::now().timestamp();
     let invocable = user_invocable.unwrap_or(true);
     conn.execute(
-        "INSERT INTO prompts (id, title, description, content, argument_hint, model, user_invocable, created_at, updated_at) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)",
-        params![id, name, description, instructions, argument_hint, model, if invocable { 1 } else { 0 }, now, now],
-    ).unwrap();
-
-    Skill {
+        "INSERT INTO prompts \
+         (id, title, description, content, argument_hint, model, user_invocable, created_at, updated_at) \
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)",
+        params![
+            id,
+            name,
+            description,
+            instructions,
+            argument_hint,
+            model,
+            if invocable { 1 } else { 0 },
+            now,
+            now
+        ],
+    )?;
+    Ok(Skill {
         id,
         name: name.to_string(),
         description: description.to_string(),
@@ -170,7 +188,7 @@ pub fn create_skill(
         model: model.map(|s| s.to_string()),
         user_invocable: invocable,
         references: vec![],
-    }
+    })
 }
 
 pub fn update_skill(
@@ -186,9 +204,20 @@ pub fn update_skill(
     let now = chrono::Utc::now().timestamp();
     let invocable = user_invocable.unwrap_or(true);
     conn.execute(
-        "UPDATE prompts SET title = ?1, description = ?2, content = ?3, argument_hint = ?4, model = ?5, user_invocable = ?6, updated_at = ?7 WHERE id = ?8",
-        params![name, description, instructions, argument_hint, model, if invocable { 1 } else { 0 }, now, id],
-    ).ok();
+        "UPDATE prompts SET title = ?1, description = ?2, content = ?3, \
+         argument_hint = ?4, model = ?5, user_invocable = ?6, updated_at = ?7 WHERE id = ?8",
+        params![
+            name,
+            description,
+            instructions,
+            argument_hint,
+            model,
+            if invocable { 1 } else { 0 },
+            now,
+            id
+        ],
+    )
+    .ok();
 }
 
 pub fn delete_skill(conn: &Connection, id: &str) {
@@ -202,34 +231,36 @@ pub fn add_skill_reference(
     skill_id: &str,
     name: &str,
     content: &str,
-) -> SkillReference {
+) -> Result<SkillReference, rusqlite::Error> {
     let id = Uuid::new_v4().to_string();
     let sort_order: i64 = conn
         .query_row(
-            "SELECT COALESCE(MAX(sort_order), -1) + 1 FROM skill_references WHERE skill_id = ?1",
+            "SELECT COALESCE(MAX(sort_order), -1) + 1 \
+             FROM skill_references WHERE skill_id = ?1",
             params![skill_id],
             |row| row.get(0),
         )
         .unwrap_or(0);
     conn.execute(
-        "INSERT INTO skill_references (id, skill_id, name, content, sort_order) VALUES (?1, ?2, ?3, ?4, ?5)",
+        "INSERT INTO skill_references (id, skill_id, name, content, sort_order) \
+         VALUES (?1, ?2, ?3, ?4, ?5)",
         params![id, skill_id, name, content, sort_order],
-    ).unwrap();
-
-    SkillReference {
+    )?;
+    Ok(SkillReference {
         id,
         skill_id: skill_id.to_string(),
         name: name.to_string(),
         content: content.to_string(),
         sort_order,
-    }
+    })
 }
 
 pub fn update_skill_reference(conn: &Connection, id: &str, name: &str, content: &str) {
     conn.execute(
         "UPDATE skill_references SET name = ?1, content = ?2 WHERE id = ?3",
         params![name, content, id],
-    ).ok();
+    )
+    .ok();
 }
 
 pub fn delete_skill_reference(conn: &Connection, id: &str) {
@@ -237,5 +268,5 @@ pub fn delete_skill_reference(conn: &Connection, id: &str) {
 }
 
 pub fn list_skill_references(conn: &Connection, skill_id: &str) -> Vec<SkillReference> {
-    get_refs_for_skill(conn, skill_id)
+    get_refs_for_skill(conn, skill_id).unwrap_or_default()
 }

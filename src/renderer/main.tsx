@@ -7,11 +7,7 @@ import '@fontsource/pretendard/700.css'
 import './styles/globals.css'
 
 async function init() {
-  // In Tauri, load the API adapter (sets window.api)
-  // In Electron, preload/contextBridge already sets window.api
-  if ('__TAURI_INTERNALS__' in window) {
-    await import('./lib/tauri-api')
-  }
+  await import('./lib/tauri-api')
   createRoot(document.getElementById('root')!).render(<App />)
 }
 

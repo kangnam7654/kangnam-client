@@ -38,12 +38,12 @@ export function EvalResultsViewer({ runId }: Props) {
   }, [runId])
 
   const loadData = async () => {
-    const r = await window.api.eval.runResults(runId)
+    const r = await window.api.eval.runResults(runId) as EvalResult[]
     setResults(r)
 
-    const run = await window.api.eval.runGet(runId)
+    const run = await window.api.eval.runGet(runId) as { evalSetId: string } | null
     if (run) {
-      const c = await window.api.eval.caseList(run.evalSetId)
+      const c = await window.api.eval.caseList(run.evalSetId) as EvalCase[]
       const map = new Map<string, EvalCase>()
       for (const cas of c) map.set(cas.id, cas)
       setCases(map)

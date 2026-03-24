@@ -12,7 +12,9 @@
     "tauri:build": "tauri build",
     "tauri:dev:frontend": "vite --config vite.config.ts",
     "tauri:build:frontend": "vite build --config vite.config.ts",
-    "typecheck": "tsc --noEmit -p tsconfig.web.json"
+    "typecheck": "tsc --noEmit -p tsconfig.web.json",
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
   "keywords": [],
   "license": "MIT",
@@ -25,7 +27,8 @@
     "postcss": "^8.5.8",
     "tailwindcss": "^4.2.1",
     "typescript": "^5.9.3",
-    "vite": "^7.3.1"
+    "vite": "^7.3.1",
+    "vitest": "^4.1.1"
   },
   "dependencies": {
     "@assistant-ui/react": "^0.12.17",

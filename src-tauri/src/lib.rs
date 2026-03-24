@@ -1,6 +1,7 @@
 mod auth;
 mod commands;
 mod db;
+mod error;
 mod mcp;
 mod providers;
 mod skills;

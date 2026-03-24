@@ -33,7 +33,8 @@ pub async fn chat_send(
     if let Some(ref pid) = prompt_id {
         let conn = state.db.lock().unwrap_or_else(|e| e.into_inner());
         if let Some(instructions) = crate::db::skills::get_skill_instructions(&conn, pid) {
-            conversations::add_message(&conn, &conversation_id, "system", &instructions, None, None, None, None, None);
+            conversations::add_message(&conn, &conversation_id, "system", &instructions, None, None, None, None, None)
+                .map_err(|e| e.to_string())?;
         }
     }
 
@@ -50,8 +51,10 @@ pub async fn chat_send(
             attachments.as_deref(),
             None,
             None,
-        );
-        conversations::auto_title_if_needed(&conn, &conversation_id, &message);
+        )
+        .map_err(|e| e.to_string())?;
+        conversations::auto_title_if_needed(&conn, &conversation_id, &message)
+            .map_err(|e| e.to_string())?;
     }
 
     // Get LLM provider
@@ -68,7 +71,8 @@ pub async fn chat_send(
     // Build message history
     let chat_messages = {
         let conn = state.db.lock().unwrap_or_else(|e| e.into_inner());
-        let db_msgs = conversations::get_messages(&conn, &conversation_id);
+        let db_msgs = conversations::get_messages(&conn, &conversation_id)
+            .map_err(|e| e.to_string())?;
         db_msgs
             .iter()
             .map(|m| {
@@ -240,7 +244,8 @@ async fn run_agent_loop(
             {
                 let conn = state.db.lock().unwrap_or_else(|e| e.into_inner());
                 let content = if full_response.is_empty() { "[tool call]" } else { &full_response };
-                conversations::add_message(&conn, conversation_id, "assistant", content, None, None, None, None, None);
+                conversations::add_message(&conn, conversation_id, "assistant", content, None, None, None, None, None)
+                    .map_err(|e| e.to_string())?;
             }
 
             // Execute tool calls via MCP bridge
@@ -267,7 +272,8 @@ async fn run_agent_loop(
                         None,
                         Some(&tc.name),
                         Some(&serde_json::to_string(&tc.arguments).unwrap_or_default()),
-                    );
+                    )
+                    .map_err(|e| e.to_string())?;
                 }
                 tool_result_msgs.push(ChatMessage {
                     role: "tool".to_string(),
@@ -297,7 +303,8 @@ async fn run_agent_loop(
         // End turn — save final response
         if !full_response.is_empty() {
             let conn = state.db.lock().unwrap_or_else(|e| e.into_inner());
-            conversations::add_message(&conn, conversation_id, "assistant", &full_response, None, None, None, None, None);
+            conversations::add_message(&conn, conversation_id, "assistant", &full_response, None, None, None, None, None)
+                .map_err(|e| e.to_string())?;
         }
         let _ = app.emit("chat:complete", serde_json::json!({ "conversationId": conversation_id }));
         return Ok(());

@@ -276,7 +276,7 @@ pub async fn eval_run_start(
 
     tokio::spawn(async move {
         // Open a separate DB connection for the background task
-        let bg_conn = match rusqlite::Connection::open(&db_path) {
+        let bg_conn = match crate::db::connection::open_database(&db_path) {
             Ok(c) => c,
             Err(e) => {
                 let _ = app_clone.emit(

@@ -26,7 +26,7 @@ export function DescriptionOptimizer({ skillId, evalSetId }: Props) {
   }, [skillId])
 
   const loadSkill = async () => {
-    const skill = await window.api.prompts.get(skillId)
+    const skill = await window.api.prompts.get(skillId) as { description: string; name: string; instructions: string; argumentHint?: string | null; model?: string | null; userInvocable: boolean } | null
     if (skill) setCurrentDesc(skill.description)
   }
 
@@ -63,7 +63,7 @@ export function DescriptionOptimizer({ skillId, evalSetId }: Props) {
   }
 
   const handleApply = async (description: string) => {
-    const skill = await window.api.prompts.get(skillId)
+    const skill = await window.api.prompts.get(skillId) as { description: string; name: string; instructions: string; argumentHint?: string | null; model?: string | null; userInvocable: boolean } | null
     if (!skill) return
     await window.api.prompts.update(skillId, skill.name, description, skill.instructions, skill.argumentHint ?? undefined, skill.model ?? undefined, skill.userInvocable)
     setCurrentDesc(description)

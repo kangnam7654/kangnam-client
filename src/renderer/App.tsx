@@ -4,7 +4,7 @@ import { ChatView } from './components/chat/ChatView'
 import { SettingsPanel } from './components/settings/SettingsPanel'
 import { SearchOverlay } from './components/sidebar/SearchPanel'
 import { EvalWorkbench } from './components/eval/EvalWorkbench'
-import { useAppStore } from './stores/app-store'
+import { useAppStore, type AuthStatus, type Conversation } from './stores/app-store'
 
 export default function App() {
   const { setAuthStatuses, theme } = useAppStore()
@@ -36,22 +36,22 @@ export default function App() {
 
   useEffect(() => {
     // Load initial auth status
-    window.api.auth.status().then(setAuthStatuses)
+    window.api.auth.status().then(r => setAuthStatuses(r as AuthStatus[])).catch(console.error)
 
     // Listen for auth changes
     const unsubConnected = window.api.auth.onConnected(async () => {
-      const statuses = await window.api.auth.status()
+      const statuses = await window.api.auth.status() as AuthStatus[]
       setAuthStatuses(statuses)
     })
 
     const unsubDisconnected = window.api.auth.onDisconnected(async () => {
-      const statuses = await window.api.auth.status()
+      const statuses = await window.api.auth.status() as AuthStatus[]
       setAuthStatuses(statuses)
     })
 
     // Listen for smart title updates (LLM-generated conversation titles)
     const unsubTitle = window.api.conv.onTitleUpdated?.(async () => {
-      const convs = await window.api.conv.list()
+      const convs = await window.api.conv.list() as Conversation[]
       useAppStore.getState().setConversations(convs)
     })
 

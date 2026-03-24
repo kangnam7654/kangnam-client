@@ -83,7 +83,7 @@ export function SearchOverlay() {
     }
     setLoading(true)
     try {
-      const res = await window.api.conv.search(q.trim())
+      const res = await window.api.conv.search(q.trim()) as SearchResult[]
       setResults(res)
     } catch {
       setResults([])
@@ -179,6 +179,7 @@ export function SearchOverlay() {
           {query && (
             <button
               onClick={() => { setQuery(''); setResults([]) }}
+              aria-label="Close search"
               style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', display: 'flex', padding: 0 }}
             >
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
@@ -199,8 +200,11 @@ export function SearchOverlay() {
         {query && (
           <div style={{ overflowY: 'auto', maxHeight: 'calc(60vh - 56px)' }}>
             {loading && (
-              <div style={{ padding: '24px 0', textAlign: 'center', fontSize: 13, color: 'var(--text-muted)' }}>
-                Searching...
+              <div style={{ padding: '24px 0', textAlign: 'center', color: 'var(--text-muted)' }}>
+                <svg width="20" height="20" viewBox="0 0 20 20" style={{ animation: 'spin 1s linear infinite', marginBottom: 8, display: 'block', margin: '0 auto 8px' }} aria-hidden="true">
+                  <circle cx="10" cy="10" r="8" stroke="currentColor" strokeWidth="2" fill="none" strokeDasharray="40" strokeDashoffset="10" strokeLinecap="round" />
+                </svg>
+                <div style={{ fontSize: 13 }}>Searching...</div>
               </div>
             )}
 

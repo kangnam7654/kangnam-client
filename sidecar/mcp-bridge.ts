@@ -68,6 +68,26 @@ function getConfigPath(): string {
 
 // ── MCP Operations ──
 
+// Security: filter dangerous environment variable overrides
+const BLOCKED_ENV_KEYS = new Set([
+  'LD_PRELOAD',
+  'LD_LIBRARY_PATH',
+  'DYLD_INSERT_LIBRARIES',
+  'DYLD_LIBRARY_PATH',
+  'DYLD_FRAMEWORK_PATH',
+])
+
+function sanitizeEnv(env?: Record<string, string>): Record<string, string> | undefined {
+  if (!env) return undefined
+  const filtered: Record<string, string> = {}
+  for (const [key, value] of Object.entries(env)) {
+    if (!BLOCKED_ENV_KEYS.has(key.toUpperCase())) {
+      filtered[key] = value
+    }
+  }
+  return filtered
+}
+
 async function connectServer(config: ServerConfig): Promise<void> {
   if (servers.has(config.name)) {
     await disconnectServer(config.name)
@@ -75,14 +95,16 @@ async function connectServer(config: ServerConfig): Promise<void> {
 
   let transport: Transport
   if (config.type === 'stdio') {
-    if (!config.command) throw new Error(`Server ${config.name}: 'command' is required for stdio transport`)
+    if (!config.command || config.command.trim() === '') {
+      throw new Error(`MCP server "${config.name}": stdio transport requires a command`)
+    }
     const extraPaths = ['/opt/homebrew/bin', '/usr/local/bin', '/opt/homebrew/sbin']
     const currentPath = process.env.PATH ?? ''
     const fullPath = [...extraPaths, currentPath].join(':')
     transport = new StdioClientTransport({
       command: config.command,
       args: config.args ?? [],
-      env: { ...process.env, PATH: fullPath, ...config.env } as Record<string, string>
+      env: { ...process.env, PATH: fullPath, ...sanitizeEnv(config.env) } as Record<string, string>
     })
   } else {
     if (!config.url) throw new Error(`Server ${config.name}: 'url' is required`)

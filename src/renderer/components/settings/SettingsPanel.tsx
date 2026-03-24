@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useAppStore } from '../../stores/app-store'
+import { useAppStore, type AuthStatus, type Prompt } from '../../stores/app-store'
 
 interface MCPServerStatus {
   name: string
@@ -39,6 +39,15 @@ export function SettingsPanel() {
   }, [showSettings])
 
   useEffect(() => {
+    if (!showSettings) return
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setShowSettings(false)
+    }
+    document.addEventListener('keydown', handleKeyDown)
+    return () => document.removeEventListener('keydown', handleKeyDown)
+  }, [showSettings, setShowSettings])
+
+  useEffect(() => {
     const unsub = window.api.auth.onCopilotDeviceCode((data) => setCopilotCode(data))
     return () => { unsub() }
   }, [])
@@ -51,16 +60,16 @@ export function SettingsPanel() {
       if (provider === 'claude') {
         setClaudeSetupToken('')
       }
-      const statuses = await window.api.auth.status()
+      const statuses = await window.api.auth.status() as AuthStatus[]
       setAuthStatuses(statuses)
     })
     return () => { unsub() }
   }, [setAuthStatuses])
 
   const loadData = async () => {
-    const statuses = await window.api.auth.status()
+    const statuses = await window.api.auth.status() as AuthStatus[]
     setAuthStatuses(statuses)
-    const servers = await window.api.mcp.serverStatus()
+    const servers = await window.api.mcp.serverStatus() as MCPServerStatus[]
     setMcpServers(servers)
   }
 
@@ -86,7 +95,7 @@ export function SettingsPanel() {
       onClick={() => setShowSettings(false)}
     >
       <div
-        style={{ width: 720, maxHeight: '85vh', background: 'var(--bg-sidebar)', borderRadius: 16, border: '1px solid var(--border)', overflow: 'hidden', display: 'flex', flexDirection: 'column', boxShadow: '0 8px 40px rgba(0,0,0,0.5)' }}
+        style={{ width: 'min(90vw, 720px)', maxHeight: '85vh', background: 'var(--bg-sidebar)', borderRadius: 16, border: '1px solid var(--border)', overflow: 'hidden', display: 'flex', flexDirection: 'column', boxShadow: '0 8px 40px rgba(0,0,0,0.5)' }}
         onClick={e => e.stopPropagation()}
       >
         {/* Header */}
@@ -105,10 +114,11 @@ export function SettingsPanel() {
           </div>
           <button
             onClick={() => setShowSettings(false)}
+            aria-label="Close settings"
             style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 28, height: 28, borderRadius: 8, border: 'none', background: 'transparent', color: 'var(--text-muted)', cursor: 'pointer', transition: 'all 0.15s' }}
             className="hover:bg-[rgba(255,255,255,0.06)] hover:text-[var(--text-primary)]"
           >
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
               <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
             </svg>
           </button>
@@ -315,7 +325,7 @@ function MCPTab({ servers, newServerJson, setNewServerJson, onAdd, onRemove, onU
     setAiLoading(true)
     setAiError(null)
     try {
-      const result = await window.api.mcp.aiAssist(aiPrompt.trim(), activeProvider, activeModel)
+      const result = await window.api.mcp.aiAssist(aiPrompt.trim(), activeProvider, activeModel) as string
       setNewServerJson(result)
       setAiPrompt('')
     } catch (err) {
@@ -838,7 +848,7 @@ function PromptsTab() {
   }, [])
 
   const loadPrompts = async () => {
-    const list = await window.api.prompts.list()
+    const list = await window.api.prompts.list() as Prompt[]
     setPrompts(list)
   }
 
@@ -849,7 +859,7 @@ function PromptsTab() {
 
     if (editing.id) {
       await window.api.prompts.update(editing.id, name.trim(), description.trim(), instructions.trim())
-      const existing = await window.api.prompts.refList(editing.id)
+      const existing = await window.api.prompts.refList(editing.id) as { id: string }[]
       const existingIds = new Set(existing.map((r: { id: string }) => r.id))
       const editingIds = new Set(editing.references.filter(r => r.id).map(r => r.id))
       for (const r of existing) {
@@ -863,7 +873,7 @@ function PromptsTab() {
         }
       }
     } else {
-      const created = await window.api.prompts.create(name.trim(), description.trim(), instructions.trim())
+      const created = await window.api.prompts.create(name.trim(), description.trim(), instructions.trim()) as { id: string }
       for (const r of editing.references) {
         if (r.name.trim() && r.content.trim()) {
           await window.api.prompts.refAdd(created.id, r.name.trim(), r.content.trim())
@@ -903,7 +913,7 @@ function PromptsTab() {
     setAiLoading('generate')
     setAiError(null)
     try {
-      const result = await window.api.prompts.aiGenerate(aiPrompt.trim(), activeProvider, activeModel)
+      const result = await window.api.prompts.aiGenerate(aiPrompt.trim(), activeProvider, activeModel) as { name: string; description: string; instructions: string }
       setEditing({ name: result.name, description: result.description, instructions: result.instructions, references: [] })
       setShowAiGenerate(false)
       setAiPrompt('')
@@ -922,7 +932,7 @@ function PromptsTab() {
       const result = await window.api.prompts.aiImprove(
         { name: editing.name, description: editing.description, instructions: editing.instructions },
         improveFeedback.trim(), activeProvider, activeModel
-      )
+      ) as { name: string; description: string; instructions: string }
       setEditing({ ...editing, name: result.name, description: result.description, instructions: result.instructions })
       setShowImprove(false)
       setImproveFeedback('')
@@ -938,7 +948,7 @@ function PromptsTab() {
     setAiLoading('ref')
     setAiError(null)
     try {
-      const result = await window.api.prompts.aiGenerateRef(editing.instructions, aiRefPrompt.trim(), activeProvider, activeModel)
+      const result = await window.api.prompts.aiGenerateRef(editing.instructions, aiRefPrompt.trim(), activeProvider, activeModel) as { name: string; content: string }
       setEditing({ ...editing, references: [...editing.references, { name: result.name, content: result.content }] })
       setShowAiRef(false)
       setAiRefPrompt('')
@@ -963,7 +973,7 @@ function PromptsTab() {
         { name: editing.name, description: editing.description, instructions: editing.instructions },
         criteria, activeProvider, activeModel
       )
-      setGradeResult(result)
+      setGradeResult(result as GradeResult)
     } catch (err) {
       setAiError(err instanceof Error ? err.message : String(err))
     } finally {
@@ -985,7 +995,7 @@ function PromptsTab() {
         { name: editing.name, description: editing.description, instructions: editing.instructions },
         activeProvider, activeModel
       )
-      setCompareResult(result)
+      setCompareResult(result as CompareResult)
     } catch (err) {
       setAiError(err instanceof Error ? err.message : String(err))
     } finally {
@@ -1016,7 +1026,7 @@ function PromptsTab() {
       const result = await window.api.prompts.aiAnalyze(
         compareResult, winnerSkill, loserSkill, activeProvider, activeModel
       )
-      setAnalyzeResult(result)
+      setAnalyzeResult(result as AnalyzeResult)
     } catch (err) {
       setAiError(err instanceof Error ? err.message : String(err))
     } finally {
