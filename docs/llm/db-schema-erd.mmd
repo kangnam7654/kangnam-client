@@ -1,0 +1,134 @@
+erDiagram
+    _migrations {
+        INTEGER version PK "NEW"
+        TEXT name "NOT NULL"
+        TEXT checksum "NOT NULL, SHA-256"
+        INTEGER applied_at "DEFAULT now"
+    }
+
+    conversations {
+        TEXT id PK
+        TEXT title "NOT NULL, DEFAULT 'New Chat'"
+        TEXT provider "NOT NULL"
+        TEXT model
+        INTEGER pinned "NOT NULL, DEFAULT 0"
+        INTEGER created_at "NOT NULL, DEFAULT now"
+        INTEGER updated_at "NOT NULL, DEFAULT now, AUTO-TRIGGER"
+    }
+
+    messages {
+        TEXT id PK
+        TEXT conversation_id FK "NOT NULL, CASCADE"
+        TEXT role "NOT NULL, TRIGGER-CHECK"
+        TEXT content "NOT NULL, FTS5-INDEXED"
+        TEXT tool_use_id
+        TEXT tool_name
+        TEXT tool_args
+        INTEGER token_count
+        TEXT attachments
+        INTEGER created_at "NOT NULL, DEFAULT now"
+    }
+
+    messages_fts {
+        TEXT content "FTS5 virtual table NEW"
+    }
+
+    mcp_servers {
+        TEXT name PK
+        TEXT type "NOT NULL, TRIGGER-CHECK"
+        TEXT command "required if stdio"
+        TEXT args
+        TEXT url "required if sse/http"
+        TEXT env
+        TEXT headers
+        INTEGER enabled "NOT NULL, DEFAULT 1"
+    }
+
+    auth_tokens {
+        TEXT provider PK
+        TEXT access_token "NOT NULL"
+        TEXT refresh_token
+        INTEGER expires_at
+        TEXT metadata
+    }
+
+    prompts {
+        TEXT id PK
+        TEXT title "NOT NULL"
+        TEXT description "NOT NULL, DEFAULT ''"
+        TEXT content "NOT NULL"
+        TEXT icon "NOT NULL, DEFAULT 'default'"
+        TEXT argument_hint
+        TEXT model
+        INTEGER user_invocable "NOT NULL, DEFAULT 1"
+        INTEGER sort_order "NOT NULL, DEFAULT 0"
+        INTEGER created_at "NOT NULL, DEFAULT now"
+        INTEGER updated_at "NOT NULL, DEFAULT now, AUTO-TRIGGER"
+    }
+
+    skill_references {
+        TEXT id PK
+        TEXT skill_id FK "NOT NULL, CASCADE"
+        TEXT name "NOT NULL"
+        TEXT content "NOT NULL"
+        INTEGER sort_order "NOT NULL, DEFAULT 0"
+    }
+
+    skill_eval_sets {
+        TEXT id PK
+        TEXT skill_id FK "NOT NULL, CASCADE"
+        TEXT name "NOT NULL, DEFAULT 'Default'"
+        INTEGER created_at "NOT NULL, DEFAULT now"
+        INTEGER updated_at "NOT NULL, DEFAULT now, AUTO-TRIGGER"
+    }
+
+    skill_eval_cases {
+        TEXT id PK
+        TEXT eval_set_id FK "NOT NULL, CASCADE"
+        TEXT prompt "NOT NULL"
+        TEXT expected "NOT NULL, DEFAULT ''"
+        INTEGER should_trigger "NOT NULL, DEFAULT 1"
+        INTEGER sort_order "NOT NULL, DEFAULT 0"
+    }
+
+    skill_eval_runs {
+        TEXT id PK
+        TEXT eval_set_id FK "NOT NULL, CASCADE"
+        TEXT skill_id "NOT NULL"
+        TEXT skill_name "NOT NULL"
+        TEXT skill_desc "NOT NULL, DEFAULT ''"
+        TEXT skill_body "NOT NULL, DEFAULT ''"
+        TEXT provider "NOT NULL"
+        TEXT model
+        TEXT status "NOT NULL, DEFAULT 'running', TRIGGER-CHECK"
+        REAL trigger_accuracy
+        REAL quality_mean
+        REAL quality_stddev
+        INTEGER total_cases "NOT NULL, DEFAULT 0"
+        INTEGER completed_cases "NOT NULL, DEFAULT 0"
+        INTEGER created_at "NOT NULL, DEFAULT now"
+    }
+
+    skill_eval_results {
+        TEXT id PK
+        TEXT run_id FK "NOT NULL, CASCADE"
+        TEXT case_id FK "NOT NULL, CASCADE"
+        INTEGER did_trigger
+        INTEGER trigger_correct
+        TEXT response_with
+        TEXT response_without
+        INTEGER quality_score
+        TEXT quality_reason
+        TEXT feedback
+        INTEGER feedback_rating
+        TEXT status "NOT NULL, DEFAULT 'pending', TRIGGER-CHECK"
+    }
+
+    conversations ||--o{ messages : "has"
+    messages ||--|| messages_fts : "indexed by"
+    prompts ||--o{ skill_references : "has"
+    prompts ||--o{ skill_eval_sets : "has"
+    skill_eval_sets ||--o{ skill_eval_cases : "contains"
+    skill_eval_sets ||--o{ skill_eval_runs : "executes"
+    skill_eval_runs ||--o{ skill_eval_results : "produces"
+    skill_eval_cases ||--o{ skill_eval_results : "evaluated in"

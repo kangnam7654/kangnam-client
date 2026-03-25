@@ -17,7 +17,17 @@ class ChatErrorBoundary extends Component<{ children: ReactNode }, { error: Erro
       return (
         <div style={{ padding: 40, color: 'var(--danger, #ef4444)', textAlign: 'center' }}>
           <p style={{ fontSize: 15, fontWeight: 500, marginBottom: 8 }}>Something went wrong</p>
-          <p style={{ fontSize: 13, color: 'var(--text-muted)' }}>Please start a new conversation or restart the app.</p>
+          <p style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 16 }}>Please start a new conversation or restart the app.</p>
+          <button
+            onClick={() => { useAppStore.getState().setActiveConversationId(null); this.setState({ error: null }) }}
+            style={{
+              padding: '8px 16px', borderRadius: 8, border: 'none',
+              background: 'var(--accent)', color: 'white', cursor: 'pointer',
+              fontSize: 13, fontWeight: 500
+            }}
+          >
+            Start new conversation
+          </button>
         </div>
       )
     }
@@ -100,9 +110,13 @@ function TopBar({ showTitle = false }: { showTitle?: boolean }) {
       )}
 
       <div className="absolute right-4 no-drag">
-        <div className="w-7 h-7 rounded-full bg-[var(--accent)] flex items-center justify-center text-white text-[11px] font-semibold cursor-pointer hover:opacity-85 transition-opacity">
+        <button
+          onClick={() => useAppStore.getState().setShowSettings(true)}
+          className="w-7 h-7 rounded-full bg-[var(--accent)] flex items-center justify-center text-white text-[11px] font-semibold cursor-pointer hover:opacity-85 transition-opacity border-none"
+          aria-label="Settings"
+        >
           U
-        </div>
+        </button>
       </div>
     </div>
   )

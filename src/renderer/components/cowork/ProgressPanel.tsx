@@ -103,7 +103,7 @@ export function ProgressPanel({ collapsed, onToggle }: { collapsed: boolean; onT
             border: 'none', background: 'transparent', borderRadius: 6, cursor: 'pointer', color: 'var(--text-muted)',
             transition: 'background 0.15s, color 0.15s'
           }}
-          className="hover:bg-[var(--border)] hover:text-white"
+          className="hover:bg-[var(--border)] hover:text-[var(--text-primary)]"
           title="Collapse sidebar"
         >
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">

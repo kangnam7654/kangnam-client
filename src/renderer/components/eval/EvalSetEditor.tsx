@@ -191,14 +191,14 @@ export function EvalSetEditor({ evalSetId, skillId, onRunEval }: Props) {
         {/* Should Trigger */}
         <div>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
-            <span style={{ fontSize: 13, fontWeight: 600, color: '#34d399' }}>
+            <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--success-text)' }}>
               Should Trigger ({triggerCases.length})
             </span>
             <button
               onClick={() => handleAdd(true)}
               style={{
                 padding: '4px 10px', borderRadius: 6, border: 'none',
-                background: 'rgba(16,185,129,0.1)', color: '#34d399',
+                background: 'rgba(16,185,129,0.1)', color: 'var(--success-text)',
                 fontSize: 12, cursor: 'pointer'
               }}
             >
@@ -218,14 +218,14 @@ export function EvalSetEditor({ evalSetId, skillId, onRunEval }: Props) {
         {/* Should NOT Trigger */}
         <div>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
-            <span style={{ fontSize: 13, fontWeight: 600, color: '#f87171' }}>
+            <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--danger-text)' }}>
               Should NOT Trigger ({noTriggerCases.length})
             </span>
             <button
               onClick={() => handleAdd(false)}
               style={{
                 padding: '4px 10px', borderRadius: 6, border: 'none',
-                background: 'rgba(239,68,68,0.1)', color: '#f87171',
+                background: 'rgba(239,68,68,0.1)', color: 'var(--danger-text)',
                 fontSize: 12, cursor: 'pointer'
               }}
             >

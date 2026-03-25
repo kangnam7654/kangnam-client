@@ -286,19 +286,6 @@ export function CoworkView() {
             />
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 12px 12px' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                <button
-                  style={{
-                    width: 28, height: 28, borderRadius: 8, border: 'none',
-                    background: 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    cursor: 'pointer', color: 'var(--text-muted)', transition: 'all 0.15s'
-                  }}
-                  className="hover:bg-[var(--bg-hover)] hover:text-[var(--text-secondary)]"
-                  title="Attach file"
-                >
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" />
-                  </svg>
-                </button>
                 <ProviderDropdown />
                 <ModelDropdown />
                 <ThinkingToggle />
@@ -307,7 +294,7 @@ export function CoworkView() {
                 onClick={(e) => { e.stopPropagation(); handleStart(inputValue) }}
                 disabled={!inputValue.trim()}
                 style={{
-                  width: 40, height: 40, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  width: 36, height: 36, display: 'flex', alignItems: 'center', justifyContent: 'center',
                   border: 'none', background: 'var(--accent)', borderRadius: 12,
                   cursor: inputValue.trim() ? 'pointer' : 'not-allowed', color: 'white',
                   opacity: inputValue.trim() ? 1 : 0.4,
@@ -416,7 +403,7 @@ export function CoworkView() {
               background: 'var(--bg-surface)', borderRadius: 24,
               boxShadow: '0 4px 16px var(--shadow-pill)',
               overflow: 'visible', position: 'relative',
-              border: '1px solid rgba(255,255,255,0.06)'
+              border: '1px solid var(--border-subtle)'
             }}>
               <textarea
                 ref={chatTextareaRef}
@@ -435,19 +422,6 @@ export function CoworkView() {
               />
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '4px 12px 10px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                  <button
-                    style={{
-                      width: 28, height: 28, borderRadius: 8, border: 'none',
-                      background: 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      cursor: 'pointer', color: 'var(--text-muted)', transition: 'all 0.15s'
-                    }}
-                    className="hover:bg-[var(--bg-hover)] hover:text-[var(--text-secondary)]"
-                    title="Attach file"
-                  >
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" />
-                    </svg>
-                  </button>
                   {!coworkIsRunning && (
                     <button
                       onClick={handleNewTask}
@@ -518,7 +492,7 @@ export function CoworkView() {
             background: 'var(--sidebar-bg)', cursor: 'pointer', color: 'var(--text-muted)',
             transition: 'color 0.15s', zIndex: 10
           }}
-          className="hover:text-white"
+          className="hover:text-[var(--text-primary)]"
         >
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
             <polyline points="15 18 9 12 15 6" />

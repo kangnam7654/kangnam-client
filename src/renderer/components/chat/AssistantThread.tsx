@@ -152,7 +152,7 @@ function ToolCallBlock({ toolName, toolArgs, result }: {
         className="hover:bg-[rgba(255,255,255,0.03)]"
       >
         {isError ? (
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#f87171" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--danger-text)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
             <circle cx="12" cy="12" r="10" /><line x1="15" y1="9" x2="9" y2="15" /><line x1="9" y1="9" x2="15" y2="15" />
           </svg>
         ) : (
@@ -163,7 +163,7 @@ function ToolCallBlock({ toolName, toolArgs, result }: {
         <span style={{
           fontFamily: "'SF Mono', Monaco, Menlo, monospace",
           fontSize: 12, fontWeight: 500,
-          color: isError ? '#f87171' : 'var(--text-secondary)'
+          color: isError ? 'var(--danger-text)' : 'var(--text-secondary)'
         }}>
           {displayName}
         </span>
@@ -197,7 +197,7 @@ function ToolCallBlock({ toolName, toolArgs, result }: {
             <pre style={{
               margin: 0, padding: '6px 8px', borderRadius: 6,
               background: isError ? 'rgba(239,68,68,0.06)' : 'rgba(0,0,0,0.2)',
-              color: isError ? '#f87171' : 'var(--text-secondary)',
+              color: isError ? 'var(--danger-text)' : 'var(--text-secondary)',
               fontFamily: "'SF Mono', Monaco, Menlo, monospace",
               fontSize: 11.5, lineHeight: 1.5, overflowX: 'auto',
               whiteSpace: 'pre-wrap', wordBreak: 'break-all',
@@ -350,7 +350,7 @@ const ChatErrorBanner: FC = () => {
       padding: '10px 12px', margin: '8px 0',
       borderRadius: 10, background: 'rgba(239,68,68,0.08)',
       border: '1px solid rgba(239,68,68,0.15)',
-      fontSize: 13, color: '#f87171', lineHeight: 1.5
+      fontSize: 13, color: 'var(--danger-text)', lineHeight: 1.5
     }}>
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, marginTop: 2 }}>
         <circle cx="12" cy="12" r="10" /><line x1="15" y1="9" x2="9" y2="15" /><line x1="9" y1="9" x2="15" y2="15" />
@@ -358,7 +358,7 @@ const ChatErrorBanner: FC = () => {
       <span style={{ flex: 1, wordBreak: 'break-word' }}>{chatError}</span>
       <button
         onClick={() => setChatError(null)}
-        style={{ flexShrink: 0, background: 'none', border: 'none', color: '#f87171', cursor: 'pointer', padding: 2, opacity: 0.6 }}
+        style={{ flexShrink: 0, background: 'none', border: 'none', color: 'var(--danger-text)', cursor: 'pointer', padding: 2, opacity: 0.6 }}
       >
         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
           <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
@@ -376,7 +376,7 @@ const ContextBar: FC = () => {
   const pct = Math.min(100, Math.round((contextUsage.used / contextUsage.max) * 100))
   if (pct < 5) return null // Don't show when nearly empty
 
-  const color = pct >= 80 ? '#f87171' : pct >= 60 ? '#fbbf24' : 'var(--accent)'
+  const color = pct >= 80 ? 'var(--danger-text)' : pct >= 60 ? 'var(--warning)' : 'var(--accent)'
   const usedK = contextUsage.used >= 1000 ? `${(contextUsage.used / 1000).toFixed(0)}K` : String(contextUsage.used)
   const maxK = contextUsage.max >= 1000 ? `${(contextUsage.max / 1000).toFixed(0)}K` : String(contextUsage.max)
 
@@ -481,7 +481,7 @@ const CodeBlock: FC<SyntaxHighlighterProps> = ({ language, code }) => {
 
   // Fallback while loading
   return (
-    <pre className="my-4 rounded-xl bg-[#1a1a1a] border border-[var(--border)] overflow-x-auto" style={{ position: 'relative' }}>
+    <pre className="my-4 rounded-xl bg-[var(--bg-code)] border border-[var(--border)] overflow-x-auto" style={{ position: 'relative' }}>
       <code className="block p-5 text-[13px] leading-[1.7] font-mono text-[var(--text-primary)]">
         {code}
       </code>
@@ -720,7 +720,7 @@ const Composer: FC = () => {
                   overflow: 'hidden'
                 }}>
                   {att.preview ? (
-                    <img src={att.preview} alt="" style={{ width: 56, height: 56, objectFit: 'cover', borderRadius: 9 }} />
+                    <img src={att.preview} alt={att.file.name} style={{ width: 56, height: 56, objectFit: 'cover', borderRadius: 9 }} />
                   ) : (
                     <>
                       <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: 0.6 }}>

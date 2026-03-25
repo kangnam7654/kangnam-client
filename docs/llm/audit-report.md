@@ -1,177 +1,116 @@
 # Audit Report: kangnam-client
 
-**Date:** 2026-03-24
+**Date:** 2026-03-25
 **Target:** kangnam-client v0.1.0 (Tauri 2 Desktop LLM Client)
 **Stack:** Rust backend + React 19 frontend + Node.js MCP sidecar
-**Scope:** 디자인부터 기능까지 전체 종합 진단
+**User Focus:** 쓰이지 않는 버튼, 어색한 UI 개선
 
 ---
 
-## Baseline Scores
+## 베이스라인 점수표
 
-| Category | Score | Primary Gap |
-|----------|-------|-------------|
-| Code Quality | 6.1 | Code duplication (5.0), Error handling (5.5), Dead code (5.5) |
-| Security | 6.1 | CSP unsafe-eval/inline (4.5), MCP command injection (5.0) |
-| Architecture | 7.0 | State management (6), Error architecture (6), Tech debt (5) |
-| DB | 6.5 | Migration strategy (5), Connection management (6), Data integrity (6) |
-| Test Coverage | 1.5 | 0 TS tests, 5 Rust tests, 0 E2E |
-| Repo Health | 5.0 | Linting (2), Git hygiene (5), CI/CD (6) |
-| UX/UI | 6.0 | Inline styles (85%), Accessibility gaps, Theme toggle missing |
-| **Weighted Average** | **5.5** | |
-
----
-
-## CTO Gate Decision: PROCEED
-
-개선 대상이 명확하고 우선순위 확정 가능. 전체 7개 영역 모두 개선 필요.
+| 영역 | 점수 (0-10) | 주요 근거 |
+|---|---|---|
+| 코드 품질 | 5.0 | 미사용 파일 3개, 상수 중복, 비반응형 상태 읽기, 에러 처리 부재 |
+| 보안 | 6.4 | CSP unsafe-eval, access_token 평문 저장, SSRF 미검증 |
+| 아키텍처 | 6.5 | SettingsPanel 1816줄 God component, 재귀 Box::pin, Mutex 단일 연결 |
+| DB | 5.3 | 인덱스 전무, FTS5 미사용, 마이그레이션 시스템 부재 |
+| 테스트 | 3.3 | 프론트엔드 22개 컴포넌트 전체 무테스트, Vitest 환경 설정 오류 |
+| Repo Health | 7.4 | 린터/포매터 부재, 대용량 바이너리 git 추적 |
+| UX | 6.9 | onClick 없는 버튼 3개, 삭제 확인 없음, 데드 코드 |
+| UI | 6.3 | 42+ 하드코딩 색상, WCAG 대비 실패, 토큰 시스템 부재 |
+| **가중 평균** | **5.83** | |
 
 ---
 
-## Priority-Ranked Improvement Items
+## 게이트 판정
 
-### P0: Security (릴리즈 전 필수)
-
-| # | Item | Category | Files | Impact |
-|---|------|----------|-------|--------|
-| S1 | CSP `unsafe-eval` + `unsafe-inline` 제거, `wasm-unsafe-eval`로 교체 | Security | `src-tauri/tauri.conf.json:31` | XSS 방어 복구 |
-| S2 | MCP stdio `command` 입력 검증 + `env` 오버라이드 필터링 | Security | `sidecar/mcp-bridge.ts:82-86`, `commands/mcp.rs` | 임의 코드 실행 방지 |
-| S3 | Access token을 OS keychain으로 이동 또는 메모리 전용 | Security | `auth/token_store.rs:26-29` | 토큰 유출 방지 |
-| S4 | OAuth callback listener에 120초 timeout 추가 | Security | `auth/oauth_server.rs:47` | DoS/hang 방지 |
-| S5 | `withGlobalTauri: false` 설정 | Security | `src-tauri/tauri.conf.json:13` | 공격 표면 축소 |
-| S6 | `ChatErrorBoundary`에서 stack trace 제거 | Security | `ChatView.tsx:19` | 정보 노출 방지 |
-
-### P1: Crash Prevention (안정성)
-
-| # | Item | Category | Files | Impact |
-|---|------|----------|-------|--------|
-| C1 | `GEMINI/ANTIGRAVITY client_secret.unwrap()` → `ok_or()` | Error | `auth/manager.rs:252,330` | 런타임 panic 방지 |
-| C2 | DB `unwrap()` 11개소 → `Result` 반환 + `?` 전파 | Error | `conversations.rs`, `skills.rs` | DB 오류 시 panic 방지 |
-| C3 | `.ok()` 15+개소 → 명시적 에러 로깅 또는 전파 | Error | DB layer 전체 | 사일런트 실패 방지 |
-| C4 | Frontend `.then()` without `.catch()` → `.catch()` 추가 | Error | `App.tsx:39`, `use-assistant-runtime.ts:303` | 프라미스 에러 누락 방지 |
-| C5 | `AppError` enum 정의 (`thiserror`) + String 에러 대체 | Architecture | 전체 Rust 코드 | 구조화된 에러 처리 |
-
-### P2: Architecture (구조 개선)
-
-| # | Item | Category | Files | Impact |
-|---|------|----------|-------|--------|
-| A1 | SSE 스트리밍 추상화 추출 (5개 provider 중복 ~400줄 제거) | Tech Debt | `providers/*.rs` | 유지보수성, 코드 중복 제거 |
-| A2 | `Mutex<Connection>` → 커넥션 풀 (`r2d2-sqlite`) 또는 read/write 분리 | DB/Arch | `state.rs`, `commands/*.rs` | 동시성 병목 해소 |
-| A3 | Zustand 단일 스토어 → 도메인별 슬라이스 분리 | Frontend | `app-store.ts` | 불필요한 리렌더 감소 |
-| A4 | `eval.rs` 인라인 SQL → `db/eval.rs` 모듈 분리 | Architecture | `commands/eval.rs` (627줄) | 레이어 분리 일관성 |
-| A5 | 에이전트 루프 중복 제거 (`chat.rs` + `cowork.rs` → `agent_loop.rs`) | Tech Debt | `commands/chat.rs`, `commands/cowork.rs` | 코드 중복 제거 |
-| A6 | 배경 eval 커넥션 PRAGMA 누락 수정 | DB | `commands/eval.rs:279` | FK 미적용 방지 |
-| A7 | DB 마이그레이션 버전 관리 (`PRAGMA user_version`) | DB | `db/schema.rs` | 향후 마이그레이션 안전성 |
-
-### P3: Code Quality (코드 품질)
-
-| # | Item | Category | Files | Impact |
-|---|------|----------|-------|--------|
-| Q1 | `fileToDataUrl` 중복 → `lib/utils.ts`로 추출 | Duplication | `ChatView.tsx`, `AssistantThread.tsx` | 코드 중복 제거 |
-| Q2 | `Starburst` SVG 중복 → 공유 컴포넌트로 추출 | Duplication | `ChatView.tsx`, `AssistantThread.tsx` | 코드 중복 제거 |
-| Q3 | Optimistic user message 생성 중복 → 헬퍼 추출 | Duplication | `use-assistant-runtime.ts`, `ChatView.tsx` | 코드 중복 제거 |
-| Q4 | `WelcomeScreen` 280줄 → 별도 파일로 분리 | Organization | `ChatView.tsx:193-474` | 가독성 |
-| Q5 | Electron 잔재 제거 (주석, `__TAURI_INTERNALS__` 가드) | Dead Code | `main.tsx`, `tauri-api.ts` | 혼동 방지 |
-| Q6 | `cowork_follow_up` 미완성 커맨드 제거 또는 완성 | Dead Code | `commands/cowork.rs:120-132` | 데드 코드 정리 |
-| Q7 | `@modelcontextprotocol/sdk` 루트 package.json에서 제거 | Dependencies | `package.json:34` | 번들 크기 감소 |
-| Q8 | IPC 반환값 Zod 검증 추가 | Type Safety | `tauri-api.ts` | 런타임 타입 안전성 |
-| Q9 | `prompts`/`skills` 네이밍 통일 | Naming | 전체 | 인지 부하 감소 |
-
-### P4: Testing (테스트)
-
-| # | Item | Category | Files | Impact |
-|---|------|----------|-------|--------|
-| T1 | Vitest 설치 + test 스크립트 추가 | Test Infra | `package.json` | TS 테스트 인프라 |
-| T2 | `estimateTokens`, `getVisibleProviders` 단위 테스트 | Test | `lib/providers.ts` | 순수 함수 테스트 |
-| T3 | `db/conversations.rs` 통합 테스트 (CRUD, search, truncation) | Test | `db/conversations.rs` | DB 회귀 방지 |
-| T4 | `auth/token_store.rs` 라운드트립 테스트 | Test | `auth/token_store.rs` | 토큰 저장 검증 |
-| T5 | CI에 `cargo test` + `npm test` + `tsc --noEmit` 추가 | CI/CD | `.github/workflows/` | 자동화된 검증 |
-| T6 | PR 트리거 CI 워크플로우 추가 | CI/CD | `.github/workflows/ci.yml` | 커밋별 검증 |
-
-### P5: Repo Health
-
-| # | Item | Category | Files | Impact |
-|---|------|----------|-------|--------|
-| R1 | ESLint 설치 + 설정 | Linting | `eslint.config.mjs`, `package.json` | 코드 일관성 |
-| R2 | `cargo clippy` CI 추가 | Linting | `.github/workflows/` | Rust 안티패턴 감지 |
-| R3 | `.DS_Store` git 추적 제거 | Git | `.DS_Store` | 불필요한 파일 제거 |
-| R4 | `settings_set` raw `serde_json::Value` → typed struct | Type Safety | `commands/settings.rs:67-83` | 설정 주입 방지 |
-
-### P6: UX/UI (디자인 개선)
-
-| # | Item | Category | Files | Impact |
-|---|------|----------|-------|--------|
-| U1 | 테마 토글 UI 추가 (Settings > General) | UX | `SettingsPanel.tsx` | 사용자가 테마 변경 가능 |
-| U2 | WCAG AA 색상 대비 수정 (`--text-muted` #727272 → #8a8a8a+) | A11y | `globals.css` | 접근성 |
-| U3 | 모든 아이콘 버튼에 `aria-label` 추가 | A11y | 전체 컴포넌트 | 스크린 리더 지원 |
-| U4 | 포커스 링 + 포커스 트랩 (Settings 모달) | A11y | `SettingsPanel.tsx`, 전체 | 키보드 접근성 |
-| U5 | Settings 모달 반응형 (`width: min(90vw, 720px)`) | Responsive | `SettingsPanel.tsx` | 작은 화면 지원 |
-| U6 | 검색 로딩 스피너 추가 | UX | `SearchPanel.tsx` | 피드백 |
-| U7 | 파일 첨부 크기 검증 + 에러 메시지 | UX | `ChatView.tsx` | 사일런트 실패 방지 |
-| U8 | 코드 블록 복사 버튼 추가 | UX | `AssistantThread.tsx` | 사용 편의 |
-| U9 | 대화 목록 truncated 제목에 tooltip 추가 | UX | `ConversationList.tsx` | 가독성 |
-| U10 | 도구 이름 포맷팅 (`list_files` → `List Files`) | Polish | `AssistantThread.tsx` | 시각적 품질 |
-| U11 | disabled 버튼 스타일 개선 | UX | `ChatView.tsx` | 상태 명확성 |
-| U12 | 인라인 스타일 정리 → Tailwind 클래스 + 공유 스타일 상수 | Maintainability | 전체 컴포넌트 | 유지보수성 |
+- **Decision:** PARTIAL
+- **근거:** 사용자가 UI/UX 개선을 명시적으로 요청. P0/P1 항목은 난이도 S로 즉시 수정 가능. P2/P3는 설계 페이즈 필요.
 
 ---
 
-## Improvement Scope (Design Phase Input)
+## 우선순위 매트릭스
 
-### 필수 실행 (P0-P2)
-- **Security 6건**: CSP, MCP 검증, 토큰 저장, OAuth timeout, globalTauri, stack trace
-- **Crash Prevention 5건**: unwrap→Result, .ok()→로깅, .catch() 추가, AppError enum
-- **Architecture 7건**: SSE 추상화, 커넥션 풀, Zustand 분리, eval 모듈 분리, 에이전트 루프 통합, PRAGMA 수정, 마이그레이션 버전
+### P0 — 즉시 수정 (사용자 체감 품질 직결)
 
-### 권장 실행 (P3-P6)
-- **Code Quality 9건**: 중복 제거, 데드 코드, 타입 안전성
-- **Testing 6건**: Vitest 설치, 핵심 테스트, CI 개선
-- **Repo Health 4건**: ESLint, clippy, .DS_Store, settings 타입
-- **UX/UI 12건**: 테마 토글, 접근성, 반응형, 사용성 개선
+| ID | 항목 | 영역 | 난이도 | 파일 | 설명 |
+|---|---|---|---|---|---|
+| P0-1 | CoworkView 홈뷰 "+" 버튼 onClick 없음 | UX | S | `cowork/CoworkView.tsx:289-301` | cursor:pointer이나 클릭 무반응. 파일 첨부 미구현이면 버튼 제거 |
+| P0-2 | CoworkView 채팅뷰 "+" 버튼 onClick 없음 | UX | S | `cowork/CoworkView.tsx:438-450` | 위와 동일 패턴 |
+| P0-3 | TopBar "U" 아바타 클릭 핸들러 없음 | UX | S | `chat/ChatView.tsx:102-106` | cursor:pointer + hover 효과이나 onClick 없음. Sidebar 아바타는 설정 열기 동작 있음 |
+| P0-4 | 데드 컴포넌트 3개 삭제 | UX/코드 | S | `sidebar/ModelSelector.tsx`, `sidebar/ProviderSelector.tsx`, `sidebar/ReasoningSelector.tsx` | import 0건. InputControls.tsx가 완전 대체 |
+| P0-5 | 대화 삭제 확인 다이얼로그 부재 | UX | S | `sidebar/ConversationList.tsx:27-35` | 파괴적 액션에 확인 없이 즉시 삭제 |
+| P0-6 | Sidebar "User / Free plan" 하드코딩 | UX | S | `sidebar/Sidebar.tsx:134-139` | 실제 정보와 무관한 더미 텍스트 |
 
-### Design Phase 서브-루프 실행 계획
-| audit 결과 | design-loop 실행 |
-|---|---|
-| 아키텍처/DB 개선 필요 | architecture-loop 실행 |
-| UX/UI 개선 필요 | ux-ui-loop 실행 |
-| **결론: 둘 다 실행** | |
+### P1 — 단기 수정 (UI 일관성, 접근성)
+
+| ID | 항목 | 영역 | 난이도 | 파일 | 설명 |
+|---|---|---|---|---|---|
+| P1-1 | Prettify 버튼 빈 중괄호 표현식 | UI | S | `settings/SettingsPanel.tsx:444,612-615` | `{ }` → `{'{ }'}` |
+| P1-2 | ErrorBoundary 복구 버튼 추가 | UX | S | `chat/ChatView.tsx:10-26` | "Start new conversation" 버튼 필요 |
+| P1-3 | Send 버튼 크기 통일 | UI | S | `cowork/CoworkView.tsx:310-314` | CoworkView 40px → 36px (Chat 표준) |
+| P1-4 | ChatSearchBar aria-label 추가 | A11y | S | `chat/ChatSearchBar.tsx:161-208` | Prev/Next/Close 3개 버튼 |
+| P1-5 | --text-muted 대비 수정 | A11y | S | `styles/globals.css` | dark #8a8a8a→#9a9a9a, light #999→#767676 |
+| P1-6 | --accent 대비 수정 | A11y | S | `styles/globals.css` | #d97757→#e08060 (4.5:1 이상) |
+| P1-7 | CSS status 토큰 추가 | UI | S | `styles/globals.css` | --warning, --info, --success-text, --danger-text 정의 |
+| P1-8 | AssistantThread 하드코딩 색상 7건 | UI | M | `chat/AssistantThread.tsx:155,166,200,353,361,379,484` | CSS 변수로 교체 |
+| P1-9 | Eval 하드코딩 색상 42+건 | UI | L | `eval/*.tsx`, `settings/SettingsPanel.tsx` | P1-7 토큰으로 교체 |
+| P1-10 | 터치 타겟 위반 (첨부 삭제 16px 등) | A11y | M | WelcomeScreen, AssistantThread, ChatSearchBar 등 11건 | 최소 24px, 이상적 44px |
+| P1-11 | CoworkView composer border 하드코딩 | UI | S | `cowork/CoworkView.tsx:419` | CSS 변수로 교체 |
+| P1-12 | hover:text-white theme-unsafe 2건 | UI | S | `cowork/CoworkView.tsx:521`, `cowork/ProgressPanel.tsx:106` | var(--text-primary)로 교체 |
+| P1-13 | Sidebar JS hover → CSS hover 4건 | UI | S | `sidebar/Sidebar.tsx:62-63,87-88,112-113,170-177` | Tailwind hover: 유틸리티로 교체 |
+| P1-14 | Export 완료 피드백 없음 | UX | S | `sidebar/ConversationList.tsx:273,282` | 토스트/상태 메시지 추가 |
+
+### P2 — 중기 개선 (아키텍처/코드 품질)
+
+| ID | 항목 | 영역 | 난이도 |
+|---|---|---|---|
+| P2-1 | SettingsPanel.tsx 1816줄 분할 | 아키텍처 | L |
+| P2-2 | border-radius 토큰 시스템 | UI | M |
+| P2-3 | spacing 토큰 시스템 | UI | M |
+| P2-4 | 상수 중복 통합 (PROVIDER_MODELS 등) | 코드 품질 | M |
+| P2-5 | PROVIDER_INFO 상수 중복 | 코드 품질 | S |
+| P2-6 | getState().devMode → useAppStore 구독 | 코드 품질 | S |
+| P2-7 | StopButton/onCancel 중복 stop 로직 | 코드 품질 | S |
+| P2-8 | WelcomeScreen rAF + setTimeout hack | 코드 품질 | M |
+| P2-9 | EvalWorkbench 조건부 마운트 | 아키텍처 | S |
+
+### P3 — 장기 개선 (DB/보안/테스트/인프라)
+
+| ID | 항목 | 영역 | 난이도 |
+|---|---|---|---|
+| P3-1 | conversations 인덱스 추가 | DB | S |
+| P3-2 | FTS5 검색 도입 | DB | M |
+| P3-3 | access_token 암호화 저장 | 보안 | M |
+| P3-4 | CSP unsafe-eval 제거 | 보안 | M |
+| P3-5 | MCP HTTP URL SSRF 검증 | 보안 | M |
+| P3-6 | Mutex → r2d2 커넥션 풀 | 아키텍처 | M |
+| P3-7 | cowork.rs 재귀 → 반복문 | 아키텍처 | L |
+| P3-8 | .ok() 에러 무시 38건 정리 | 아키텍처 | L |
+| P3-9 | Vitest jsdom 환경 + 컴포넌트 테스트 | 테스트 | M |
+| P3-10 | auth/manager.rs unwrap() 5건 | 보안 | S |
+| P3-11 | 마이그레이션 시스템 도입 | DB | M |
+| P3-12 | ESLint + Prettier 도입 | Repo Health | M |
+| P3-13 | JSON.parse try/catch 추가 | 코드 품질 | S |
+| P3-14 | loadData() 에러 처리 | 코드 품질 | S |
 
 ---
 
-## Key Files Reference
+## 개선 범위 (Design Phase 전달용)
 
-### Backend (src-tauri/src/)
-- `state.rs` — AppState, Mutex<Connection>
-- `auth/manager.rs` (876 LOC) — 5 OAuth flows, unwrap() 위험
-- `auth/token_store.rs` — 토큰 저장 (plaintext SQLite)
-- `auth/oauth_server.rs` — OAuth callback listener (no timeout)
-- `auth/credentials.rs` — OAuth client IDs
-- `providers/*.rs` — 5 LLM providers (SSE 중복)
-- `providers/router.rs` — Provider registry
-- `providers/types.rs` — LLMProvider trait
-- `db/schema.rs` — Schema + migrations (no versioning)
-- `db/connection.rs` — open_database() (unused)
-- `db/conversations.rs` — CRUD (unwrap(), .ok())
-- `db/skills.rs` — Skills CRUD
-- `commands/chat.rs` (367 LOC) — Agent loop, mixed concerns
-- `commands/cowork.rs` — Cowork loop (recursive, duplicated)
-- `commands/eval.rs` (627 LOC) — Inline SQL, background connection
-- `commands/settings.rs` — Raw serde_json::Value
-- `mcp/bridge.rs` — MCP sidecar bridge
-- `tauri.conf.json` — CSP, withGlobalTauri
+| 영역 | Design Phase 필요 여부 | 근거 |
+|---|---|---|
+| ux_ui | 부분 필요 | P0/P1 대부분 설계 불필요. P1-9(Eval 색상), P2-2/3(토큰 시스템)은 설계 선행 필요 |
+| architecture | 필요 | SettingsPanel 분할, 에러 처리 통합, 커넥션 풀은 ADR 필요 |
+| db | 필요 | 인덱스, FTS5, 마이그레이션은 스키마 변경으로 설계 선행 필수 |
 
-### Frontend (src/renderer/)
-- `App.tsx` — Theme, .then() without .catch()
-- `stores/app-store.ts` (319 LOC) — Monolithic Zustand
-- `hooks/use-assistant-runtime.ts` — Assistant adapter
-- `lib/tauri-api.ts` — IPC boundary (untyped)
-- `lib/providers.ts` — Provider configs
-- `components/chat/ChatView.tsx` (475 LOC) — WelcomeScreen embedded
-- `components/chat/AssistantThread.tsx` (1000+ LOC) — Message thread
-- `components/sidebar/ConversationList.tsx` — Conversation list
-- `components/settings/SettingsPanel.tsx` (500+ LOC) — Settings modal
-- `components/cowork/CoworkView.tsx` — Cowork mode
-- `styles/globals.css` — Design system (color contrast issue)
+---
 
-### Sidecar
-- `sidecar/mcp-bridge.ts` — MCP bridge (no command validation)
+## 제약 조건
+
+1. **하위호환**: 기존 SQLite DB 파일과의 호환성 유지 필수. 스키마 변경 시 마이그레이션 제공.
+2. **기존 테스트 보존**: `providers.test.ts`, `utils.test.ts`, Rust `db/schema.rs` 테스트, `db/conversations.rs` 테스트가 모두 통과해야 함.
+3. **Tauri IPC 계약**: 프론트엔드 `tauri-api.ts`의 함수 시그니처 변경 시 양쪽 동시 수정 필수.
+4. **CSS 변수 체계**: 기존 `globals.css`의 36개 CSS 변수와 일관된 네이밍으로 새 토큰 추가.
+5. **데드 코드 삭제**: ModelSelector, ProviderSelector, ReasoningSelector 삭제 전 import 0건 재확인.

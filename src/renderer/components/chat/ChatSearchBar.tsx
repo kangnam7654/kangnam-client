@@ -161,6 +161,7 @@ export function ChatSearchBar({ onClose }: ChatSearchBarProps) {
         <button
           onClick={goPrev}
           disabled={matchCount === 0}
+          aria-label="Previous match"
           style={{
             width: 24, height: 24, borderRadius: 6, border: 'none',
             background: 'transparent', cursor: matchCount > 0 ? 'pointer' : 'default',
@@ -177,6 +178,7 @@ export function ChatSearchBar({ onClose }: ChatSearchBarProps) {
         <button
           onClick={goNext}
           disabled={matchCount === 0}
+          aria-label="Next match"
           style={{
             width: 24, height: 24, borderRadius: 6, border: 'none',
             background: 'transparent', cursor: matchCount > 0 ? 'pointer' : 'default',
@@ -194,6 +196,7 @@ export function ChatSearchBar({ onClose }: ChatSearchBarProps) {
 
       <button
         onClick={() => { clearHighlights(); onClose() }}
+        aria-label="Close search"
         style={{
           width: 24, height: 24, borderRadius: 6, border: 'none',
           background: 'transparent', cursor: 'pointer',

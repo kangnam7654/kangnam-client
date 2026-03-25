@@ -59,8 +59,7 @@ export function Sidebar() {
               color: 'var(--text-primary)',
               transition: 'all 0.15s'
             }}
-            onMouseEnter={e => e.currentTarget.style.background = 'var(--bg-hover)'}
-            onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+            className="hover:bg-[var(--bg-hover)]"
           >
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ color: 'var(--text-secondary)', flexShrink: 0 }}>
               <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7" />
@@ -84,8 +83,7 @@ export function Sidebar() {
               transition: 'all 0.15s',
               flexShrink: 0
             }}
-            onMouseEnter={e => e.currentTarget.style.background = 'var(--bg-hover)'}
-            onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+            className="hover:bg-[var(--bg-hover)]"
           >
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" />
@@ -95,7 +93,7 @@ export function Sidebar() {
           {/* Collapse button */}
           <button
             onClick={toggleSidebar}
-            className="no-drag"
+            className="no-drag hover:bg-[var(--bg-hover)]"
             aria-label="Toggle sidebar"
             title="Hide sidebar (Cmd+\)"
             style={{
@@ -109,8 +107,6 @@ export function Sidebar() {
               transition: 'all 0.15s',
               flexShrink: 0
             }}
-            onMouseEnter={e => e.currentTarget.style.background = 'var(--bg-hover)'}
-            onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
           >
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <rect x="3" y="3" width="18" height="18" rx="2" />
@@ -135,8 +131,7 @@ export function Sidebar() {
               U
             </div>
             <div className="flex-1 min-w-0">
-              <div className="text-[13px] text-[var(--text-primary)] font-medium truncate leading-tight">User</div>
-              <div className="text-[11px] text-[var(--text-muted)] truncate leading-tight mt-0.5">Free plan</div>
+              <div className="text-[13px] text-[var(--text-primary)] font-medium truncate leading-tight">Settings</div>
             </div>
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="text-[var(--text-muted)] shrink-0">
               <circle cx="12" cy="12" r="3" />
@@ -167,14 +162,7 @@ export function Sidebar() {
             boxShadow: '0 2px 8px rgba(0,0,0,0.2)',
             transition: 'all 0.15s',
           }}
-          onMouseEnter={e => {
-            e.currentTarget.style.background = 'var(--bg-hover)'
-            e.currentTarget.style.color = 'var(--text-primary)'
-          }}
-          onMouseLeave={e => {
-            e.currentTarget.style.background = 'var(--bg-surface)'
-            e.currentTarget.style.color = 'var(--text-secondary)'
-          }}
+          className="hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]"
         >
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <rect x="3" y="3" width="18" height="18" rx="2" />

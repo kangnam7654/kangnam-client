@@ -109,7 +109,7 @@ export function EvalBenchmark({ evalSetId, onViewRun }: Props) {
             <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{run.provider}</span>
             <span style={{
               fontSize: 11, fontWeight: 500,
-              color: run.status === 'completed' ? '#34d399' : run.status === 'running' ? '#60a5fa' : run.status === 'stopped' ? '#fbbf24' : '#f87171'
+              color: run.status === 'completed' ? 'var(--success-text)' : run.status === 'running' ? 'var(--info)' : run.status === 'stopped' ? 'var(--warning)' : 'var(--danger-text)'
             }}>
               {run.status}
             </span>
@@ -118,7 +118,7 @@ export function EvalBenchmark({ evalSetId, onViewRun }: Props) {
               {triggerDelta && (
                 <span style={{
                   fontSize: 10, marginLeft: 4,
-                  color: triggerDelta.startsWith('+') ? '#34d399' : '#f87171'
+                  color: triggerDelta.startsWith('+') ? 'var(--success-text)' : 'var(--danger-text)'
                 }}>
                   {triggerDelta.startsWith('+') ? '\u25B2' : '\u25BC'}{triggerDelta}
                 </span>
@@ -129,7 +129,7 @@ export function EvalBenchmark({ evalSetId, onViewRun }: Props) {
               {qualityDelta && (
                 <span style={{
                   fontSize: 10, marginLeft: 4,
-                  color: qualityDelta.startsWith('+') ? '#34d399' : '#f87171'
+                  color: qualityDelta.startsWith('+') ? 'var(--success-text)' : 'var(--danger-text)'
                 }}>
                   {qualityDelta.startsWith('+') ? '\u25B2' : '\u25BC'}{qualityDelta}
                 </span>

@@ -90,7 +90,7 @@ export function DescriptionOptimizer({ skillId, evalSetId }: Props) {
         </div>
         {currentAccuracy !== null && (
           <div style={{ marginTop: 8, fontSize: 12, color: 'var(--text-secondary)' }}>
-            Trigger accuracy: <span style={{ fontWeight: 600, color: currentAccuracy >= 0.8 ? '#34d399' : currentAccuracy >= 0.5 ? '#fbbf24' : '#f87171' }}>
+            Trigger accuracy: <span style={{ fontWeight: 600, color: currentAccuracy >= 0.8 ? 'var(--success-text)' : currentAccuracy >= 0.5 ? 'var(--warning)' : 'var(--danger-text)' }}>
               {Math.round(currentAccuracy * 100)}%
             </span>
           </div>
@@ -139,14 +139,14 @@ export function DescriptionOptimizer({ skillId, evalSetId }: Props) {
                 <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
                   Accuracy: <span style={{
                     fontWeight: 600,
-                    color: (c.triggerAccuracy ?? 0) >= 0.8 ? '#34d399' : (c.triggerAccuracy ?? 0) >= 0.5 ? '#fbbf24' : '#f87171'
+                    color: (c.triggerAccuracy ?? 0) >= 0.8 ? 'var(--success-text)' : (c.triggerAccuracy ?? 0) >= 0.5 ? 'var(--warning)' : 'var(--danger-text)'
                   }}>
                     {c.triggerAccuracy !== null ? `${Math.round(c.triggerAccuracy * 100)}%` : '...'}
                   </span>
                   {currentAccuracy !== null && c.triggerAccuracy !== null && (
                     <span style={{
                       marginLeft: 6, fontSize: 11,
-                      color: c.triggerAccuracy > currentAccuracy ? '#34d399' : c.triggerAccuracy < currentAccuracy ? '#f87171' : 'var(--text-muted)'
+                      color: c.triggerAccuracy > currentAccuracy ? 'var(--success-text)' : c.triggerAccuracy < currentAccuracy ? 'var(--danger-text)' : 'var(--text-muted)'
                     }}>
                       {c.triggerAccuracy > currentAccuracy ? '\u25B2' : c.triggerAccuracy < currentAccuracy ? '\u25BC' : '='} vs current
                     </span>
@@ -158,7 +158,7 @@ export function DescriptionOptimizer({ skillId, evalSetId }: Props) {
                   style={{
                     padding: '5px 14px', borderRadius: 6, border: 'none',
                     background: applied === c.description ? 'rgba(16,185,129,0.15)' : 'var(--accent)',
-                    color: applied === c.description ? '#34d399' : 'white',
+                    color: applied === c.description ? 'var(--success-text)' : 'white',
                     fontSize: 12, fontWeight: 500, cursor: applied === c.description ? 'default' : 'pointer'
                   }}
                 >

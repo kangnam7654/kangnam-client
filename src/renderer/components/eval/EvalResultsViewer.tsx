@@ -125,7 +125,7 @@ export function EvalResultsViewer({ runId }: Props) {
               <span style={{
                 fontSize: 11, fontWeight: 600, padding: '2px 8px', borderRadius: 4,
                 background: current.triggerCorrect ? 'rgba(16,185,129,0.12)' : 'rgba(239,68,68,0.12)',
-                color: current.triggerCorrect ? '#34d399' : '#f87171'
+                color: current.triggerCorrect ? 'var(--success-text)' : 'var(--danger-text)'
               }}>
                 {current.triggerCorrect ? 'TRIGGER CORRECT' : 'TRIGGER WRONG'}
               </span>
@@ -153,7 +153,7 @@ export function EvalResultsViewer({ runId }: Props) {
                 background: 'rgba(16,185,129,0.03)', border: '1px solid rgba(16,185,129,0.12)',
                 maxHeight: 400, overflow: 'auto'
               }}>
-                <div style={{ fontSize: 11, fontWeight: 600, color: '#34d399', marginBottom: 8 }}>WITH SKILL</div>
+                <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--success-text)', marginBottom: 8 }}>WITH SKILL</div>
                 <div style={{ fontSize: 13, color: 'var(--text-primary)', lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>
                   {current.responseWith || '(no response)'}
                 </div>

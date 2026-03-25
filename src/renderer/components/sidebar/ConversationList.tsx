@@ -26,6 +26,7 @@ export function ConversationList() {
 
   const handleDelete = async (id: string) => {
     setMenuOpenId(null)
+    if (!confirm('이 대화를 삭제하시겠습니까?')) return
     await window.api.conv.delete(id)
     const convs = await window.api.conv.list() as Conversation[]
     setConversations(convs)

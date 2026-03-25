@@ -7,7 +7,7 @@ import { EvalWorkbench } from './components/eval/EvalWorkbench'
 import { useAppStore, type AuthStatus, type Conversation } from './stores/app-store'
 
 export default function App() {
-  const { setAuthStatuses, theme } = useAppStore()
+  const { setAuthStatuses, theme, showEval } = useAppStore()
 
   // Apply theme to document root
   useEffect(() => {
@@ -68,7 +68,7 @@ export default function App() {
       <ChatView />
       <SettingsPanel />
       <SearchOverlay />
-      <EvalWorkbench />
+      {showEval && <EvalWorkbench />}
     </div>
   )
 }

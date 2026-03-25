@@ -85,7 +85,7 @@ export function EvalRunner({ runId, onComplete, onStop }: Props) {
                 onClick={handleStop}
                 style={{
                   padding: '5px 12px', borderRadius: 6, border: 'none',
-                  background: 'rgba(239,68,68,0.1)', color: '#f87171',
+                  background: 'rgba(239,68,68,0.1)', color: 'var(--danger-text)',
                   fontSize: 12, fontWeight: 500, cursor: 'pointer'
                 }}
               >
@@ -99,7 +99,7 @@ export function EvalRunner({ runId, onComplete, onStop }: Props) {
         <div style={{ height: 6, borderRadius: 3, background: 'var(--bg-hover)', overflow: 'hidden' }}>
           <div style={{
             height: '100%', borderRadius: 3,
-            background: status === 'error' ? '#f87171' : '#10b981',
+            background: status === 'error' ? 'var(--danger-text)' : 'var(--success)',
             width: `${progressPct}%`,
             transition: 'width 0.3s ease'
           }} />
@@ -109,7 +109,7 @@ export function EvalRunner({ runId, onComplete, onStop }: Props) {
         <div style={{ display: 'flex', gap: 16, marginTop: 10 }}>
           <div>
             <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>Trigger Accuracy</span>
-            <div style={{ fontSize: 16, fontWeight: 600, color: accuracy >= 80 ? '#34d399' : accuracy >= 50 ? '#fbbf24' : '#f87171' }}>
+            <div style={{ fontSize: 16, fontWeight: 600, color: accuracy >= 80 ? 'var(--success-text)' : accuracy >= 50 ? 'var(--warning)' : 'var(--danger-text)' }}>
               {accuracy}%
             </div>
           </div>
@@ -124,7 +124,7 @@ export function EvalRunner({ runId, onComplete, onStop }: Props) {
         </div>
 
         {error && (
-          <div style={{ marginTop: 10, padding: '8px 12px', borderRadius: 8, background: 'rgba(239,68,68,0.1)', fontSize: 12, color: '#f87171' }}>
+          <div style={{ marginTop: 10, padding: '8px 12px', borderRadius: 8, background: 'rgba(239,68,68,0.1)', fontSize: 12, color: 'var(--danger-text)' }}>
             {error}
           </div>
         )}
@@ -142,7 +142,7 @@ export function EvalRunner({ runId, onComplete, onStop }: Props) {
             <span style={{ fontSize: 14, flexShrink: 0 }}>
               {r.triggerCorrect ? '\u2713' : '\u2717'}
             </span>
-            <span style={{ fontSize: 12, color: r.triggerCorrect ? '#34d399' : '#f87171', fontWeight: 500, flexShrink: 0 }}>
+            <span style={{ fontSize: 12, color: r.triggerCorrect ? 'var(--success-text)' : 'var(--danger-text)', fontWeight: 500, flexShrink: 0 }}>
               {r.triggerCorrect ? 'CORRECT' : 'WRONG'}
             </span>
             <span style={{ fontSize: 12, color: 'var(--text-muted)', flexShrink: 0 }}>
