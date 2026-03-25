@@ -257,6 +257,24 @@ fn seed_preset_skills(conn: &Connection) {
     let now = chrono::Utc::now().timestamp();
     let _ = conn.execute_batch("BEGIN");
 
+    // Collect valid preset IDs for cleanup
+    let preset_ids: Vec<&str> = presets
+        .iter()
+        .filter_map(|s| s.get("id").and_then(|v| v.as_str()))
+        .filter(|id| !id.is_empty())
+        .collect();
+
+    // Remove stale builtin skills no longer in presets
+    if !preset_ids.is_empty() {
+        let placeholders: Vec<String> = preset_ids.iter().enumerate().map(|(i, _)| format!("?{}", i + 1)).collect();
+        let sql = format!(
+            "DELETE FROM prompts WHERE id LIKE 'builtin-%' AND id NOT IN ({})",
+            placeholders.join(", ")
+        );
+        let params: Vec<&dyn rusqlite::types::ToSql> = preset_ids.iter().map(|id| id as &dyn rusqlite::types::ToSql).collect();
+        conn.execute(&sql, params.as_slice()).ok();
+    }
+
     for skill in &presets {
         let id = skill.get("id").and_then(|v| v.as_str()).unwrap_or("");
         if id.is_empty() {
@@ -332,6 +350,24 @@ fn seed_preset_agents(conn: &Connection) {
 
     let now = chrono::Utc::now().timestamp();
     let _ = conn.execute_batch("BEGIN");
+
+    // Collect valid preset IDs for cleanup
+    let preset_ids: Vec<&str> = presets
+        .iter()
+        .filter_map(|a| a.get("id").and_then(|v| v.as_str()))
+        .filter(|id| !id.is_empty())
+        .collect();
+
+    // Remove stale builtin agents no longer in presets
+    if !preset_ids.is_empty() {
+        let placeholders: Vec<String> = preset_ids.iter().enumerate().map(|(i, _)| format!("?{}", i + 1)).collect();
+        let sql = format!(
+            "DELETE FROM agents WHERE id LIKE 'builtin-%' AND id NOT IN ({})",
+            placeholders.join(", ")
+        );
+        let params: Vec<&dyn rusqlite::types::ToSql> = preset_ids.iter().map(|id| id as &dyn rusqlite::types::ToSql).collect();
+        conn.execute(&sql, params.as_slice()).ok();
+    }
 
     for agent in &presets {
         let id = agent.get("id").and_then(|v| v.as_str()).unwrap_or("");
