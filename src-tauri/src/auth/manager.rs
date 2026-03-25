@@ -139,12 +139,12 @@ impl AuthManager {
     ) -> Result<(), String> {
         let pkce = generate_pkce();
         let state = generate_state();
-        let port = CODEX.redirect_port.unwrap();
+        let port = CODEX.redirect_port.ok_or("Codex redirect port not configured")?;
         let redirect_uri = format!("http://localhost:{port}{}", CODEX.redirect_path);
 
         let auth_url = format!(
             "{}?response_type=code&client_id={}&redirect_uri={}&scope={}&state={}&code_challenge={}&code_challenge_method=S256",
-            CODEX.auth_url.unwrap(),
+            CODEX.auth_url.ok_or("Codex auth URL not configured")?,
             urlencoding::encode(CODEX.client_id),
             urlencoding::encode(&redirect_uri),
             urlencoding::encode(CODEX.scopes),
@@ -226,7 +226,7 @@ impl AuthManager {
 
         let auth_url = format!(
             "{}?response_type=code&client_id={}&redirect_uri={}&scope={}&state={}&access_type=offline&prompt=consent&code_challenge={}&code_challenge_method=S256",
-            GEMINI.auth_url.unwrap(),
+            GEMINI.auth_url.ok_or("Gemini auth URL not configured")?,
             urlencoding::encode(GEMINI.client_id),
             urlencoding::encode(&redirect_uri),
             urlencoding::encode(GEMINI.scopes),
@@ -301,7 +301,7 @@ impl AuthManager {
     ) -> Result<(), String> {
         let pkce = generate_pkce();
         let state = generate_state();
-        let port = ANTIGRAVITY.redirect_port.unwrap();
+        let port = ANTIGRAVITY.redirect_port.ok_or("Antigravity redirect port not configured")?;
         let redirect_uri = format!("http://localhost:{port}{}", ANTIGRAVITY.redirect_path);
 
         let expected_path = ANTIGRAVITY.redirect_path.to_string();
@@ -310,7 +310,7 @@ impl AuthManager {
 
         let auth_url = format!(
             "{}?response_type=code&client_id={}&redirect_uri={}&scope={}&state={}&access_type=offline&prompt=consent&code_challenge={}&code_challenge_method=S256",
-            ANTIGRAVITY.auth_url.unwrap(),
+            ANTIGRAVITY.auth_url.ok_or("Antigravity auth URL not configured")?,
             urlencoding::encode(ANTIGRAVITY.client_id),
             urlencoding::encode(&redirect_uri),
             urlencoding::encode(ANTIGRAVITY.scopes),

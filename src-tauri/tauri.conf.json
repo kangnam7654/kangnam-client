@@ -10,7 +10,7 @@
     "beforeBuildCommand": "npm run tauri:build:frontend"
   },
   "app": {
-    "withGlobalTauri": true,
+    "withGlobalTauri": false,
     "windows": [
       {
         "title": "Kangnam Client",
@@ -28,7 +28,7 @@
       "iconAsTemplate": true
     },
     "security": {
-      "csp": "default-src 'self'; script-src 'self' 'unsafe-eval' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; font-src 'self' data:; connect-src 'self' https://*.openai.com https://*.chatgpt.com https://*.googleapis.com https://*.github.com https://*.githubcopilot.com https://*.claude.com https://*.anthropic.com; img-src 'self' data: blob:; worker-src 'self' blob:"
+      "csp": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self' data:; connect-src 'self' https://*.openai.com https://*.chatgpt.com https://*.googleapis.com https://*.github.com https://*.githubcopilot.com https://*.claude.com https://*.anthropic.com; img-src 'self' data: blob:; worker-src 'self' blob:"
     }
   },
   "bundle": {

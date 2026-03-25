@@ -135,7 +135,28 @@ async function connectServer(config: ServerConfig): Promise<void> {
   }
 }
 
+function validateMcpUrl(url: string): void {
+  const parsed = new URL(url)
+  const blockedHosts = ['localhost', '127.0.0.1', '0.0.0.0', '::1', '169.254.169.254', '[::1]']
+  if (blockedHosts.includes(parsed.hostname)) {
+    throw new Error(`MCP URL hostname '${parsed.hostname}' is blocked (private/loopback address)`)
+  }
+  if (!['http:', 'https:'].includes(parsed.protocol)) {
+    throw new Error(`MCP URL protocol '${parsed.protocol}' is not allowed — use http: or https:`)
+  }
+  // Block private IP ranges (10.x, 172.16-31.x, 192.168.x)
+  const parts = parsed.hostname.split('.').map(Number)
+  if (parts.length === 4 && parts.every(n => !isNaN(n))) {
+    if (parts[0] === 10 ||
+        (parts[0] === 172 && parts[1] >= 16 && parts[1] <= 31) ||
+        (parts[0] === 192 && parts[1] === 168)) {
+      throw new Error(`MCP URL hostname '${parsed.hostname}' is blocked (private IP range)`)
+    }
+  }
+}
+
 async function createHttpTransport(url: string, headers?: Record<string, string>): Promise<Transport> {
+  validateMcpUrl(url)
   try {
     return new StreamableHTTPClientTransport(new URL(url), { requestInit: { headers } })
   } catch {

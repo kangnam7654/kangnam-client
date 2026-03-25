@@ -59,10 +59,14 @@ export function SettingsPanel() {
   }, [setAuthStatuses])
 
   const loadData = async () => {
-    const statuses = await window.api.auth.status() as AuthStatus[]
-    setAuthStatuses(statuses)
-    const servers = await window.api.mcp.serverStatus() as MCPServerStatus[]
-    setMcpServers(servers)
+    try {
+      const statuses = await window.api.auth.status() as AuthStatus[]
+      setAuthStatuses(statuses)
+      const servers = await window.api.mcp.serverStatus() as MCPServerStatus[]
+      setMcpServers(servers)
+    } catch (err) {
+      console.error('Failed to load settings data:', err)
+    }
   }
 
   const handleConnect = async (provider: string, options?: { setupToken?: string }) => {
@@ -166,7 +170,9 @@ export function SettingsPanel() {
               newServerJson={newServerJson}
               setNewServerJson={setNewServerJson}
               onAdd={async () => {
-                const config = JSON.parse(newServerJson)
+                let config
+                try { config = JSON.parse(newServerJson) }
+                catch { alert('Invalid JSON format'); return }
                 await window.api.mcp.addServer(config)
                 setNewServerJson('')
                 await loadData()
