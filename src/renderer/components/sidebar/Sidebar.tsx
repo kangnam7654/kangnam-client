@@ -45,7 +45,7 @@ export function Sidebar() {
         <div style={{ padding: '0 16px 12px', display: 'flex', alignItems: 'center', gap: 8 }}>
           <button
             onClick={handleNewChat}
-            className="no-drag"
+            className="no-drag hover:bg-[var(--bg-hover)]"
             aria-label="New chat"
             style={{
               flex: 1,
@@ -59,7 +59,6 @@ export function Sidebar() {
               color: 'var(--text-primary)',
               transition: 'all 0.15s'
             }}
-            className="hover:bg-[var(--bg-hover)]"
           >
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ color: 'var(--text-secondary)', flexShrink: 0 }}>
               <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7" />
@@ -70,7 +69,7 @@ export function Sidebar() {
 
           <button
             onClick={() => setShowSearch(true)}
-            className="no-drag"
+            className="no-drag hover:bg-[var(--bg-hover)]"
             aria-label="Search conversations"
             style={{
               display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -83,7 +82,6 @@ export function Sidebar() {
               transition: 'all 0.15s',
               flexShrink: 0
             }}
-            className="hover:bg-[var(--bg-hover)]"
           >
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" />

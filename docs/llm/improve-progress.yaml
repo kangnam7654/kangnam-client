@@ -1,0 +1,62 @@
+# auto-improve-loop 진행 상태
+target_score: 8.0
+max_rounds: 5
+focus_areas: null
+
+rounds:
+  - round: 1
+    timestamp: "2026-03-25T14:25:00"
+    status: completed
+    baseline_scores:
+      code_quality: 7.0
+      security: 6.5
+      architecture: 5.85
+      db: 5.65
+      test_coverage: 3.3
+      repo_health: 7.2
+      ux_ui: 6.66
+    items_addressed:
+      - {id: "P0-01", title: "Zustand get() ReferenceError crash", area: code_quality, priority: P0}
+      - {id: "P0-07", title: "OAuth error HTML injection escape", area: security, priority: P0}
+      - {id: "P0-08", title: "agent_runs CHECK constraints + index", area: db, priority: P0}
+      - {id: "P1-04", title: "InputControls getState() reactivity fix", area: code_quality, priority: P1}
+      - {id: "P1-13", title: "vitest environment node → happy-dom", area: test_coverage, priority: P1}
+      - {id: "P1-16", title: "Sidebar.tsx className duplication fix", area: ux_ui, priority: P1}
+      - {id: "P1-17", title: "TopBar span → button with role=tab", area: ux_ui, priority: P1}
+    items_remaining:
+      - {id: "P0-02", title: "cowork.rs recursive → iterative loop", area: architecture, priority: P0}
+      - {id: "P0-03", title: "Mutex<Connection> → connection pool", area: architecture, priority: P0}
+      - {id: "P0-04", title: "access_token → keychain encryption", area: security, priority: P0}
+      - {id: "P0-05", title: "CSP unsafe-eval removal", area: security, priority: P0}
+      - {id: "P0-06", title: "MCP HTTP URL SSRF validation", area: security, priority: P0}
+      - {id: "P1-01", title: "Rust .unwrap() → ? propagation (5곳)", area: code_quality, priority: P1}
+      - {id: "P1-02", title: "JSON.parse try/catch (SettingsPanel)", area: code_quality, priority: P1}
+      - {id: "P1-03", title: "loadData() error handling", area: code_quality, priority: P1}
+      - {id: "P1-05", title: "WelcomeScreen timing hack removal", area: code_quality, priority: P1}
+      - {id: "P1-06", title: "AppError unification", area: architecture, priority: P1}
+      - {id: "P1-08", title: "use-assistant-runtime stale closure", area: architecture, priority: P1}
+      - {id: "P1-09", title: "search_messages FTS5", area: db, priority: P1}
+      - {id: "P1-10", title: "eval_case_bulk_add N+1 fix", area: db, priority: P1}
+      - {id: "P1-11", title: "chat_send lock scope optimization", area: db, priority: P1}
+      - {id: "P1-12", title: ".filter_map(|r| r.ok()) error propagation (14곳)", area: db, priority: P1}
+      - {id: "P1-14", title: "SSE parser unit tests", area: test_coverage, priority: P1}
+      - {id: "P1-15", title: "commands/ integration tests", area: test_coverage, priority: P1}
+      - {id: "P1-18", title: "withGlobalTauri:false", area: security, priority: P1}
+      - {id: "P1-19", title: "cowork session ownership check", area: security, priority: P1}
+    learnings: |
+      - Zustand create() 시 (set, get) 두 번째 파라미터를 반드시 destructure해야 get() 사용 가능
+      - vitest 환경을 happy-dom으로 변경하면 React 컴포넌트 테스트 가능
+      - Sidebar.tsx에서 React JSX 속성 중복 시 마지막 값만 적용되는 버그 확인
+
+current_round: 1
+overall_status: in_progress
+latest_scores:
+  code_quality: 7.0
+  security: 6.5
+  architecture: 5.85
+  db: 5.65
+  test_coverage: 3.3
+  repo_health: 7.2
+  ux_ui: 6.66
+remaining_p0_p1: 19
+all_scores_above_target: false

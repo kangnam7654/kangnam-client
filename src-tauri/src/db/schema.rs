@@ -123,7 +123,7 @@ pub fn run_migrations(conn: &mut Connection) -> Result<()> {
             description     TEXT NOT NULL DEFAULT '',
             instructions    TEXT NOT NULL,
             model           TEXT,
-            allowed_tools   TEXT,
+            allowed_tools   TEXT CHECK(allowed_tools IS NULL OR json_valid(allowed_tools)),
             max_turns       INTEGER NOT NULL DEFAULT 10,
             sort_order      INTEGER NOT NULL DEFAULT 0,
             created_at      INTEGER NOT NULL DEFAULT (strftime('%s', 'now')),
@@ -137,13 +137,15 @@ pub fn run_migrations(conn: &mut Connection) -> Result<()> {
             task            TEXT NOT NULL,
             result          TEXT,
             model_used      TEXT,
-            status          TEXT NOT NULL DEFAULT 'running',
+            status          TEXT NOT NULL DEFAULT 'running' CHECK(status IN ('running', 'completed', 'failed', 'cancelled')),
             started_at      INTEGER NOT NULL DEFAULT (strftime('%s', 'now')),
             completed_at    INTEGER
         );
 
         CREATE INDEX IF NOT EXISTS idx_agent_runs_conv
             ON agent_runs(conversation_id);
+        CREATE INDEX IF NOT EXISTS idx_agent_runs_agent
+            ON agent_runs(agent_id);
         ",
     )?;
 

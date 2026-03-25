@@ -205,7 +205,7 @@ interface AppState {
   resetCoworkState: () => void
 }
 
-export const useAppStore = create<AppState>((set) => ({
+export const useAppStore = create<AppState>((set, get) => ({
   // Auth
   authStatuses: [],
   setAuthStatuses: (statuses) => set({ authStatuses: statuses }),

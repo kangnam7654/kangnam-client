@@ -53,7 +53,7 @@ function DropdownPortal({
 
 // ── Provider Dropdown ───────────────────────────────────────
 export function ProviderDropdown() {
-  const { activeProvider, setActiveProvider, setActiveModel, authStatuses } = useAppStore()
+  const { activeProvider, setActiveProvider, setActiveModel, authStatuses, devMode } = useAppStore()
   const [open, setOpen] = useState(false)
   const btnRef = useRef<HTMLButtonElement>(null)
   const info = getProviderInfo(activeProvider)
@@ -86,7 +86,7 @@ export function ProviderDropdown() {
 
       <DropdownPortal anchorRef={btnRef} open={open} onClose={close} align="left">
         <div style={{ minWidth: 200 }}>
-          {getVisibleProviders(useAppStore.getState().devMode).filter(p => p.name !== 'mock').map(p => {
+          {getVisibleProviders(devMode).filter(p => p.name !== 'mock').map(p => {
             const connected = authStatuses.find(a => a.provider === p.name)?.connected
             const active = p.name === activeProvider
             return (

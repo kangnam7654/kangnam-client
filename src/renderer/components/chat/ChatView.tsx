@@ -81,9 +81,11 @@ function TopBar({ showTitle = false }: { showTitle?: boolean }) {
       <div className="no-drag flex items-center cursor-default">
         <div style={{ display: 'flex', alignItems: 'center', gap: 1, background: 'var(--overlay-soft)', borderRadius: 10, padding: 3 }}>
           {tabs.map(tab => (
-            <span
+            <button
               key={tab.id}
               onClick={() => setActiveView(tab.id)}
+              role="tab"
+              aria-selected={activeView === tab.id}
               style={{
                 padding: '5px 14px',
                 borderRadius: 7,
@@ -93,12 +95,14 @@ function TopBar({ showTitle = false }: { showTitle?: boolean }) {
                 fontWeight: activeView === tab.id ? 500 : 400,
                 cursor: 'pointer',
                 lineHeight: 1,
-                transition: 'all 0.15s'
+                transition: 'all 0.15s',
+                border: 'none',
+                fontFamily: 'inherit'
               }}
               className="hover:text-[var(--text-primary)] transition-colors"
             >
               {tab.label}
-            </span>
+            </button>
           ))}
         </div>
       </div>

@@ -159,8 +159,16 @@ fn send_success_response(stream: &mut std::net::TcpStream) {
     let _ = stream.flush();
 }
 
+fn html_escape(s: &str) -> String {
+    s.replace('&', "&amp;")
+     .replace('<', "&lt;")
+     .replace('>', "&gt;")
+     .replace('"', "&quot;")
+     .replace('\'', "&#39;")
+}
+
 fn send_error_response(stream: &mut std::net::TcpStream, error: &str) {
-    let body = ERROR_HTML_TEMPLATE.replace("{{ERROR}}", error);
+    let body = ERROR_HTML_TEMPLATE.replace("{{ERROR}}", &html_escape(error));
     let response = format!(
         "HTTP/1.1 200 OK\r\nContent-Type: text/html\r\nConnection: close\r\n\r\n{body}"
     );
