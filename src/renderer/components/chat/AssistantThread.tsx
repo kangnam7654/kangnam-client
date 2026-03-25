@@ -19,11 +19,11 @@ import { useAppStore, type AttachmentData, type Message } from '../../stores/app
 // ── User Message ──────────────────────────────────────────────
 const UserMessage: FC = () => (
   <MessagePrimitive.Root style={{ padding: '12px 24px' }}>
-    <div style={{ maxWidth: 680, marginLeft: 'auto', marginRight: 'auto', display: 'flex', justifyContent: 'flex-end' }}>
+    <div style={{ maxWidth: 768, marginLeft: 'auto', marginRight: 'auto', display: 'flex', justifyContent: 'flex-end' }}>
       <div style={{
         maxWidth: '85%',
         padding: '12px 16px',
-        borderRadius: 20,
+        borderRadius: '16px 16px 4px 16px',
         background: 'var(--bg-user-bubble)',
         color: 'var(--text-primary)'
       }}>
@@ -74,7 +74,7 @@ const AssistantMessage: FC = () => {
 
   return (
   <MessagePrimitive.Root className="group" style={{ padding: '12px 24px' }}>
-    <div style={{ maxWidth: 680, marginLeft: 'auto', marginRight: 'auto' }}>
+    <div style={{ maxWidth: 768, marginLeft: 'auto', marginRight: 'auto' }}>
       {/* Tool calls (rendered from DB, persistent) */}
       {toolMsgs.length > 0 && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginBottom: 8 }}>
@@ -88,7 +88,7 @@ const AssistantMessage: FC = () => {
           ))}
         </div>
       )}
-      <div className="text-[15px] text-[var(--text-primary)] leading-[1.7]">
+      <div style={{ fontFamily: 'var(--font-serif)', fontSize: '15.5px', lineHeight: 1.8, letterSpacing: '0.01em', color: 'var(--text-primary)' }}>
         <MessagePrimitive.Content
           components={{
             Text: AssistantTextPart
@@ -382,7 +382,7 @@ const ContextBar: FC = () => {
 
   return (
     <div style={{ padding: '0 24px', flexShrink: 0 }}>
-      <div style={{ maxWidth: 680, marginLeft: 'auto', marginRight: 'auto' }}>
+      <div style={{ maxWidth: 768, marginLeft: 'auto', marginRight: 'auto' }}>
         <div style={{
           display: 'flex', alignItems: 'center', gap: 8,
           padding: '6px 0', fontSize: 11, color: 'var(--text-muted)'
@@ -618,9 +618,10 @@ const StopButton: FC = () => {
       onClick={handleStop}
       style={{
         width: 36, height: 36, display: 'flex', alignItems: 'center', justifyContent: 'center',
-        border: 'none', background: 'var(--danger)', borderRadius: 10,
+        border: 'none', background: 'var(--danger)', borderRadius: 8,
         cursor: 'pointer', color: 'white', transition: 'background 0.15s'
       }}
+      className="active:scale-[0.98]"
     >
       <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
         <rect x="6" y="6" width="12" height="12" rx="2" />
@@ -686,9 +687,9 @@ const Composer: FC = () => {
   const hasAttachments = attachments.length > 0
 
   return (
-    <ComposerPrimitive.Root style={{ padding: '16px 24px 24px', flexShrink: 0, borderTop: '1px solid var(--border-subtle)', background: 'var(--bg-main)' }}>
-      <div style={{ maxWidth: 680, marginLeft: 'auto', marginRight: 'auto' }}>
-        <div style={{ position: 'relative', borderRadius: 24, background: 'var(--bg-surface)', border: '1px solid rgba(255,255,255,0.06)', boxShadow: '0 4px 16px var(--shadow-pill)', transition: 'border-color 0.15s' }} className="focus-within:border-[var(--border-light)]">
+    <ComposerPrimitive.Root style={{ padding: '16px 24px 24px', flexShrink: 0, borderTop: 'none', background: 'var(--bg-main)' }}>
+      <div style={{ maxWidth: 768, marginLeft: 'auto', marginRight: 'auto' }}>
+        <div style={{ position: 'relative', borderRadius: 16, background: 'var(--bg-composer)', border: '1px solid var(--border-subtle)', boxShadow: 'var(--composer-shadow)', transition: 'border-color var(--transition-ease)' }} className="focus-within:border-[var(--border-light)]">
           <input
             ref={fileInputRef}
             type="file"
@@ -774,9 +775,9 @@ const Composer: FC = () => {
               ) : hasAttachments ? (
                 <button onClick={handleImageOnlySend} style={{
                   width: 36, height: 36, display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  border: 'none', background: 'var(--accent)', borderRadius: 10,
+                  border: 'none', background: 'var(--accent)', borderRadius: 8,
                   cursor: 'pointer', color: 'white', transition: 'background 0.15s'
-                }} className="hover:bg-[var(--accent-hover)]">
+                }} className="hover:bg-[var(--accent-hover)] active:scale-[0.98]">
                   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                     <line x1="12" y1="19" x2="12" y2="5" /><polyline points="5 12 12 5 19 12" />
                   </svg>
@@ -785,10 +786,10 @@ const Composer: FC = () => {
                 <ComposerPrimitive.Send asChild>
                   <button onClick={handleSendClick} style={{
                     width: 36, height: 36, display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    border: 'none', background: 'var(--accent)', borderRadius: 10,
+                    border: 'none', background: 'var(--accent)', borderRadius: 8,
                     cursor: 'pointer', color: 'white',
                     transition: 'background 0.15s, opacity 0.15s'
-                  }} className="disabled:opacity-30 disabled:cursor-not-allowed">
+                  }} className="disabled:opacity-30 disabled:cursor-not-allowed active:scale-[0.98]">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                       <line x1="12" y1="19" x2="12" y2="5" /><polyline points="5 12 12 5 19 12" />
                     </svg>
@@ -820,7 +821,7 @@ export const AssistantThread: FC = memo(() => (
 
       {/* Tool call / thinking indicator */}
       <div style={{ paddingLeft: 24, paddingRight: 24 }}>
-        <div style={{ maxWidth: 680, marginLeft: 'auto', marginRight: 'auto' }}>
+        <div style={{ maxWidth: 768, marginLeft: 'auto', marginRight: 'auto' }}>
           <StreamingStatus />
           <ChatErrorBanner />
         </div>

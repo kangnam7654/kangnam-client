@@ -34,6 +34,7 @@
   "dependencies": {
     "@assistant-ui/react": "^0.12.17",
     "@assistant-ui/react-markdown": "^0.12.5",
+    "@fontsource/noto-serif-kr": "^5.2.9",
     "@fontsource/pretendard": "^5.2.5",
     "@modelcontextprotocol/sdk": "^1.27.1",
     "@tailwindcss/postcss": "^4.2.1",

@@ -258,7 +258,7 @@ export function CoworkView() {
         </div>
 
         {/* Input pill — matches open-claude-cowork .input-wrapper */}
-        <div style={{ width: '100%', maxWidth: 680 }}>
+        <div style={{ width: '100%', maxWidth: 768 }}>
           <div
             onClick={() => textareaRef.current?.focus()}
             style={{
@@ -377,7 +377,7 @@ export function CoworkView() {
           {coworkIsRunning && liveBlocks.length === 1 && liveBlocks[0].type === 'text' && !liveBlocks[0].text && (
             <div style={{
               display: 'flex', alignItems: 'center', gap: 8,
-              width: '100%', maxWidth: 680, padding: '8px 0'
+              width: '100%', maxWidth: 768, padding: '8px 0'
             }}>
               <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" strokeWidth="1.5"
                 style={{ animation: 'pulse 1.5s ease-in-out infinite' }}>
@@ -398,7 +398,7 @@ export function CoworkView() {
           borderTop: '1px solid var(--border-subtle)',
           background: 'var(--bg-main)'
         }}>
-          <div style={{ width: '100%', maxWidth: 680 }}>
+          <div style={{ width: '100%', maxWidth: 768 }}>
             <div style={{
               background: 'var(--bg-surface)', borderRadius: 24,
               boxShadow: '0 4px 16px var(--shadow-pill)',
@@ -511,12 +511,12 @@ function UserBubble({ text }: { text: string }) {
   return (
     <div style={{
       display: 'flex', justifyContent: 'flex-end',
-      width: '100%', maxWidth: 680,
+      width: '100%', maxWidth: 768,
       animation: 'fadeIn 0.2s ease-out'
     }}>
       <div style={{
         background: 'var(--bg-user-bubble)',
-        padding: '12px 16px', borderRadius: 20,
+        padding: '12px 16px', borderRadius: '16px 16px 4px 16px',
         maxWidth: '85%', fontSize: 15, lineHeight: 1.5,
         whiteSpace: 'pre-wrap', wordWrap: 'break-word',
         color: 'var(--text-primary)'
@@ -535,7 +535,7 @@ function AssistantBlocks({ blocks, isStreaming }: {
   return (
     <div style={{
       display: 'flex', justifyContent: 'flex-start', flexDirection: 'column',
-      width: '100%', maxWidth: 680,
+      width: '100%', maxWidth: 768,
       animation: 'fadeIn 0.2s ease-out'
     }}>
       <div style={{ fontSize: 15, lineHeight: 1.7, color: 'var(--text-primary)', width: '100%' }}>

@@ -2,18 +2,18 @@
 @source "../";
 
 :root {
-  --bg-main: #2b2b2b;
-  --bg-sidebar: #191919;
-  --bg-surface: #363636;
-  --bg-hover: #404040;
-  --border: #333333;
-  --border-light: #4a4a4a;
-  --text-primary: #ececec;
-  --text-secondary: #b0b0b0;
-  --text-muted: #9a9a9a;
-  --accent: #e08060;
-  --accent-hover: #c96a4c;
-  --accent-soft: rgba(217, 119, 87, 0.15);
+  --bg-main: #2b2a27;
+  --bg-sidebar: #1f1e1b;
+  --bg-surface: #353432;
+  --bg-hover: #3d3c39;
+  --border: rgba(255, 255, 255, 0.08);
+  --border-light: rgba(255, 255, 255, 0.15);
+  --text-primary: #eeeeee;
+  --text-secondary: #b0aea5;
+  --text-muted: #9a9893;
+  --accent: #d97757;
+  --accent-hover: #c4633a;
+  --accent-soft: rgba(217, 119, 87, 0.12);
   --danger: #ef4444;
   --success: #10b981;
   --warning: #fbbf24;
@@ -22,56 +22,66 @@
   --danger-text: #f87171;
 
   /* Semantic — components reference these */
-  --bg-code: #1e1e1e;
-  --bg-code-inline: rgba(255, 255, 255, 0.08);
+  --bg-code: #1e1d1b;
+  --bg-code-inline: rgba(255, 255, 255, 0.07);
   --text-code-inline: #e8b4b8;
-  --bg-user-bubble: rgba(255, 255, 255, 0.08);
+  --bg-user-bubble: #393937;
   --bg-tool-result-ok: #1a3328;
   --text-tool-result-ok: #7dd3a8;
   --bg-tool-result-err: #1a1a1a;
   --text-tool-result-err: #f87171;
-  --sidebar-bg: #2a2a2a;
-  --sidebar-item-bg: #333;
+  --sidebar-bg: #1f1e1b;
+  --sidebar-item-bg: #2b2a27;
   --overlay-soft: rgba(0, 0, 0, 0.15);
   --shadow-pill: rgba(0, 0, 0, 0.2);
-  --border-subtle: rgba(255, 255, 255, 0.06);
-  --border-subtle-hover: rgba(255, 255, 255, 0.12);
-  --scrollbar-thumb: rgba(255, 255, 255, 0.1);
+  --border-subtle: rgba(255, 255, 255, 0.08);
+  --border-subtle-hover: rgba(255, 255, 255, 0.15);
+  --scrollbar-thumb: rgba(255, 255, 255, 0.08);
+
+  /* Claude.ai design tokens */
+  --font-serif: 'Noto Serif KR', ui-serif, Georgia, Cambria, 'Times New Roman', Times, serif;
+  --composer-shadow: 0 0.25rem 1.25rem rgba(0, 0, 0, 0.12);
+  --bg-composer: #353432;
+  --transition-ease: 300ms cubic-bezier(0.165, 0.85, 0.45, 1);
 }
 
 [data-theme="light"] {
-  --bg-main: #f5f5f0;
-  --bg-sidebar: #e8e8e3;
+  --bg-main: #faf9f5;
+  --bg-sidebar: #f0ede3;
   --bg-surface: #ffffff;
-  --bg-hover: #ebebeb;
-  --border: #d5d5d0;
-  --border-light: #c5c5c0;
-  --text-primary: #1a1a1a;
-  --text-secondary: #555555;
-  --text-muted: #767676;
-  --accent: #b85e42;
-  --accent-hover: #a35538;
+  --bg-hover: #eae8df;
+  --border: rgba(0, 0, 0, 0.08);
+  --border-light: rgba(0, 0, 0, 0.15);
+  --text-primary: #141413;
+  --text-secondary: #6b6962;
+  --text-muted: #b0aea5;
+  --accent: #d97757;
+  --accent-hover: #c4633a;
   --warning: #d97706;
   --info: #3b82f6;
   --success-text: #059669;
   --danger-text: #dc2626;
-  --accent-soft: rgba(201, 106, 76, 0.12);
+  --accent-soft: rgba(217, 119, 87, 0.10);
 
-  --bg-code: #f0ede8;
-  --bg-code-inline: rgba(0, 0, 0, 0.06);
+  --bg-code: #f0ede3;
+  --bg-code-inline: rgba(0, 0, 0, 0.05);
   --text-code-inline: #b35d6d;
-  --bg-user-bubble: rgba(0, 0, 0, 0.05);
+  --bg-user-bubble: #DDD9CE;
   --bg-tool-result-ok: #e8f5e9;
   --text-tool-result-ok: #2e7d32;
   --bg-tool-result-err: #fbe9e7;
   --text-tool-result-err: #c62828;
-  --sidebar-bg: #eaeae5;
-  --sidebar-item-bg: #f0f0eb;
+  --sidebar-bg: #f0ede3;
+  --sidebar-item-bg: #faf9f5;
   --overlay-soft: rgba(0, 0, 0, 0.04);
   --shadow-pill: rgba(0, 0, 0, 0.08);
   --border-subtle: rgba(0, 0, 0, 0.08);
   --border-subtle-hover: rgba(0, 0, 0, 0.15);
-  --scrollbar-thumb: rgba(0, 0, 0, 0.12);
+  --scrollbar-thumb: rgba(0, 0, 0, 0.10);
+  --light-gray-divider: #e8e6dc;
+
+  --composer-shadow: 0 0.25rem 1.25rem rgba(0, 0, 0, 0.035);
+  --bg-composer: #ffffff;
 }
 
 * {
@@ -189,9 +199,9 @@ body {
   margin-bottom: 0.25em;
 }
 
-.aui-markdown h1 { font-size: 1.4em; font-weight: 600; margin: 1.5em 0 0.5em; }
-.aui-markdown h2 { font-size: 1.2em; font-weight: 600; margin: 1.25em 0 0.5em; }
-.aui-markdown h3 { font-size: 1.05em; font-weight: 600; margin: 1em 0 0.5em; }
+.aui-markdown h1 { font-size: 1.4em; font-weight: 600; margin: 1.5em 0 0.5em; font-family: 'Pretendard', -apple-system, system-ui, sans-serif; }
+.aui-markdown h2 { font-size: 1.2em; font-weight: 600; margin: 1.25em 0 0.5em; font-family: 'Pretendard', -apple-system, system-ui, sans-serif; }
+.aui-markdown h3 { font-size: 1.05em; font-weight: 600; margin: 1em 0 0.5em; font-family: 'Pretendard', -apple-system, system-ui, sans-serif; }
 .aui-markdown h1:first-child,
 .aui-markdown h2:first-child,
 .aui-markdown h3:first-child { margin-top: 0; }

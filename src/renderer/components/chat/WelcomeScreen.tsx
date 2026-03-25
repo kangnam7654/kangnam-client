@@ -153,7 +153,7 @@ export function WelcomeScreen() {
 
   return (
     <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '40px 24px' }}>
-      <div style={{ width: '100%', maxWidth: 680 }}>
+      <div style={{ width: '100%', maxWidth: 768 }}>
         {/* Starburst icon + Greeting */}
         <div style={{ marginBottom: 40, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
           <div style={{ marginBottom: 4 }}>
@@ -175,13 +175,13 @@ export function WelcomeScreen() {
         <div
           onClick={handleComposerClick}
           style={{
-            borderRadius: 24,
-            background: 'var(--bg-surface)',
+            borderRadius: 16,
+            background: 'var(--bg-composer)',
             border: `1px solid ${isFocused ? 'var(--border-subtle-hover)' : 'var(--border-subtle)'}`,
             overflow: 'hidden',
             cursor: 'text',
-            boxShadow: '0 2px 20px var(--shadow-pill)',
-            transition: 'border-color 0.2s'
+            boxShadow: 'var(--composer-shadow)',
+            transition: 'border-color var(--transition-ease)'
           }}
         >
           <input
@@ -287,11 +287,12 @@ export function WelcomeScreen() {
               onClick={(e) => { e.stopPropagation(); handleSend() }}
               disabled={!canSend}
               aria-label="Send message"
+              className="active:scale-[0.98]"
               style={{
                 width: 36, height: 36, display: 'flex', alignItems: 'center', justifyContent: 'center',
                 border: 'none',
                 background: canSend ? 'var(--accent)' : 'var(--bg-hover)',
-                borderRadius: 10,
+                borderRadius: 8,
                 cursor: canSend ? 'pointer' : 'not-allowed',
                 color: 'white',
                 opacity: canSend ? 1 : 0.4,
