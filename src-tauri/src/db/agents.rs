@@ -192,3 +192,119 @@ pub fn fail_agent_run(
     )?;
     Ok(())
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::db::schema::run_migrations;
+
+    fn setup_db() -> Connection {
+        let mut conn = Connection::open_in_memory().unwrap();
+        conn.pragma_update(None, "foreign_keys", "ON").unwrap();
+        run_migrations(&mut conn).unwrap();
+        conn
+    }
+
+    #[test]
+    fn test_create_and_list_agents() {
+        let conn = setup_db();
+        let agent = create_agent(&conn, "test-agent", "desc", "instructions", None, None, 10).unwrap();
+        assert_eq!(agent.name, "test-agent");
+        assert_eq!(agent.max_turns, 10);
+
+        let agents = list_agents(&conn).unwrap();
+        // Includes preset agents + our new one
+        assert!(agents.iter().any(|a| a.name == "test-agent"));
+    }
+
+    #[test]
+    fn test_get_agent() {
+        let conn = setup_db();
+        let agent = create_agent(&conn, "finder", "finds things", "find it", Some("gpt-4"), None, 5).unwrap();
+        let found = get_agent(&conn, &agent.id).unwrap();
+        assert_eq!(found.name, "finder");
+        assert_eq!(found.model, Some("gpt-4".to_string()));
+        assert_eq!(found.max_turns, 5);
+    }
+
+    #[test]
+    fn test_update_agent() {
+        let conn = setup_db();
+        let agent = create_agent(&conn, "old", "old desc", "old inst", None, None, 10).unwrap();
+        update_agent(&conn, &agent.id, "new", "new desc", "new inst", Some("claude"), None, 20).unwrap();
+        let updated = get_agent(&conn, &agent.id).unwrap();
+        assert_eq!(updated.name, "new");
+        assert_eq!(updated.model, Some("claude".to_string()));
+        assert_eq!(updated.max_turns, 20);
+    }
+
+    #[test]
+    fn test_delete_agent() {
+        let conn = setup_db();
+        let agent = create_agent(&conn, "temp", "temp", "temp", None, None, 10).unwrap();
+        delete_agent(&conn, &agent.id);
+        assert!(get_agent(&conn, &agent.id).is_none());
+    }
+
+    #[test]
+    fn test_agent_with_allowed_tools() {
+        let conn = setup_db();
+        let tools = Some(vec!["read".to_string(), "write".to_string()]);
+        let agent = create_agent(&conn, "limited", "desc", "inst", None, tools, 10).unwrap();
+        let found = get_agent(&conn, &agent.id).unwrap();
+        assert_eq!(found.allowed_tools, Some(vec!["read".to_string(), "write".to_string()]));
+    }
+
+    #[test]
+    fn test_agent_run_lifecycle() {
+        let conn = setup_db();
+        // Need a conversation for FK
+        conn.execute(
+            "INSERT INTO conversations (id, title, provider) VALUES ('conv-1', 'Test', 'test')",
+            [],
+        ).unwrap();
+
+        let agent = create_agent(&conn, "runner", "desc", "inst", None, None, 10).unwrap();
+        let run = create_agent_run(&conn, &agent.id, "conv-1", "do something").unwrap();
+        assert_eq!(run.status, "running");
+
+        complete_agent_run(&conn, &run.id, "done!", Some("gpt-4")).unwrap();
+        // Verify via raw query
+        let status: String = conn.query_row(
+            "SELECT status FROM agent_runs WHERE id = ?1",
+            params![run.id],
+            |row| row.get(0),
+        ).unwrap();
+        assert_eq!(status, "completed");
+    }
+
+    #[test]
+    fn test_agent_run_fail() {
+        let conn = setup_db();
+        conn.execute(
+            "INSERT INTO conversations (id, title, provider) VALUES ('conv-2', 'Test', 'test')",
+            [],
+        ).unwrap();
+
+        let agent = create_agent(&conn, "failer", "desc", "inst", None, None, 10).unwrap();
+        let run = create_agent_run(&conn, &agent.id, "conv-2", "will fail").unwrap();
+        fail_agent_run(&conn, &run.id, "something broke").unwrap();
+
+        let status: String = conn.query_row(
+            "SELECT status FROM agent_runs WHERE id = ?1",
+            params![run.id],
+            |row| row.get(0),
+        ).unwrap();
+        assert_eq!(status, "failed");
+    }
+
+    #[test]
+    fn test_preset_agents_seeded() {
+        let conn = setup_db();
+        let agents = list_agents(&conn).unwrap();
+        let names: Vec<&str> = agents.iter().map(|a| a.name.as_str()).collect();
+        assert!(names.contains(&"code-reviewer"));
+        assert!(names.contains(&"researcher"));
+        assert!(names.contains(&"translator"));
+    }
+}
