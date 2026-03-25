@@ -97,7 +97,17 @@ pub fn eval_case_bulk_add(
     state: State<'_, AppState>,
 ) -> Result<serde_json::Value, String> {
     let conn = state.db.lock().unwrap_or_else(|e| e.into_inner());
+    // Get starting sort_order once (fixes N+1 query pattern)
+    let mut sort: i64 = conn
+        .query_row(
+            "SELECT COALESCE(MAX(sort_order), -1) + 1 FROM skill_eval_cases WHERE eval_set_id = ?1",
+            params![eval_set_id],
+            |r| r.get(0),
+        )
+        .unwrap_or(0);
     let mut added = Vec::new();
+    // Wrap in transaction for atomicity
+    conn.execute_batch("BEGIN").map_err(|e| e.to_string())?;
     for case in &cases {
         let id = uuid::Uuid::new_v4().to_string();
         let prompt = case.get("prompt").and_then(|v| v.as_str()).unwrap_or("");
@@ -110,21 +120,18 @@ pub fn eval_case_bulk_add(
             .get("shouldTrigger")
             .and_then(|v| v.as_bool())
             .unwrap_or(true);
-        let sort: i64 = conn
-            .query_row(
-                "SELECT COALESCE(MAX(sort_order), -1) + 1 FROM skill_eval_cases WHERE eval_set_id = ?1",
-                params![eval_set_id],
-                |r| r.get(0),
-            )
-            .unwrap_or(0);
-        conn.execute(
+        if let Err(e) = conn.execute(
             "INSERT INTO skill_eval_cases (id, eval_set_id, prompt, expected, should_trigger, sort_order) \
              VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
             params![id, eval_set_id, prompt, expected, should_trigger as i64, sort],
-        )
-        .ok();
+        ) {
+            let _ = conn.execute_batch("ROLLBACK");
+            return Err(e.to_string());
+        }
         added.push(serde_json::json!({ "id": id }));
+        sort += 1;
     }
+    conn.execute_batch("COMMIT").map_err(|e| e.to_string())?;
     Ok(serde_json::json!(added))
 }
 

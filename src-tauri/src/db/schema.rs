@@ -217,9 +217,27 @@ pub fn run_migrations(conn: &mut Connection) -> Result<()> {
         ",
     )?;
 
+    // ── updated_at triggers ──
+
+    tx.execute_batch(
+        "
+        CREATE TRIGGER IF NOT EXISTS trg_conversations_updated
+            AFTER UPDATE ON conversations
+            BEGIN UPDATE conversations SET updated_at = strftime('%s','now') WHERE id = NEW.id; END;
+
+        CREATE TRIGGER IF NOT EXISTS trg_prompts_updated
+            AFTER UPDATE ON prompts
+            BEGIN UPDATE prompts SET updated_at = strftime('%s','now') WHERE id = NEW.id; END;
+
+        CREATE TRIGGER IF NOT EXISTS trg_agents_updated
+            AFTER UPDATE ON agents
+            BEGIN UPDATE agents SET updated_at = strftime('%s','now') WHERE id = NEW.id; END;
+        ",
+    )?;
+
     tx.commit()?;
 
-    // Seed preset skills
+    // Seed preset skills (wrapped in transaction for performance)
     seed_preset_skills(conn);
 
     // Seed preset agents
@@ -228,7 +246,7 @@ pub fn run_migrations(conn: &mut Connection) -> Result<()> {
     Ok(())
 }
 
-/// Seed preset skills from embedded JSON data
+/// Seed preset skills from embedded JSON data (wrapped in transaction for performance)
 fn seed_preset_skills(conn: &Connection) {
     let json_data = include_str!("../../data/preset-skills.json");
     let presets: Vec<serde_json::Value> = match serde_json::from_str(json_data) {
@@ -237,6 +255,7 @@ fn seed_preset_skills(conn: &Connection) {
     };
 
     let now = chrono::Utc::now().timestamp();
+    let _ = conn.execute_batch("BEGIN");
 
     for skill in &presets {
         let id = skill.get("id").and_then(|v| v.as_str()).unwrap_or("");
@@ -300,9 +319,10 @@ fn seed_preset_skills(conn: &Connection) {
             }
         }
     }
+    let _ = conn.execute_batch("COMMIT");
 }
 
-/// Seed preset agents from embedded JSON data
+/// Seed preset agents from embedded JSON data (wrapped in transaction for performance)
 fn seed_preset_agents(conn: &Connection) {
     let json_data = include_str!("../../data/preset-agents.json");
     let presets: Vec<serde_json::Value> = match serde_json::from_str(json_data) {
@@ -311,6 +331,7 @@ fn seed_preset_agents(conn: &Connection) {
     };
 
     let now = chrono::Utc::now().timestamp();
+    let _ = conn.execute_batch("BEGIN");
 
     for agent in &presets {
         let id = agent.get("id").and_then(|v| v.as_str()).unwrap_or("");
@@ -343,6 +364,7 @@ fn seed_preset_agents(conn: &Connection) {
             ).ok();
         }
     }
+    let _ = conn.execute_batch("COMMIT");
 }
 
 #[cfg(test)]

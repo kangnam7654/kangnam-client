@@ -270,3 +270,106 @@ pub fn delete_skill_reference(conn: &Connection, id: &str) {
 pub fn list_skill_references(conn: &Connection, skill_id: &str) -> Vec<SkillReference> {
     get_refs_for_skill(conn, skill_id).unwrap_or_default()
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::db::schema::run_migrations;
+
+    fn setup_db() -> rusqlite::Connection {
+        let mut conn = rusqlite::Connection::open_in_memory().unwrap();
+        conn.pragma_update(None, "foreign_keys", "ON").unwrap();
+        run_migrations(&mut conn).unwrap();
+        conn
+    }
+
+    #[test]
+    fn test_create_and_list_skills() {
+        let conn = setup_db();
+        let skill = create_skill(&conn, "test", "desc", "instructions", None, None, None).unwrap();
+        assert_eq!(skill.name, "test");
+        let skills = list_skills(&conn).unwrap();
+        assert!(skills.iter().any(|s| s.name == "test"));
+    }
+
+    #[test]
+    fn test_get_skill() {
+        let conn = setup_db();
+        let skill = create_skill(&conn, "getter", "desc", "inst", Some("hint"), Some("gpt-4"), Some(false)).unwrap();
+        let found = get_skill(&conn, &skill.id).unwrap();
+        assert_eq!(found.name, "getter");
+        assert_eq!(found.argument_hint, Some("hint".to_string()));
+        assert_eq!(found.model, Some("gpt-4".to_string()));
+        assert!(!found.user_invocable);
+    }
+
+    #[test]
+    fn test_update_skill() {
+        let conn = setup_db();
+        let skill = create_skill(&conn, "old", "old", "old", None, None, None).unwrap();
+        update_skill(&conn, &skill.id, "new", "new desc", "new inst", None, None, None);
+        let updated = get_skill(&conn, &skill.id).unwrap();
+        assert_eq!(updated.name, "new");
+        assert_eq!(updated.description, "new desc");
+    }
+
+    #[test]
+    fn test_delete_skill() {
+        let conn = setup_db();
+        let skill = create_skill(&conn, "temp", "d", "i", None, None, None).unwrap();
+        delete_skill(&conn, &skill.id);
+        assert!(get_skill(&conn, &skill.id).is_none());
+    }
+
+    #[test]
+    fn test_skill_references() {
+        let conn = setup_db();
+        let skill = create_skill(&conn, "with-refs", "d", "i", None, None, None).unwrap();
+
+        let r1 = add_skill_reference(&conn, &skill.id, "ref1", "content1").unwrap();
+        let r2 = add_skill_reference(&conn, &skill.id, "ref2", "content2").unwrap();
+
+        let refs = list_skill_references(&conn, &skill.id);
+        assert_eq!(refs.len(), 2);
+
+        update_skill_reference(&conn, &r1.id, "ref1-updated", "content1-updated");
+        let refs = list_skill_references(&conn, &skill.id);
+        assert_eq!(refs[0].name, "ref1-updated");
+
+        delete_skill_reference(&conn, &r2.id);
+        let refs = list_skill_references(&conn, &skill.id);
+        assert_eq!(refs.len(), 1);
+    }
+
+    #[test]
+    fn test_get_skill_instructions_with_refs() {
+        let conn = setup_db();
+        let skill = create_skill(&conn, "inst-test", "d", "main instructions", None, None, None).unwrap();
+        add_skill_reference(&conn, &skill.id, "API Docs", "api content here").unwrap();
+
+        let instructions = get_skill_instructions(&conn, &skill.id).unwrap();
+        assert!(instructions.contains("main instructions"));
+        assert!(instructions.contains("## API Docs"));
+        assert!(instructions.contains("api content here"));
+    }
+
+    #[test]
+    fn test_delete_skill_cascades_references() {
+        let conn = setup_db();
+        let skill = create_skill(&conn, "cascade", "d", "i", None, None, None).unwrap();
+        add_skill_reference(&conn, &skill.id, "ref", "content").unwrap();
+        delete_skill(&conn, &skill.id);
+        let refs = list_skill_references(&conn, &skill.id);
+        assert!(refs.is_empty());
+    }
+
+    #[test]
+    fn test_preset_skills_seeded() {
+        let conn = setup_db();
+        let skills = list_skills(&conn).unwrap();
+        let names: Vec<&str> = skills.iter().map(|s| s.name.as_str()).collect();
+        assert!(names.contains(&"mcp-builder"));
+        assert!(names.contains(&"pdf"));
+        assert!(names.contains(&"research"));
+    }
+}
