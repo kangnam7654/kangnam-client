@@ -266,6 +266,84 @@ const api = {
       onEvent('eval:optimize-complete', cb)
   },
 
+  // Agents
+  agents: {
+    list: () => invoke('agents_list'),
+    get: (id: string) => invoke('agents_get', { id }),
+    create: (
+      name: string,
+      description: string,
+      instructions: string,
+      model?: string,
+      allowedTools?: string[],
+      maxTurns?: number
+    ) =>
+      invoke('agents_create', {
+        name,
+        description,
+        instructions,
+        model,
+        allowedTools,
+        maxTurns
+      }),
+    update: (
+      id: string,
+      name: string,
+      description: string,
+      instructions: string,
+      model?: string,
+      allowedTools?: string[],
+      maxTurns?: number
+    ) =>
+      invoke('agents_update', {
+        id,
+        name,
+        description,
+        instructions,
+        model,
+        allowedTools,
+        maxTurns
+      }),
+    delete: (id: string) => invoke('agents_delete', { id }),
+    execute: (
+      agentId: string,
+      conversationId: string,
+      task: string,
+      provider: string,
+      model?: string
+    ) =>
+      invoke('agents_execute', {
+        agentId,
+        conversationId,
+        task,
+        provider,
+        model
+      }),
+    onRunStart: (
+      cb: EventCallback<{
+        runId: string
+        agentName: string
+        conversationId: string
+      }>
+    ) => onEvent('agent:run-start', cb),
+    onRunComplete: (
+      cb: EventCallback<{
+        runId: string
+        conversationId: string
+        result: string
+      }>
+    ) => onEvent('agent:run-complete', cb),
+    onRunError: (
+      cb: EventCallback<{
+        runId: string
+        conversationId: string
+        error: string
+      }>
+    ) => onEvent('agent:run-error', cb),
+    onStream: (cb: EventCallback<{ runId: string; chunk: string }>) =>
+      onEvent('agent:stream', cb)
+  },
+
   // Settings (Phase 1 — active)
   settings: {
     get: () => invoke('settings_get'),

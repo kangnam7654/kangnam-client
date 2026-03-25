@@ -113,6 +113,40 @@ pub fn run_migrations(conn: &mut Connection) -> Result<()> {
         ",
     )?;
 
+    // ── Agents ──
+
+    tx.execute_batch(
+        "
+        CREATE TABLE IF NOT EXISTS agents (
+            id              TEXT PRIMARY KEY,
+            name            TEXT NOT NULL,
+            description     TEXT NOT NULL DEFAULT '',
+            instructions    TEXT NOT NULL,
+            model           TEXT,
+            allowed_tools   TEXT,
+            max_turns       INTEGER NOT NULL DEFAULT 10,
+            sort_order      INTEGER NOT NULL DEFAULT 0,
+            created_at      INTEGER NOT NULL DEFAULT (strftime('%s', 'now')),
+            updated_at      INTEGER NOT NULL DEFAULT (strftime('%s', 'now'))
+        );
+
+        CREATE TABLE IF NOT EXISTS agent_runs (
+            id              TEXT PRIMARY KEY,
+            agent_id        TEXT NOT NULL REFERENCES agents(id) ON DELETE CASCADE,
+            conversation_id TEXT NOT NULL REFERENCES conversations(id) ON DELETE CASCADE,
+            task            TEXT NOT NULL,
+            result          TEXT,
+            model_used      TEXT,
+            status          TEXT NOT NULL DEFAULT 'running',
+            started_at      INTEGER NOT NULL DEFAULT (strftime('%s', 'now')),
+            completed_at    INTEGER
+        );
+
+        CREATE INDEX IF NOT EXISTS idx_agent_runs_conv
+            ON agent_runs(conversation_id);
+        ",
+    )?;
+
     // ── Eval tables ──
 
     tx.execute_batch(
@@ -185,6 +219,9 @@ pub fn run_migrations(conn: &mut Connection) -> Result<()> {
 
     // Seed preset skills
     seed_preset_skills(conn);
+
+    // Seed preset agents
+    seed_preset_agents(conn);
 
     Ok(())
 }
@@ -263,6 +300,49 @@ fn seed_preset_skills(conn: &Connection) {
     }
 }
 
+/// Seed preset agents from embedded JSON data
+fn seed_preset_agents(conn: &Connection) {
+    let json_data = include_str!("../../data/preset-agents.json");
+    let presets: Vec<serde_json::Value> = match serde_json::from_str(json_data) {
+        Ok(v) => v,
+        Err(_) => return,
+    };
+
+    let now = chrono::Utc::now().timestamp();
+
+    for agent in &presets {
+        let id = agent.get("id").and_then(|v| v.as_str()).unwrap_or("");
+        if id.is_empty() {
+            continue;
+        }
+
+        let exists: bool = conn
+            .query_row(
+                "SELECT COUNT(*) FROM agents WHERE id = ?1",
+                rusqlite::params![id],
+                |row| row.get::<_, i64>(0),
+            )
+            .unwrap_or(0)
+            > 0;
+
+        if !exists {
+            let name = agent.get("name").and_then(|v| v.as_str()).unwrap_or("");
+            let description = agent.get("description").and_then(|v| v.as_str()).unwrap_or("");
+            let instructions = agent.get("instructions").and_then(|v| v.as_str()).unwrap_or("");
+            let model = agent.get("model").and_then(|v| v.as_str());
+            let allowed_tools = agent.get("allowedTools").and_then(|v| serde_json::to_string(v).ok());
+            let max_turns = agent.get("maxTurns").and_then(|v| v.as_i64()).unwrap_or(10);
+            let sort_order = agent.get("sortOrder").and_then(|v| v.as_i64()).unwrap_or(0);
+
+            conn.execute(
+                "INSERT INTO agents (id, name, description, instructions, model, allowed_tools, max_turns, sort_order, created_at, updated_at) \
+                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10)",
+                rusqlite::params![id, name, description, instructions, model, allowed_tools, max_turns, sort_order, now, now],
+            ).ok();
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -300,5 +380,7 @@ mod tests {
         assert!(tables.contains(&"skill_eval_cases".to_string()));
         assert!(tables.contains(&"skill_eval_runs".to_string()));
         assert!(tables.contains(&"skill_eval_results".to_string()));
+        assert!(tables.contains(&"agents".to_string()));
+        assert!(tables.contains(&"agent_runs".to_string()));
     }
 }

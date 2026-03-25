@@ -54,6 +54,24 @@ export interface Prompt {
   references: SkillReference[]
 }
 
+export interface Agent {
+  id: string
+  name: string
+  description: string
+  instructions: string
+  model: string | null
+  allowedTools: string[] | null
+  maxTurns: number
+  sortOrder: number
+}
+
+export interface AgentRunStatus {
+  runId: string
+  agentName: string
+  conversationId: string
+  status: 'running' | 'completed' | 'failed'
+}
+
 export interface CoworkToolCall {
   id: string
   name: string
@@ -130,6 +148,14 @@ interface AppState {
   activePromptId: string | null
   setActivePromptId: (id: string | null) => void
 
+  // Agents
+  agents: Agent[]
+  setAgents: (agents: Agent[]) => void
+  activeAgentId: string | null
+  setActiveAgentId: (id: string | null) => void
+  agentRunStatus: AgentRunStatus | null
+  setAgentRunStatus: (status: AgentRunStatus | null) => void
+
   // Sidebar
   sidebarCollapsed: boolean
   setSidebarCollapsed: (v: boolean) => void
@@ -138,8 +164,8 @@ interface AppState {
   // Settings panel
   showSettings: boolean
   setShowSettings: (v: boolean) => void
-  settingsTab: 'providers' | 'mcp' | 'general' | 'prompts'
-  setSettingsTab: (tab: 'providers' | 'mcp' | 'general' | 'prompts') => void
+  settingsTab: 'providers' | 'mcp' | 'general' | 'prompts' | 'agents'
+  setSettingsTab: (tab: 'providers' | 'mcp' | 'general' | 'prompts' | 'agents') => void
 
   // Theme
   theme: 'light' | 'dark'
@@ -246,7 +272,15 @@ export const useAppStore = create<AppState>((set) => ({
   prompts: [],
   setPrompts: (prompts) => set({ prompts }),
   activePromptId: null,
-  setActivePromptId: (id) => set({ activePromptId: id }),
+  setActivePromptId: (id) => set({ activePromptId: id, activeAgentId: id ? null : get().activeAgentId }),
+
+  // Agents
+  agents: [],
+  setAgents: (agents) => set({ agents }),
+  activeAgentId: null,
+  setActiveAgentId: (id) => set({ activeAgentId: id, activePromptId: id ? null : get().activePromptId }),
+  agentRunStatus: null,
+  setAgentRunStatus: (status) => set({ agentRunStatus: status }),
 
   // Sidebar
   sidebarCollapsed: false,

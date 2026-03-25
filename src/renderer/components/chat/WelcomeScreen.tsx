@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
-import { useAppStore, type Prompt, type Conversation, type Message } from '../../stores/app-store'
+import { useAppStore, type Prompt, type Agent, type Conversation, type Message } from '../../stores/app-store'
 import { fileToDataUrl } from '../../lib/utils'
 import { Starburst } from '../shared/Starburst'
 import { ProviderDropdown, ModelDropdown, ThinkingToggle } from '../InputControls'
@@ -14,7 +14,8 @@ export function WelcomeScreen() {
     activeProvider, activeModel, activeReasoningEffort,
     setActiveConversationId, setConversations, setMessages,
     setIsStreaming, resetStreamingText,
-    prompts, setPrompts, activePromptId, setActivePromptId
+    prompts, setPrompts, activePromptId, setActivePromptId,
+    agents, setAgents, activeAgentId, setActiveAgentId, setAgentRunStatus
   } = useAppStore()
   const [inputValue, setInputValue] = useState('')
   const [isFocused, setIsFocused] = useState(false)
@@ -28,7 +29,8 @@ export function WelcomeScreen() {
 
   useEffect(() => {
     window.api.prompts.list().then(r => setPrompts(r as Prompt[]))
-  }, [setPrompts])
+    window.api.agents.list().then(r => setAgents(r as Agent[]))
+  }, [setPrompts, setAgents])
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files ?? [])
@@ -112,14 +114,25 @@ export function WelcomeScreen() {
     // Wait for ChatContent to mount and set up event listeners before sending
     await new Promise(resolve => requestAnimationFrame(() => setTimeout(resolve, 50)))
 
-    // Send message (with optional system prompt)
+    // Send message: agent mode or normal/skill mode
     try {
-      await window.api.chat.send(conv.id, text, activeProvider, attachmentsJson, activeModel, activeReasoningEffort, activePromptId ?? undefined)
+      if (activeAgentId) {
+        const agent = agents.find(a => a.id === activeAgentId)
+        if (agent) {
+          setAgentRunStatus({ runId: '', agentName: agent.name, conversationId: conv.id, status: 'running' })
+        }
+        await window.api.agents.execute(activeAgentId, conv.id, text, activeProvider, activeModel ?? undefined)
+        setAgentRunStatus(null)
+        setActiveAgentId(null)
+      } else {
+        await window.api.chat.send(conv.id, text, activeProvider, attachmentsJson, activeModel, activeReasoningEffort, activePromptId ?? undefined)
+        setActivePromptId(null)
+      }
     } catch (e) {
       console.error('Chat send error:', e)
       setIsStreaming(false)
+      setAgentRunStatus(null)
     }
-    setActivePromptId(null)
     } finally {
       sendingRef.current = false
     }
@@ -317,6 +330,37 @@ export function WelcomeScreen() {
                     <polyline points="14 2 14 8 20 8" />
                   </svg>
                   {prompt.name}
+                </button>
+              )
+            })}
+          </div>
+        )}
+
+        {/* Agent chips */}
+        {agents.length > 0 && (
+          <div style={{ display: 'flex', gap: 8, marginTop: 8, flexWrap: 'wrap', justifyContent: 'center' }}>
+            {agents.map(agent => {
+              const isSelected = activeAgentId === agent.id
+              return (
+                <button
+                  key={agent.id}
+                  onClick={() => setActiveAgentId(isSelected ? null : agent.id)}
+                  title={agent.description || undefined}
+                  style={{
+                    padding: '7px 14px', borderRadius: 20,
+                    border: `1px solid ${isSelected ? '#8b5cf6' : 'var(--border-subtle)'}`,
+                    background: isSelected ? 'rgba(139,92,246,0.08)' : 'transparent',
+                    color: isSelected ? '#8b5cf6' : 'var(--text-secondary)',
+                    fontSize: 13, fontWeight: isSelected ? 600 : 400,
+                    cursor: 'pointer', transition: 'all 0.15s',
+                    display: 'flex', alignItems: 'center', gap: 6
+                  }}
+                >
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: 0.7 }} aria-hidden="true">
+                    <path d="M12 2a5 5 0 015 5v3a5 5 0 01-10 0V7a5 5 0 015-5z" />
+                    <path d="M8 21h8" /><path d="M12 17v4" />
+                  </svg>
+                  {agent.name}
                 </button>
               )
             })}

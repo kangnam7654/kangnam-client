@@ -93,6 +93,13 @@ pub fn run() {
             commands::eval::eval_result_feedback,
             commands::eval::eval_ai_generate,
             commands::eval::eval_optimize_start,
+            // Agents
+            commands::agents::agents_list,
+            commands::agents::agents_get,
+            commands::agents::agents_create,
+            commands::agents::agents_update,
+            commands::agents::agents_delete,
+            commands::agents::agents_execute,
             // Cowork
             commands::cowork::cowork_start,
             commands::cowork::cowork_stop,
