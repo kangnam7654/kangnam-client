@@ -1,5 +1,4 @@
 import { useState } from 'react'
-import { useAppStore } from '../../../stores/app-store'
 import type { MCPServerStatus } from '../types'
 
 interface MCPTabProps {
@@ -21,14 +20,12 @@ export function MCPTab({ servers, newServerJson, setNewServerJson, onAdd, onRemo
   const [aiPrompt, setAiPrompt] = useState('')
   const [aiLoading, setAiLoading] = useState(false)
   const [aiError, setAiError] = useState<string | null>(null)
-  const { activeProvider, activeModel } = useAppStore()
-
   const handleAiAssist = async () => {
     if (!aiPrompt.trim()) return
     setAiLoading(true)
     setAiError(null)
     try {
-      const result = await window.api.mcp.aiAssist(aiPrompt.trim(), activeProvider, activeModel) as string
+      const result = await window.api.mcp.aiAssist(aiPrompt.trim(), '', '') as string
       setNewServerJson(result)
       setAiPrompt('')
     } catch (err) {

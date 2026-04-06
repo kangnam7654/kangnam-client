@@ -30,9 +30,9 @@ export function ChatSearchBar({ onClose }: ChatSearchBarProps) {
 
     const q = query.toLowerCase()
 
-    // Count matching messages for the counter
+    // Count matching text_delta messages for the counter
     const matchingMsgs = messages.filter(
-      m => (m.role === 'user' || m.role === 'assistant') && m.content.toLowerCase().includes(q)
+      m => m.type === 'text_delta' && m.text.toLowerCase().includes(q)
     )
     setMatchCount(matchingMsgs.length)
     setCurrentMatch(matchingMsgs.length > 0 ? 0 : -1)

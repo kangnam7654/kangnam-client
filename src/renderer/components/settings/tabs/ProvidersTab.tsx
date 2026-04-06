@@ -1,119 +1,109 @@
-import { useAppStore, type AuthStatus } from '../../../stores/app-store'
-import { ALL_PROVIDERS } from '../../../lib/providers'
+import { useEffect, useState } from 'react'
+import { cliApi, type ProviderMeta } from '../../../lib/cli-api'
+import type { CliStatus } from '../../../stores/app-store'
 
-interface ProvidersTabProps {
-  authStatuses: Array<AuthStatus>
-  connecting: string | null
-  connectError: string | null
-  copilotCode: { userCode: string; verificationUri: string } | null
-  claudeSetupToken: string
-  onConnect: (provider: string, options?: { setupToken?: string }) => void
-  onClaudeSetupTokenChange: (value: string) => void
-  onCancel: () => void
-  onDisconnect: (provider: string) => void
-}
+export function ProvidersTab() {
+  const [providers, setProviders] = useState<ProviderMeta[]>([])
+  const [statuses, setStatuses] = useState<Record<string, CliStatus>>({})
+  const [installing, setInstalling] = useState<string | null>(null)
+  const [error, setError] = useState<string | null>(null)
 
-export function ProvidersTab({
-  authStatuses,
-  connecting,
-  connectError,
-  copilotCode,
-  claudeSetupToken,
-  onConnect,
-  onClaudeSetupTokenChange,
-  onCancel,
-  onDisconnect,
-}: ProvidersTabProps) {
-  const devMode = useAppStore(s => s.devMode)
+  useEffect(() => {
+    loadProviders()
+  }, [])
+
+  const loadProviders = async () => {
+    try {
+      const metas = await cliApi.listProviders()
+      setProviders(metas)
+      const statusMap: Record<string, CliStatus> = {}
+      for (const meta of metas) {
+        statusMap[meta.name] = await cliApi.checkInstalled(meta.name)
+      }
+      setStatuses(statusMap)
+    } catch (err) {
+      console.error('Failed to load CLI providers:', err)
+    }
+  }
+
+  const handleInstall = async (provider: string) => {
+    setInstalling(provider)
+    setError(null)
+    try {
+      await cliApi.install(provider)
+      const status = await cliApi.checkInstalled(provider)
+      setStatuses((prev) => ({ ...prev, [provider]: status }))
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err))
+    } finally {
+      setInstalling(null)
+    }
+  }
 
   return (
     <div>
-      <SectionTitle>LLM Providers</SectionTitle>
-      <SectionDesc>Connect your providers via OAuth or native auth to start chatting.</SectionDesc>
+      <SectionTitle>CLI Providers</SectionTitle>
+      <SectionDesc>AI coding agent CLIs installed on your system.</SectionDesc>
 
-      {connectError && (
+      {error && (
         <div style={{ padding: '10px 14px', borderRadius: 10, background: 'rgba(239,68,68,0.1)', color: 'var(--danger)', fontSize: 13, marginBottom: 16 }}>
-          {connectError}
-        </div>
-      )}
-
-      {copilotCode && (
-        <div style={{ padding: 20, borderRadius: 12, background: 'var(--bg-surface)', border: '1px solid var(--accent)', marginBottom: 16 }}>
-          <p style={{ fontSize: 14, fontWeight: 500, color: 'var(--text-primary)', marginBottom: 12 }}>Enter this code on GitHub:</p>
-          <div style={{ fontSize: 28, fontFamily: 'monospace', fontWeight: 700, textAlign: 'center', padding: '12px 0', letterSpacing: '0.15em', color: 'var(--accent)' }}>
-            {copilotCode.userCode}
-          </div>
-          <p style={{ fontSize: 12, color: 'var(--text-muted)', textAlign: 'center', marginTop: 8 }}>
-            A browser window should have opened. If not, visit github.com/login/device
-          </p>
+          {error}
         </div>
       )}
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-        {authStatuses.map(status => {
-          const info = ALL_PROVIDERS.find(p => p.name === status.provider)
-          if (!info) return null
-          if (info.devOnly && !devMode) return null
-          const isConnecting = connecting === status.provider
-          const isClaude = status.provider === 'claude'
+        {providers.map(meta => {
+          const status = statuses[meta.name]
+          const isInstalling = installing === meta.name
+          const installed = status?.installed ?? false
+
           return (
-            <div key={status.provider} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, padding: '14px 16px', borderRadius: 12, background: 'var(--bg-surface)', border: '1px solid var(--border)' }}>
+            <div
+              key={meta.name}
+              style={{
+                display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16,
+                padding: '14px 16px', borderRadius: 12,
+                background: 'var(--bg-surface)', border: '1px solid var(--border)'
+              }}
+            >
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                  <span style={{ width: 8, height: 8, borderRadius: '50%', background: status.connected ? 'var(--success)' : info.color, flexShrink: 0 }} />
-                  <span style={{ fontSize: 14, fontWeight: 500, color: 'var(--text-primary)' }}>{info.label}</span>
-                  {status.connected && (
-                    <span style={{ fontSize: 11, color: 'var(--success)', fontWeight: 500, padding: '2px 8px', borderRadius: 6, background: 'rgba(16,185,129,0.1)' }}>Connected</span>
+                  <span style={{ width: 8, height: 8, borderRadius: '50%', background: installed ? 'var(--success)' : 'var(--text-muted)', flexShrink: 0 }} />
+                  <span style={{ fontSize: 14, fontWeight: 500, color: 'var(--text-primary)' }}>{meta.display_name}</span>
+                  {installed && (
+                    <span style={{ fontSize: 11, color: 'var(--success)', fontWeight: 500, padding: '2px 8px', borderRadius: 6, background: 'rgba(16,185,129,0.1)' }}>
+                      v{status?.version ?? '?'}
+                    </span>
                   )}
                 </div>
-                <p style={{ fontSize: 12.5, color: 'var(--text-muted)', marginLeft: 18, marginTop: 3 }}>{info.description}</p>
-                {isClaude && !status.connected && (
-                  <div style={{ marginLeft: 18, marginTop: 12 }}>
-                    <input
-                      type="password"
-                      value={claudeSetupToken}
-                      onChange={(event) => onClaudeSetupTokenChange(event.target.value)}
-                      placeholder="Leave empty to auto-detect from Claude Code"
-                      autoCapitalize="off"
-                      autoCorrect="off"
-                      spellCheck={false}
-                      style={{
-                        width: '100%',
-                        maxWidth: 360,
-                        padding: '10px 12px',
-                        borderRadius: 9,
-                        border: '1px solid var(--border)',
-                        background: 'rgba(255,255,255,0.03)',
-                        color: 'var(--text-primary)',
-                        fontSize: 12.5
-                      }}
-                    />
-                    <p style={{ fontSize: 11.5, color: 'var(--text-muted)', marginTop: 7 }}>
-                      Auto-detects from Claude Code keychain, or paste <code>setup-token</code> / API key
-                    </p>
-                  </div>
+                <p style={{ fontSize: 12.5, color: 'var(--text-muted)', marginLeft: 18, marginTop: 3 }}>{meta.description}</p>
+                {!installed && (
+                  <p style={{ fontSize: 11.5, color: 'var(--text-muted)', marginLeft: 18, marginTop: 4, fontFamily: 'monospace' }}>
+                    {meta.install_hint}
+                  </p>
+                )}
+                {installed && status?.path && (
+                  <p style={{ fontSize: 11.5, color: 'var(--text-muted)', marginLeft: 18, marginTop: 2, fontFamily: 'monospace' }}>
+                    {status.path}
+                  </p>
                 )}
               </div>
-              <button
-                onClick={() => {
-                  if (isConnecting) { onCancel() }
-                  else if (status.connected) { onDisconnect(status.provider) }
-                  else if (isClaude) { onConnect(status.provider, { setupToken: claudeSetupToken }) }
-                  else { onConnect(status.provider) }
-                }}
-                style={{
-                  padding: '7px 16px', borderRadius: 8, border: 'none', fontSize: 13, fontWeight: 500, cursor: 'pointer', transition: 'all 0.15s', flexShrink: 0,
-                  ...(isConnecting
-                    ? { background: 'rgba(239,68,68,0.1)', color: 'var(--danger)' }
-                    : status.connected
-                      ? { background: 'rgba(239,68,68,0.1)', color: 'var(--danger)' }
-                      : { background: 'var(--accent)', color: 'white' }
-                  )
-                }}
-                className={isConnecting ? 'hover:bg-[rgba(239,68,68,0.2)]' : status.connected ? 'hover:bg-[rgba(239,68,68,0.2)]' : 'hover:opacity-85'}
-              >
-                {isConnecting ? 'Cancel' : status.connected ? 'Disconnect' : 'Connect'}
-              </button>
+              {!installed && (
+                <button
+                  onClick={() => handleInstall(meta.name)}
+                  disabled={isInstalling}
+                  style={{
+                    padding: '7px 16px', borderRadius: 8, border: 'none',
+                    fontSize: 13, fontWeight: 500, cursor: isInstalling ? 'wait' : 'pointer',
+                    transition: 'all 0.15s', flexShrink: 0,
+                    background: 'var(--accent)', color: 'white',
+                    opacity: isInstalling ? 0.6 : 1
+                  }}
+                  className="hover:opacity-85"
+                >
+                  {isInstalling ? 'Installing…' : 'Install'}
+                </button>
+              )}
             </div>
           )
         })}

@@ -200,7 +200,10 @@ function SectionDesc({ children }: { children: React.ReactNode }) {
 }
 
 export function PromptsTab() {
-  const { prompts, setPrompts, activeProvider, activeModel, setEvalSelectedSkillId, setShowEval } = useAppStore()
+  const { prompts, setPrompts } = useAppStore()
+  // Provider/model not used in CLI mode — AI assist features are disabled
+  const activeProvider = ''
+  const activeModel = ''
   const [editing, setEditing] = useState<EditingSkill | null>(null)
   const [aiLoading, setAiLoading] = useState<string | null>(null) // 'generate' | 'improve' | 'ref' | 'grade' | 'compare' | 'analyze' | null
   const [aiError, setAiError] = useState<string | null>(null)
@@ -1050,8 +1053,8 @@ export function PromptsTab() {
               <div style={{ display: 'flex', gap: 2, flexShrink: 0 }} onClick={e => e.stopPropagation()}>
                 <button
                   onClick={() => {
-                    setEvalSelectedSkillId(prompt.id)
-                    setShowEval(true)
+                    // Eval feature removed in CLI wrapper
+                    console.log('Eval not available in CLI mode:', prompt.id)
                   }}
                   title="Eval"
                   style={{

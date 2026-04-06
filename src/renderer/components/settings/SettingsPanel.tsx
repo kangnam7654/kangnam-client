@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useAppStore, type AuthStatus } from '../../stores/app-store'
+import { useAppStore } from '../../stores/app-store'
 import type { MCPServerStatus } from './types'
 import { ProvidersTab } from './tabs/ProvidersTab'
 import { MCPTab } from './tabs/MCPTab'
@@ -18,13 +18,9 @@ const TABS = [
 type TabId = typeof TABS[number]['id']
 
 export function SettingsPanel() {
-  const { showSettings, setShowSettings, settingsTab, setSettingsTab, authStatuses, setAuthStatuses } = useAppStore()
+  const { showSettings, setShowSettings, settingsTab, setSettingsTab } = useAppStore()
   const [mcpServers, setMcpServers] = useState<MCPServerStatus[]>([])
   const [newServerJson, setNewServerJson] = useState('')
-  const [connecting, setConnecting] = useState<string | null>(null)
-  const [copilotCode, setCopilotCode] = useState<{ userCode: string; verificationUri: string } | null>(null)
-  const [connectError, setConnectError] = useState<string | null>(null)
-  const [claudeSetupToken, setClaudeSetupToken] = useState('')
 
   useEffect(() => {
     if (showSettings) loadData()
@@ -39,47 +35,12 @@ export function SettingsPanel() {
     return () => document.removeEventListener('keydown', handleKeyDown)
   }, [showSettings, setShowSettings])
 
-  useEffect(() => {
-    const unsub = window.api.auth.onCopilotDeviceCode((data) => setCopilotCode(data))
-    return () => { unsub() }
-  }, [])
-
-  useEffect(() => {
-    const unsub = window.api.auth.onConnected(async (provider) => {
-      setConnecting(null)
-      setCopilotCode(null)
-      setConnectError(null)
-      if (provider === 'claude') {
-        setClaudeSetupToken('')
-      }
-      const statuses = await window.api.auth.status() as AuthStatus[]
-      setAuthStatuses(statuses)
-    })
-    return () => { unsub() }
-  }, [setAuthStatuses])
-
   const loadData = async () => {
     try {
-      const statuses = await window.api.auth.status() as AuthStatus[]
-      setAuthStatuses(statuses)
       const servers = await window.api.mcp.serverStatus() as MCPServerStatus[]
       setMcpServers(servers)
     } catch (err) {
       console.error('Failed to load settings data:', err)
-    }
-  }
-
-  const handleConnect = async (provider: string, options?: { setupToken?: string }) => {
-    setConnecting(provider)
-    setConnectError(null)
-    setCopilotCode(null)
-    try {
-      await window.api.auth.connect(provider, options)
-      await loadData()
-    } catch (err) {
-      setConnectError(err instanceof Error ? err.message : String(err))
-    } finally {
-      setConnecting(null)
     }
   }
 
@@ -154,17 +115,7 @@ export function SettingsPanel() {
 
           {/* Right content */}
           <div style={{ flex: 1, padding: '24px 28px', overflowY: 'auto' }}>
-            {settingsTab === 'providers' && <ProvidersTab
-              authStatuses={authStatuses}
-              connecting={connecting}
-              connectError={connectError}
-              copilotCode={copilotCode}
-              claudeSetupToken={claudeSetupToken}
-              onConnect={handleConnect}
-              onClaudeSetupTokenChange={setClaudeSetupToken}
-              onCancel={() => { setConnecting(null); setCopilotCode(null) }}
-              onDisconnect={async (provider) => { await window.api.auth.disconnect(provider); await loadData() }}
-            />}
+            {settingsTab === 'providers' && <ProvidersTab />}
             {settingsTab === 'mcp' && <MCPTab
               servers={mcpServers}
               newServerJson={newServerJson}
