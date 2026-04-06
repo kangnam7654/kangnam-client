@@ -1,11 +1,5 @@
 import { create } from 'zustand'
 
-export interface AuthStatus {
-  provider: string
-  connected: boolean
-  expiresAt: number | null
-}
-
 export interface Conversation {
   id: string
   title: string
@@ -65,74 +59,50 @@ export interface Agent {
   sortOrder: number
 }
 
-export interface AgentRunStatus {
-  runId: string
-  agentName: string
-  conversationId: string
-  status: 'running' | 'completed' | 'failed'
+export interface CliStatus {
+  provider: string
+  installed: boolean
+  version: string | null
+  path: string | null
+  authenticated: boolean
 }
 
-export interface CoworkToolCall {
-  id: string
-  name: string
-  input: Record<string, unknown>
-  status: 'running' | 'success' | 'error'
-  result?: string
-}
-
-export interface CoworkStep {
-  text: string
-  status: 'pending' | 'in_progress' | 'completed' | 'error'
-}
+export type UnifiedMessage =
+  | { type: 'text_delta'; text: string }
+  | { type: 'tool_use_start'; id: string; name: string; input: unknown }
+  | { type: 'tool_result'; id: string; output: string; is_error: boolean }
+  | { type: 'permission_request'; id: string; tool: string; description: string; diff?: string }
+  | { type: 'agent_start'; id: string; name: string; description: string }
+  | { type: 'agent_progress'; id: string; message: string }
+  | { type: 'agent_end'; id: string; result: string }
+  | { type: 'skill_invoked'; name: string; args?: string }
+  | { type: 'turn_end'; usage?: { input_tokens: number; output_tokens: number } }
+  | { type: 'error'; message: string }
+  | { type: 'session_init'; session_id: string }
 
 interface AppState {
-  // Auth
-  authStatuses: AuthStatus[]
-  setAuthStatuses: (statuses: AuthStatus[]) => void
+  // CLI
+  cliStatuses: CliStatus[]
+  setCliStatuses: (statuses: CliStatus[]) => void
+  currentSessionId: string | null
+  setCurrentSessionId: (id: string | null) => void
+  currentProvider: string | null
+  setCurrentProvider: (provider: string | null) => void
+  setupComplete: boolean
+  setSetupComplete: (complete: boolean) => void
 
-  // Provider + Model
-  activeProvider: string
-  setActiveProvider: (provider: string) => void
-  activeModel: string
-  setActiveModel: (model: string) => void
-  activeReasoningEffort: 'low' | 'medium' | 'high'
-  setActiveReasoningEffort: (effort: 'low' | 'medium' | 'high') => void
-
-  // View mode
-  activeView: 'chat' | 'cowork'
-  setActiveView: (view: 'chat' | 'cowork') => void
+  // Streaming CLI messages
+  messages: UnifiedMessage[]
+  addMessage: (msg: UnifiedMessage) => void
+  clearMessages: () => void
+  pendingPermission: UnifiedMessage | null
+  setPendingPermission: (msg: UnifiedMessage | null) => void
 
   // Conversations
   conversations: Conversation[]
   setConversations: (convs: Conversation[]) => void
   activeConversationId: string | null
   setActiveConversationId: (id: string | null) => void
-
-  // Messages
-  messages: Message[]
-  setMessages: (msgs: Message[]) => void
-
-  // Streaming
-  isStreaming: boolean
-  setIsStreaming: (v: boolean) => void
-  streamingText: string
-  appendStreamingText: (text: string) => void
-  resetStreamingText: () => void
-  thinkingText: string
-  appendThinkingText: (text: string) => void
-  resetThinkingText: () => void
-  chatError: string | null
-  setChatError: (err: string | null) => void
-  contextUsage: { used: number; max: number } | null
-  setContextUsage: (usage: { used: number; max: number } | null) => void
-
-  // Tool call log (accumulated during streaming turn)
-  activeToolCall: { name: string; args: unknown } | null
-  setActiveToolCall: (tc: { name: string; args: unknown } | null) => void
-  toolCallLog: Array<{ name: string; args: unknown; status: 'running' | 'done' }>
-  pushToolCall: (tc: { name: string; args: unknown }) => void
-  markLastToolDone: () => void
-  clearToolCallLog: () => void
 
   // Pending attachments (for passing from Composer to onNew)
   pendingAttachments: AttachmentData[]
@@ -153,8 +123,6 @@ interface AppState {
   setAgents: (agents: Agent[]) => void
   activeAgentId: string | null
   setActiveAgentId: (id: string | null) => void
-  agentRunStatus: AgentRunStatus | null
-  setAgentRunStatus: (status: AgentRunStatus | null) => void
 
   // Sidebar
   sidebarCollapsed: boolean
@@ -175,90 +143,31 @@ interface AppState {
   devMode: boolean
   setDevMode: (v: boolean) => void
   toggleDevMode: () => void
-
-  // Eval state
-  showEval: boolean
-  setShowEval: (v: boolean) => void
-  evalSelectedSkillId: string | null
-  setEvalSelectedSkillId: (id: string | null) => void
-  evalActiveTab: 'editor' | 'history' | 'optimize'
-  setEvalActiveTab: (tab: 'editor' | 'history' | 'optimize') => void
-  evalActiveRunId: string | null
-  setEvalActiveRunId: (id: string | null) => void
-  evalIsRunning: boolean
-  setEvalIsRunning: (v: boolean) => void
-  evalProgress: { caseIndex: number; totalCases: number } | null
-  setEvalProgress: (p: { caseIndex: number; totalCases: number } | null) => void
-
-  // Cowork state
-  coworkIsRunning: boolean
-  setCoworkIsRunning: (v: boolean) => void
-  coworkStreamText: string
-  appendCoworkStreamText: (text: string) => void
-  resetCoworkStreamText: () => void
-  coworkSteps: CoworkStep[]
-  setCoworkSteps: (steps: CoworkStep[]) => void
-  updateCoworkStep: (index: number, update: Partial<CoworkStep>) => void
-  coworkToolCalls: CoworkToolCall[]
-  addCoworkToolCall: (tc: CoworkToolCall) => void
-  updateCoworkToolCall: (id: string, update: Partial<CoworkToolCall>) => void
-  resetCoworkState: () => void
 }
 
 export const useAppStore = create<AppState>((set, get) => ({
-  // Auth
-  authStatuses: [],
-  setAuthStatuses: (statuses) => set({ authStatuses: statuses }),
+  // CLI
+  cliStatuses: [],
+  setCliStatuses: (statuses) => set({ cliStatuses: statuses }),
+  currentSessionId: null,
+  setCurrentSessionId: (id) => set({ currentSessionId: id }),
+  currentProvider: null,
+  setCurrentProvider: (provider) => set({ currentProvider: provider }),
+  setupComplete: false,
+  setSetupComplete: (complete) => set({ setupComplete: complete }),
 
-  // Provider + Model
-  activeProvider: 'codex',
-  setActiveProvider: (provider) => set({ activeProvider: provider }),
-  activeModel: 'gpt-5.4',
-  setActiveModel: (model) => set({ activeModel: model }),
-  activeReasoningEffort: 'high',
-  setActiveReasoningEffort: (effort) => set({ activeReasoningEffort: effort }),
-
-  // View mode
-  activeView: 'chat',
-  setActiveView: (view) => set({ activeView: view }),
+  // Streaming CLI messages
+  messages: [],
+  addMessage: (msg) => set((s) => ({ messages: [...s.messages, msg] })),
+  clearMessages: () => set({ messages: [] }),
+  pendingPermission: null,
+  setPendingPermission: (msg) => set({ pendingPermission: msg }),
 
   // Conversations
   conversations: [],
   setConversations: (convs) => set({ conversations: convs }),
   activeConversationId: null,
   setActiveConversationId: (id) => set({ activeConversationId: id }),
-
-  // Messages
-  messages: [],
-  setMessages: (msgs) => set({ messages: msgs }),
-
-  // Streaming
-  isStreaming: false,
-  setIsStreaming: (v) => set({ isStreaming: v }),
-  streamingText: '',
-  appendStreamingText: (text) => set((s) => ({ streamingText: s.streamingText + text })),
-  resetStreamingText: () => set({ streamingText: '' }),
-  thinkingText: '',
-  appendThinkingText: (text) => set((s) => ({ thinkingText: s.thinkingText + text })),
-  resetThinkingText: () => set({ thinkingText: '' }),
-  chatError: null,
-  setChatError: (err) => set({ chatError: err }),
-  contextUsage: null,
-  setContextUsage: (usage) => set({ contextUsage: usage }),
-
-  // Tool call log
-  activeToolCall: null,
-  setActiveToolCall: (tc) => set({ activeToolCall: tc }),
-  toolCallLog: [],
-  pushToolCall: (tc) => set((s) => {
-    // Mark any running tool as done before adding new one
-    const updated = s.toolCallLog.map(t => t.status === 'running' ? { ...t, status: 'done' as const } : t)
-    return { toolCallLog: [...updated, { name: tc.name, args: tc.args, status: 'running' }] }
-  }),
-  markLastToolDone: () => set((s) => ({
-    toolCallLog: s.toolCallLog.map(t => t.status === 'running' ? { ...t, status: 'done' as const } : t)
-  })),
-  clearToolCallLog: () => set({ toolCallLog: [] }),
 
   // Pending attachments
   pendingAttachments: [],
@@ -279,8 +188,6 @@ export const useAppStore = create<AppState>((set, get) => ({
   setAgents: (agents) => set({ agents }),
   activeAgentId: null,
   setActiveAgentId: (id) => set({ activeAgentId: id, activePromptId: id ? null : get().activePromptId }),
-  agentRunStatus: null,
-  setAgentRunStatus: (status) => set({ agentRunStatus: status }),
 
   // Sidebar
   sidebarCollapsed: false,
@@ -311,43 +218,4 @@ export const useAppStore = create<AppState>((set, get) => ({
     localStorage.setItem('kangnam-dev-mode', next ? 'true' : 'false')
     return { devMode: next }
   }),
-
-  // Eval
-  showEval: false,
-  setShowEval: (v) => set({ showEval: v }),
-  evalSelectedSkillId: null,
-  setEvalSelectedSkillId: (id) => set({ evalSelectedSkillId: id }),
-  evalActiveTab: 'editor',
-  setEvalActiveTab: (tab) => set({ evalActiveTab: tab }),
-  evalActiveRunId: null,
-  setEvalActiveRunId: (id) => set({ evalActiveRunId: id }),
-  evalIsRunning: false,
-  setEvalIsRunning: (v) => set({ evalIsRunning: v }),
-  evalProgress: null,
-  setEvalProgress: (p) => set({ evalProgress: p }),
-
-  // Cowork
-  coworkIsRunning: false,
-  setCoworkIsRunning: (v) => set({ coworkIsRunning: v }),
-  coworkStreamText: '',
-  appendCoworkStreamText: (text) => set((s) => ({ coworkStreamText: s.coworkStreamText + text })),
-  resetCoworkStreamText: () => set({ coworkStreamText: '' }),
-  coworkSteps: [],
-  setCoworkSteps: (steps) => set({ coworkSteps: steps }),
-  updateCoworkStep: (index, update) => set((s) => {
-    const steps = [...s.coworkSteps]
-    if (steps[index]) steps[index] = { ...steps[index], ...update }
-    return { coworkSteps: steps }
-  }),
-  coworkToolCalls: [],
-  addCoworkToolCall: (tc) => set((s) => ({ coworkToolCalls: [...s.coworkToolCalls, tc] })),
-  updateCoworkToolCall: (id, update) => set((s) => ({
-    coworkToolCalls: s.coworkToolCalls.map(tc => tc.id === id ? { ...tc, ...update } : tc)
-  })),
-  resetCoworkState: () => set({
-    coworkIsRunning: false,
-    coworkStreamText: '',
-    coworkSteps: [],
-    coworkToolCalls: []
-  })
 }))
