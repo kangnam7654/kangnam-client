@@ -1,0 +1,208 @@
+<h2>Setup Wizard & Safety UI</h2>
+<p class="subtitle">비개발자 핵심 UX — 설치 가이드 + 위험 작업 확인</p>
+
+<!-- Setup Wizard -->
+<h3>Setup Wizard</h3>
+<p class="subtitle">앱 첫 실행 시 CLI 설치와 인증을 단계별로 안내</p>
+
+<div class="mockup">
+  <div class="mockup-header">Setup Wizard — Step 1: CLI 설치 상태 감지</div>
+  <div class="mockup-body" style="padding: 0; overflow: hidden;">
+    <div style="background: #1a1b26; padding: 32px; min-height: 320px; display: flex; flex-direction: column; align-items: center;">
+
+      <!-- Progress steps -->
+      <div style="display: flex; gap: 0; align-items: center; margin-bottom: 40px;">
+        <div style="width: 32px; height: 32px; border-radius: 50%; background: #7aa2f7; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 13px; color: #1a1b26;">1</div>
+        <div style="width: 60px; height: 2px; background: rgba(255,255,255,0.15);"></div>
+        <div style="width: 32px; height: 32px; border-radius: 50%; background: rgba(255,255,255,0.1); display: flex; align-items: center; justify-content: center; font-size: 13px; color: #565f89;">2</div>
+        <div style="width: 60px; height: 2px; background: rgba(255,255,255,0.15);"></div>
+        <div style="width: 32px; height: 32px; border-radius: 50%; background: rgba(255,255,255,0.1); display: flex; align-items: center; justify-content: center; font-size: 13px; color: #565f89;">3</div>
+      </div>
+
+      <div style="font-size: 18px; color: #c0caf5; font-weight: bold; margin-bottom: 8px;">사용할 AI 도구를 선택하세요</div>
+      <div style="font-size: 13px; color: #565f89; margin-bottom: 32px;">설치되지 않은 도구는 설치를 도와드립니다</div>
+
+      <!-- CLI cards -->
+      <div style="display: flex; gap: 16px; width: 100%; max-width: 500px;">
+
+        <!-- Claude Code - installed -->
+        <div style="flex: 1; background: rgba(158,206,106,0.08); border: 2px solid rgba(158,206,106,0.3); border-radius: 12px; padding: 20px; text-align: center; cursor: pointer;">
+          <div style="font-size: 28px; margin-bottom: 8px;">&#9672;</div>
+          <div style="font-weight: bold; color: #c0caf5; margin-bottom: 4px;">Claude Code</div>
+          <div style="font-size: 11px; color: #9ece6a; margin-bottom: 8px;">v1.0.12 설치됨</div>
+          <div style="background: #9ece6a; color: #1a1b26; padding: 4px 12px; border-radius: 6px; font-size: 11px; font-weight: bold; display: inline-block;">선택됨 &#10003;</div>
+        </div>
+
+        <!-- Codex - not installed -->
+        <div style="flex: 1; background: rgba(255,255,255,0.03); border: 2px solid rgba(255,255,255,0.1); border-radius: 12px; padding: 20px; text-align: center; cursor: pointer;">
+          <div style="font-size: 28px; margin-bottom: 8px;">&#9671;</div>
+          <div style="font-weight: bold; color: #c0caf5; margin-bottom: 4px;">Codex CLI</div>
+          <div style="font-size: 11px; color: #e0af68; margin-bottom: 8px;">설치 필요</div>
+          <div style="background: rgba(255,255,255,0.08); color: #c0caf5; padding: 4px 12px; border-radius: 6px; font-size: 11px; display: inline-block;">설치하기</div>
+        </div>
+      </div>
+
+      <div style="margin-top: 32px;">
+        <div style="background: #7aa2f7; color: #1a1b26; padding: 10px 32px; border-radius: 8px; font-weight: bold; font-size: 14px; cursor: pointer;">다음</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="mockup" style="margin-top: 16px;">
+  <div class="mockup-header">Setup Wizard — Step 2: CLI 설치 진행</div>
+  <div class="mockup-body" style="padding: 0; overflow: hidden;">
+    <div style="background: #1a1b26; padding: 32px; display: flex; flex-direction: column; align-items: center;">
+
+      <div style="font-size: 18px; color: #c0caf5; font-weight: bold; margin-bottom: 8px;">Codex CLI 설치 중...</div>
+      <div style="font-size: 13px; color: #565f89; margin-bottom: 24px;">터미널 명령을 자동으로 실행합니다</div>
+
+      <!-- Terminal output -->
+      <div style="width: 100%; max-width: 480px; background: #16161e; border-radius: 8px; padding: 16px; font-family: monospace; font-size: 12px; line-height: 1.8;">
+        <div style="color: #565f89;">$ npm install -g @openai/codex</div>
+        <div style="color: #9ece6a;">added 142 packages in 8s</div>
+        <div style="color: #565f89;">$ codex --version</div>
+        <div style="color: #c0caf5;">0.1.2</div>
+        <div style="color: #9ece6a; margin-top: 8px;">&#10003; 설치 완료</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="mockup" style="margin-top: 16px;">
+  <div class="mockup-header">Setup Wizard — Step 3: 로그인</div>
+  <div class="mockup-body" style="padding: 0; overflow: hidden;">
+    <div style="background: #1a1b26; padding: 32px; display: flex; flex-direction: column; align-items: center;">
+
+      <div style="font-size: 18px; color: #c0caf5; font-weight: bold; margin-bottom: 8px;">로그인</div>
+      <div style="font-size: 13px; color: #565f89; margin-bottom: 24px;">각 도구에 로그인하세요. 기존 구독을 사용합니다.</div>
+
+      <div style="width: 100%; max-width: 400px; display: flex; flex-direction: column; gap: 12px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; background: rgba(158,206,106,0.08); border: 1px solid rgba(158,206,106,0.2); border-radius: 8px; padding: 14px 16px;">
+          <div>
+            <div style="font-weight: bold; color: #c0caf5; font-size: 13px;">Claude Code</div>
+            <div style="font-size: 11px; color: #9ece6a;">연결됨</div>
+          </div>
+          <div style="color: #9ece6a; font-size: 18px;">&#10003;</div>
+        </div>
+
+        <div style="display: flex; justify-content: space-between; align-items: center; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; padding: 14px 16px;">
+          <div>
+            <div style="font-weight: bold; color: #c0caf5; font-size: 13px;">Codex CLI</div>
+            <div style="font-size: 11px; color: #565f89;">로그인 필요</div>
+          </div>
+          <div style="background: #7aa2f7; color: #1a1b26; padding: 6px 16px; border-radius: 6px; font-size: 12px; font-weight: bold; cursor: pointer;">로그인</div>
+        </div>
+      </div>
+
+      <div style="margin-top: 32px;">
+        <div style="background: #7aa2f7; color: #1a1b26; padding: 10px 32px; border-radius: 8px; font-weight: bold; font-size: 14px; cursor: pointer;">시작하기</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Safety UI -->
+<h3 style="margin-top: 40px;">Safety Confirm Dialog</h3>
+<p class="subtitle">파일 수정, 명령 실행 등 위험 작업 전 시각적 확인</p>
+
+<div class="split">
+  <div class="mockup">
+    <div class="mockup-header">파일 변경 확인</div>
+    <div class="mockup-body" style="padding: 0; overflow: hidden;">
+      <div style="background: #1a1b26; padding: 24px;">
+
+        <!-- Overlay dialog -->
+        <div style="background: #24283b; border: 1px solid rgba(255,255,255,0.15); border-radius: 12px; padding: 24px; box-shadow: 0 12px 40px rgba(0,0,0,0.5);">
+          <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 16px;">
+            <div style="font-size: 20px;">&#9888;</div>
+            <div style="font-size: 15px; font-weight: bold; color: #e0af68;">파일 수정 요청</div>
+          </div>
+
+          <div style="font-size: 13px; color: #c0caf5; margin-bottom: 16px;">
+            Claude Code가 다음 파일을 수정하려 합니다:
+          </div>
+
+          <!-- Diff preview -->
+          <div style="background: #16161e; border-radius: 8px; padding: 12px; font-family: monospace; font-size: 11px; margin-bottom: 16px; line-height: 1.7;">
+            <div style="color: #565f89; margin-bottom: 8px;">src/main.rs</div>
+            <div style="color: #f7768e;">- fn old_function() {</div>
+            <div style="color: #9ece6a;">+ fn new_function() {</div>
+            <div style="color: #565f89;">    // ...</div>
+          </div>
+
+          <div style="display: flex; gap: 8px; justify-content: flex-end;">
+            <div style="background: rgba(255,255,255,0.08); color: #c0caf5; padding: 8px 20px; border-radius: 6px; font-size: 13px; cursor: pointer;">거부</div>
+            <div style="background: #9ece6a; color: #1a1b26; padding: 8px 20px; border-radius: 6px; font-size: 13px; font-weight: bold; cursor: pointer;">허용</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="mockup">
+    <div class="mockup-header">명령 실행 확인</div>
+    <div class="mockup-body" style="padding: 0; overflow: hidden;">
+      <div style="background: #1a1b26; padding: 24px;">
+
+        <div style="background: #24283b; border: 1px solid rgba(255,255,255,0.15); border-radius: 12px; padding: 24px; box-shadow: 0 12px 40px rgba(0,0,0,0.5);">
+          <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 16px;">
+            <div style="font-size: 20px;">&#9888;</div>
+            <div style="font-size: 15px; font-weight: bold; color: #f7768e;">명령 실행 요청</div>
+          </div>
+
+          <div style="font-size: 13px; color: #c0caf5; margin-bottom: 16px;">
+            Codex가 터미널 명령을 실행하려 합니다:
+          </div>
+
+          <div style="background: #16161e; border-radius: 8px; padding: 12px; font-family: monospace; font-size: 12px; margin-bottom: 12px;">
+            <span style="color: #e0af68;">$</span> <span style="color: #c0caf5;">npm install express</span>
+          </div>
+
+          <div style="background: rgba(247,118,142,0.08); border: 1px solid rgba(247,118,142,0.2); border-radius: 6px; padding: 10px; font-size: 11px; color: #f7768e; margin-bottom: 16px;">
+            이 명령은 시스템에 패키지를 설치합니다.
+          </div>
+
+          <div style="display: flex; gap: 8px; justify-content: flex-end;">
+            <div style="background: rgba(255,255,255,0.08); color: #c0caf5; padding: 8px 20px; border-radius: 6px; font-size: 13px; cursor: pointer;">거부</div>
+            <div style="background: #e0af68; color: #1a1b26; padding: 8px 20px; border-radius: 6px; font-size: 13px; font-weight: bold; cursor: pointer;">허용</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Working directory selector -->
+<h3 style="margin-top: 32px;">작업 디렉토리 선택</h3>
+<p class="subtitle">비개발자가 "어디서 작업할지" 쉽게 선택</p>
+
+<div class="mockup">
+  <div class="mockup-header">새 대화 시작 시 — 작업 폴더 선택</div>
+  <div class="mockup-body" style="padding: 0; overflow: hidden;">
+    <div style="background: #1a1b26; padding: 24px; display: flex; flex-direction: column; align-items: center;">
+      <div style="font-size: 16px; color: #c0caf5; font-weight: bold; margin-bottom: 16px;">작업할 폴더를 선택하세요</div>
+      <div style="font-size: 12px; color: #565f89; margin-bottom: 20px;">AI가 이 폴더 안에서 파일을 읽고 수정합니다</div>
+
+      <div style="width: 100%; max-width: 400px; display: flex; flex-direction: column; gap: 8px;">
+        <div style="display: flex; align-items: center; gap: 10px; background: rgba(122,162,247,0.1); border: 1px solid rgba(122,162,247,0.2); border-radius: 8px; padding: 12px; cursor: pointer;">
+          <span style="font-size: 18px;">&#128193;</span>
+          <div>
+            <div style="color: #c0caf5; font-size: 13px; font-weight: bold;">최근: my-project</div>
+            <div style="color: #565f89; font-size: 11px;">~/projects/my-project</div>
+          </div>
+        </div>
+        <div style="display: flex; align-items: center; gap: 10px; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; padding: 12px; cursor: pointer;">
+          <span style="font-size: 18px;">&#128193;</span>
+          <div>
+            <div style="color: #c0caf5; font-size: 13px; font-weight: bold;">최근: blog</div>
+            <div style="color: #565f89; font-size: 11px;">~/Documents/blog</div>
+          </div>
+        </div>
+        <div style="display: flex; align-items: center; justify-content: center; gap: 8px; background: rgba(255,255,255,0.03); border: 1px dashed rgba(255,255,255,0.15); border-radius: 8px; padding: 12px; cursor: pointer; color: #565f89; font-size: 13px;">
+          + 다른 폴더 선택...
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

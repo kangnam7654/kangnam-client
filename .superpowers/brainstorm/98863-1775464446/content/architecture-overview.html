@@ -1,0 +1,98 @@
+<h2>Architecture Overview</h2>
+<p class="subtitle">kangnam-client → Claude Code GUI Wrapper (Subprocess + JSON mode)</p>
+
+<div class="mockup">
+  <div class="mockup-header">System Architecture</div>
+  <div class="mockup-body" style="padding: 24px; font-family: monospace; font-size: 13px; line-height: 2;">
+    <div style="display: flex; gap: 32px; align-items: flex-start;">
+
+      <!-- Frontend Column -->
+      <div style="flex: 1; border: 1px solid rgba(255,255,255,0.15); border-radius: 12px; padding: 16px;">
+        <div style="text-align: center; font-weight: bold; color: #7aa2f7; margin-bottom: 12px; font-size: 14px;">Frontend (React + Tailwind)</div>
+        <div style="display: flex; flex-direction: column; gap: 8px;">
+          <div style="background: rgba(122,162,247,0.1); padding: 8px 12px; border-radius: 6px; border: 1px solid rgba(122,162,247,0.2);">Chat UI (메시지/tool call/코드 렌더링)</div>
+          <div style="background: rgba(122,162,247,0.1); padding: 8px 12px; border-radius: 6px; border: 1px solid rgba(122,162,247,0.2);">Setup Wizard (CLI 설치/인증 가이드)</div>
+          <div style="background: rgba(122,162,247,0.1); padding: 8px 12px; border-radius: 6px; border: 1px solid rgba(122,162,247,0.2);">Settings Panel (기존 재사용)</div>
+          <div style="background: rgba(122,162,247,0.1); padding: 8px 12px; border-radius: 6px; border: 1px solid rgba(122,162,247,0.2);">Safety Confirm Dialog (파일 변경 확인)</div>
+          <div style="background: rgba(122,162,247,0.1); padding: 8px 12px; border-radius: 6px; border: 1px solid rgba(122,162,247,0.2);">Sidebar (기존 재사용)</div>
+        </div>
+      </div>
+
+      <!-- Arrow -->
+      <div style="display: flex; align-items: center; font-size: 24px; color: rgba(255,255,255,0.4); padding-top: 80px;">
+        &#8596; Tauri IPC
+      </div>
+
+      <!-- Backend Column -->
+      <div style="flex: 1; border: 1px solid rgba(255,255,255,0.15); border-radius: 12px; padding: 16px;">
+        <div style="text-align: center; font-weight: bold; color: #9ece6a; margin-bottom: 12px; font-size: 14px;">Backend (Rust / Tauri 2)</div>
+        <div style="display: flex; flex-direction: column; gap: 8px;">
+          <div style="background: rgba(158,206,106,0.1); padding: 8px 12px; border-radius: 6px; border: 1px solid rgba(158,206,106,0.2);">CLI Manager (spawn/kill/lifecycle)</div>
+          <div style="background: rgba(158,206,106,0.1); padding: 8px 12px; border-radius: 6px; border: 1px solid rgba(158,206,106,0.2);">JSON Stream Parser (CLI별 어댑터)</div>
+          <div style="background: rgba(158,206,106,0.1); padding: 8px 12px; border-radius: 6px; border: 1px solid rgba(158,206,106,0.2);">CLI Registry (설치 감지/버전 관리)</div>
+          <div style="background: rgba(158,206,106,0.1); padding: 8px 12px; border-radius: 6px; border: 1px solid rgba(158,206,106,0.2);">DB (SQLite - 기존 재사용)</div>
+          <div style="background: rgba(158,206,106,0.1); padding: 8px 12px; border-radius: 6px; border: 1px solid rgba(158,206,106,0.2);">MCP Bridge (기존 재사용)</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- CLI subprocess layer -->
+    <div style="margin-top: 24px; border: 1px solid rgba(255,255,255,0.15); border-radius: 12px; padding: 16px;">
+      <div style="text-align: center; font-weight: bold; color: #e0af68; margin-bottom: 12px; font-size: 14px;">CLI Subprocesses</div>
+      <div style="display: flex; gap: 16px; justify-content: center;">
+        <div style="background: rgba(224,175,104,0.1); padding: 12px 24px; border-radius: 8px; border: 1px solid rgba(224,175,104,0.3); text-align: center;">
+          <div style="font-weight: bold;">claude</div>
+          <div style="font-size: 11px; opacity: 0.6;">--output-format stream-json</div>
+        </div>
+        <div style="background: rgba(224,175,104,0.1); padding: 12px 24px; border-radius: 8px; border: 1px solid rgba(224,175,104,0.3); text-align: center;">
+          <div style="font-weight: bold;">codex</div>
+          <div style="font-size: 11px; opacity: 0.6;">--json output</div>
+        </div>
+        <div style="background: rgba(224,175,104,0.15); padding: 12px 24px; border-radius: 8px; border: 1px dashed rgba(224,175,104,0.3); text-align: center; opacity: 0.5;">
+          <div style="font-weight: bold;">gemini (future)</div>
+          <div style="font-size: 11px; opacity: 0.6;">TBD</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- What's reused vs new -->
+    <div style="margin-top: 20px; display: flex; gap: 24px; font-size: 12px;">
+      <div><span style="color: #9ece6a;">&#9632;</span> 기존 코드 재사용</div>
+      <div><span style="color: #7aa2f7;">&#9632;</span> 새로 구현 / 대폭 수정</div>
+      <div><span style="color: #e0af68;">&#9632;</span> 새로 추가 (CLI 연동)</div>
+    </div>
+  </div>
+</div>
+
+<h3 style="margin-top: 32px;">핵심 변경 요약</h3>
+<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 12px;">
+  <div style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; padding: 16px;">
+    <div style="font-weight: bold; color: #f7768e; margin-bottom: 8px;">삭제</div>
+    <ul style="margin: 0; padding-left: 20px; line-height: 1.8;">
+      <li>providers/ (SSE 직접 호출)</li>
+      <li>auth/ (OAuth PKCE 플로우)</li>
+      <li>skills/agents AI 로직</li>
+    </ul>
+  </div>
+  <div style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; padding: 16px;">
+    <div style="font-weight: bold; color: #9ece6a; margin-bottom: 8px;">유지</div>
+    <ul style="margin: 0; padding-left: 20px; line-height: 1.8;">
+      <li>DB (conversations, messages)</li>
+      <li>MCP Bridge</li>
+      <li>Settings UI 구조</li>
+      <li>Sidebar / 대화 목록</li>
+      <li>Tauri 인프라 전체</li>
+    </ul>
+  </div>
+  <div style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; padding: 16px; grid-column: span 2;">
+    <div style="font-weight: bold; color: #e0af68; margin-bottom: 8px;">새로 추가</div>
+    <ul style="margin: 0; padding-left: 20px; line-height: 1.8; columns: 2;">
+      <li>CLI Manager (subprocess lifecycle)</li>
+      <li>JSON Stream Parser (CLI별 어댑터)</li>
+      <li>CLI Registry (설치 감지/버전)</li>
+      <li>Setup Wizard UI</li>
+      <li>Safety Confirm Dialog</li>
+      <li>메시지 파싱 → 구조화 UI</li>
+    </ul>
+  </div>
+</div>

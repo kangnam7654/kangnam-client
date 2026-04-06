@@ -1,0 +1,159 @@
+<h2>Data Flow: CLI ↔ GUI</h2>
+<p class="subtitle">사용자 입력부터 CLI 응답 렌더링까지의 흐름</p>
+
+<div class="mockup">
+  <div class="mockup-header">메시지 흐름 (1회 대화 턴)</div>
+  <div class="mockup-body" style="padding: 24px; font-family: monospace; font-size: 13px;">
+
+    <!-- Step-by-step flow -->
+    <div style="display: flex; flex-direction: column; gap: 4px;">
+
+      <!-- Step 1 -->
+      <div style="display: flex; align-items: center; gap: 12px;">
+        <div style="min-width: 28px; height: 28px; border-radius: 50%; background: #7aa2f7; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 12px;">1</div>
+        <div style="flex: 1; background: rgba(122,162,247,0.1); padding: 10px 14px; border-radius: 8px; border: 1px solid rgba(122,162,247,0.2);">
+          <span style="color: #7aa2f7;">User</span> → React Chat UI에 메시지 입력
+        </div>
+      </div>
+
+      <div style="margin-left: 14px; border-left: 2px solid rgba(255,255,255,0.1); height: 12px;"></div>
+
+      <!-- Step 2 -->
+      <div style="display: flex; align-items: center; gap: 12px;">
+        <div style="min-width: 28px; height: 28px; border-radius: 50%; background: #7aa2f7; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 12px;">2</div>
+        <div style="flex: 1; background: rgba(122,162,247,0.1); padding: 10px 14px; border-radius: 8px; border: 1px solid rgba(122,162,247,0.2);">
+          <span style="color: #7aa2f7;">Tauri IPC</span> → invoke("cli_send_message", { provider, message, conversationId })
+        </div>
+      </div>
+
+      <div style="margin-left: 14px; border-left: 2px solid rgba(255,255,255,0.1); height: 12px;"></div>
+
+      <!-- Step 3 -->
+      <div style="display: flex; align-items: center; gap: 12px;">
+        <div style="min-width: 28px; height: 28px; border-radius: 50%; background: #9ece6a; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 12px;">3</div>
+        <div style="flex: 1; background: rgba(158,206,106,0.1); padding: 10px 14px; border-radius: 8px; border: 1px solid rgba(158,206,106,0.2);">
+          <span style="color: #9ece6a;">CLI Manager</span> → stdin에 메시지 write (이미 실행 중인 subprocess에)
+        </div>
+      </div>
+
+      <div style="margin-left: 14px; border-left: 2px solid rgba(255,255,255,0.1); height: 12px;"></div>
+
+      <!-- Step 4 -->
+      <div style="display: flex; align-items: center; gap: 12px;">
+        <div style="min-width: 28px; height: 28px; border-radius: 50%; background: #e0af68; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 12px;">4</div>
+        <div style="flex: 1; background: rgba(224,175,104,0.1); padding: 10px 14px; border-radius: 8px; border: 1px solid rgba(224,175,104,0.2);">
+          <span style="color: #e0af68;">CLI Process</span> → stdout로 JSON 스트림 출력 (줄 단위)
+        </div>
+      </div>
+
+      <div style="margin-left: 14px; border-left: 2px solid rgba(255,255,255,0.1); height: 12px;"></div>
+
+      <!-- Step 5 -->
+      <div style="display: flex; align-items: center; gap: 12px;">
+        <div style="min-width: 28px; height: 28px; border-radius: 50%; background: #9ece6a; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 12px;">5</div>
+        <div style="flex: 1; background: rgba(158,206,106,0.1); padding: 10px 14px; border-radius: 8px; border: 1px solid rgba(158,206,106,0.2);">
+          <span style="color: #9ece6a;">JSON Parser</span> → CLI별 어댑터가 JSON을 <strong>UnifiedMessage</strong>로 변환
+        </div>
+      </div>
+
+      <div style="margin-left: 14px; border-left: 2px solid rgba(255,255,255,0.1); height: 12px;"></div>
+
+      <!-- Step 6 -->
+      <div style="display: flex; align-items: center; gap: 12px;">
+        <div style="min-width: 28px; height: 28px; border-radius: 50%; background: #7aa2f7; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 12px;">6</div>
+        <div style="flex: 1; background: rgba(122,162,247,0.1); padding: 10px 14px; border-radius: 8px; border: 1px solid rgba(122,162,247,0.2);">
+          <span style="color: #7aa2f7;">Tauri Event</span> → emit("cli-stream", UnifiedMessage) → React에서 실시간 렌더링
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Unified Message Schema -->
+<h3 style="margin-top: 32px;">UnifiedMessage 스키마</h3>
+<p class="subtitle">CLI별 JSON을 이 공통 포맷으로 변환</p>
+
+<div class="mockup">
+  <div class="mockup-header">UnifiedMessage (Rust enum)</div>
+  <div class="mockup-body" style="padding: 20px; font-family: monospace; font-size: 13px; line-height: 1.8;">
+<pre style="margin: 0; color: #c0caf5;">
+<span style="color: #bb9af7;">enum</span> <span style="color: #7aa2f7;">UnifiedMessage</span> {
+  <span style="color: #9ece6a;">// 에이전트가 텍스트를 출력 중</span>
+  TextDelta { text: String },
+
+  <span style="color: #9ece6a;">// 도구 호출 시작 (파일 읽기, 편집, 검색 등)</span>
+  ToolUseStart { id: String, name: String, input: Value },
+
+  <span style="color: #9ece6a;">// 도구 실행 결과</span>
+  ToolResult { id: String, output: String, is_error: bool },
+
+  <span style="color: #9ece6a;">// 사용자 확인 요청 (파일 수정, 명령 실행 등)</span>
+  PermissionRequest { id: String, tool: String, description: String },
+
+  <span style="color: #9ece6a;">// 턴 완료</span>
+  TurnEnd { usage: Option&lt;TokenUsage&gt; },
+
+  <span style="color: #9ece6a;">// 에러</span>
+  Error { message: String },
+}
+</pre>
+  </div>
+</div>
+
+<!-- CLI Adapter Pattern -->
+<h3 style="margin-top: 32px;">CLI별 어댑터 패턴</h3>
+
+<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 12px;">
+  <div class="mockup">
+    <div class="mockup-header">Claude Code 어댑터</div>
+    <div class="mockup-body" style="padding: 16px; font-size: 12px; font-family: monospace;">
+<pre style="margin: 0; color: #c0caf5; line-height: 1.7;">
+<span style="color: #565f89;">// Claude Code JSON 출력 예시</span>
+{"type":"assistant","message":
+  {"content":[
+    {"type":"text","text":"파일을 읽겠습니다"},
+    {"type":"tool_use","id":"x","name":"Read",
+     "input":{"file_path":"/src/main.rs"}}
+  ]}}
+
+       <span style="color: #e0af68;">↓ 변환</span>
+
+UnifiedMessage::TextDelta { "파일을 읽겠습니다" }
+UnifiedMessage::ToolUseStart { "Read", ... }
+</pre>
+    </div>
+  </div>
+
+  <div class="mockup">
+    <div class="mockup-header">Codex CLI 어댑터</div>
+    <div class="mockup-body" style="padding: 16px; font-size: 12px; font-family: monospace;">
+<pre style="margin: 0; color: #c0caf5; line-height: 1.7;">
+<span style="color: #565f89;">// Codex CLI JSON 출력 예시</span>
+{"type":"message",
+ "content":"코드를 수정하겠습니다"}
+{"type":"function_call",
+ "name":"edit_file",
+ "arguments":{...}}
+
+       <span style="color: #e0af68;">↓ 변환</span>
+
+UnifiedMessage::TextDelta { "코드를 수정..." }
+UnifiedMessage::ToolUseStart { "edit_file", ... }
+</pre>
+    </div>
+  </div>
+</div>
+
+<!-- Key design decisions -->
+<h3 style="margin-top: 32px;">핵심 설계 결정</h3>
+<div style="display: flex; flex-direction: column; gap: 12px; margin-top: 12px;">
+  <div style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; padding: 14px;">
+    <strong style="color: #e0af68;">Long-running subprocess</strong> — 대화마다 새 프로세스가 아니라, 세션 동안 하나의 CLI 프로세스를 유지. stdin/stdout으로 대화 지속.
+  </div>
+  <div style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; padding: 14px;">
+    <strong style="color: #e0af68;">Permission 가로채기</strong> — CLI가 사용자 확인을 요청하면(파일 수정 등), GUI에서 시각적 다이얼로그로 보여주고 stdin으로 응답 전달.
+  </div>
+  <div style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; padding: 14px;">
+    <strong style="color: #e0af68;">어댑터 trait</strong> — 새 CLI 추가 시 <code>CliAdapter</code> trait만 구현하면 됨. 파싱 로직만 다르고 나머지는 공유.
+  </div>
+</div>

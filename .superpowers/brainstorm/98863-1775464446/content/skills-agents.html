@@ -1,0 +1,185 @@
+<h2>Skills & Agents Integration</h2>
+<p class="subtitle">Claude Code의 skills/agents를 GUI에서 발견하고 실행</p>
+
+<!-- How it works -->
+<h3>동작 원리</h3>
+<div style="display: flex; flex-direction: column; gap: 8px; margin-top: 12px; font-family: monospace; font-size: 13px;">
+
+  <div style="display: flex; align-items: center; gap: 12px;">
+    <div style="min-width: 28px; height: 28px; border-radius: 50%; background: #9ece6a; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 12px;">1</div>
+    <div style="flex: 1; background: rgba(158,206,106,0.1); padding: 10px 14px; border-radius: 8px; border: 1px solid rgba(158,206,106,0.2);">
+      <strong>Discovery</strong> — 앱 시작 시 <code>claude --list-skills</code> / <code>claude --list-agents</code> 로 사용 가능한 목록 수집
+    </div>
+  </div>
+
+  <div style="margin-left: 14px; border-left: 2px solid rgba(255,255,255,0.1); height: 8px;"></div>
+
+  <div style="display: flex; align-items: center; gap: 12px;">
+    <div style="min-width: 28px; height: 28px; border-radius: 50%; background: #9ece6a; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 12px;">2</div>
+    <div style="flex: 1; background: rgba(158,206,106,0.1); padding: 10px 14px; border-radius: 8px; border: 1px solid rgba(158,206,106,0.2);">
+      <strong>Display</strong> — GUI에서 카드/리스트로 보여주고 클릭으로 실행 가능
+    </div>
+  </div>
+
+  <div style="margin-left: 14px; border-left: 2px solid rgba(255,255,255,0.1); height: 8px;"></div>
+
+  <div style="display: flex; align-items: center; gap: 12px;">
+    <div style="min-width: 28px; height: 28px; border-radius: 50%; background: #9ece6a; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 12px;">3</div>
+    <div style="flex: 1; background: rgba(158,206,106,0.1); padding: 10px 14px; border-radius: 8px; border: 1px solid rgba(158,206,106,0.2);">
+      <strong>Invoke</strong> — 클릭 시 CLI stdin에 <code>/skill-name args</code> 전송, 또는 Agent tool 호출
+    </div>
+  </div>
+
+  <div style="margin-left: 14px; border-left: 2px solid rgba(255,255,255,0.1); height: 8px;"></div>
+
+  <div style="display: flex; align-items: center; gap: 12px;">
+    <div style="min-width: 28px; height: 28px; border-radius: 50%; background: #9ece6a; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 12px;">4</div>
+    <div style="flex: 1; background: rgba(158,206,106,0.1); padding: 10px 14px; border-radius: 8px; border: 1px solid rgba(158,206,106,0.2);">
+      <strong>Stream</strong> — 실행 결과를 기존 JSON 스트림 파이프라인으로 렌더링 (동일 UnifiedMessage)
+    </div>
+  </div>
+</div>
+
+<!-- UI Mockup: Skills -->
+<h3 style="margin-top: 32px;">Skills UI 목업</h3>
+
+<div class="mockup">
+  <div class="mockup-header">채팅 입력창 — Slash Command Palette</div>
+  <div class="mockup-body" style="padding: 0; overflow: hidden;">
+    <!-- Chat area background -->
+    <div style="background: #1a1b26; padding: 20px; min-height: 180px; position: relative;">
+
+      <!-- Existing messages -->
+      <div style="opacity: 0.4; margin-bottom: 16px; font-size: 13px;">
+        <div style="color: #9ece6a; margin-bottom: 4px;">Assistant</div>
+        <div style="color: #c0caf5;">프로젝트 구조를 분석했습니다. 어떤 작업을 하시겠어요?</div>
+      </div>
+
+      <!-- Slash command palette (floating above input) -->
+      <div style="background: #24283b; border: 1px solid rgba(255,255,255,0.15); border-radius: 10px; padding: 8px; margin-bottom: 12px; box-shadow: 0 8px 24px rgba(0,0,0,0.4);">
+        <div style="padding: 4px 8px; font-size: 11px; color: #565f89; margin-bottom: 4px;">Skills</div>
+
+        <div style="display: flex; align-items: center; gap: 10px; padding: 8px 10px; background: rgba(122,162,247,0.15); border-radius: 6px; margin-bottom: 2px; cursor: pointer;">
+          <span style="color: #7aa2f7; font-weight: bold; font-family: monospace; font-size: 13px;">/commit</span>
+          <span style="color: #565f89; font-size: 12px;">— 변경사항을 커밋</span>
+        </div>
+        <div style="display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: 6px; margin-bottom: 2px;">
+          <span style="color: #7aa2f7; font-weight: bold; font-family: monospace; font-size: 13px;">/review-pr</span>
+          <span style="color: #565f89; font-size: 12px;">— PR 코드 리뷰</span>
+        </div>
+        <div style="display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: 6px; margin-bottom: 2px;">
+          <span style="color: #7aa2f7; font-weight: bold; font-family: monospace; font-size: 13px;">/simplify</span>
+          <span style="color: #565f89; font-size: 12px;">— 코드 단순화 및 개선</span>
+        </div>
+        <div style="display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: 6px;">
+          <span style="color: #7aa2f7; font-weight: bold; font-family: monospace; font-size: 13px;">/research</span>
+          <span style="color: #565f89; font-size: 12px;">— 멀티소스 리서치</span>
+        </div>
+      </div>
+
+      <!-- Input box -->
+      <div style="background: #24283b; border: 1px solid rgba(255,255,255,0.15); border-radius: 10px; padding: 12px 16px; display: flex; align-items: center; gap: 8px;">
+        <span style="color: #c0caf5; font-family: monospace; font-size: 14px;">/</span>
+        <span style="color: #565f89; font-size: 14px;">|</span>
+        <span style="color: #565f89; font-size: 13px; flex: 1;">타이핑하여 skill 검색...</span>
+        <div style="background: #7aa2f7; color: #1a1b26; padding: 4px 12px; border-radius: 6px; font-size: 12px; font-weight: bold;">Enter</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- UI Mockup: Agents -->
+<h3 style="margin-top: 32px;">Agents UI 목업</h3>
+
+<div class="mockup">
+  <div class="mockup-header">사이드바 — Agent 패널</div>
+  <div class="mockup-body" style="padding: 0; overflow: hidden;">
+    <div style="background: #1a1b26; display: flex; min-height: 300px;">
+
+      <!-- Sidebar agent section -->
+      <div style="width: 260px; background: #16161e; border-right: 1px solid rgba(255,255,255,0.08); padding: 16px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+          <span style="font-weight: bold; color: #c0caf5; font-size: 13px;">Agents</span>
+          <span style="font-size: 11px; color: #565f89;">3 available</span>
+        </div>
+
+        <!-- Agent cards -->
+        <div style="display: flex; flex-direction: column; gap: 8px;">
+          <div style="background: rgba(122,162,247,0.1); border: 1px solid rgba(122,162,247,0.2); border-radius: 8px; padding: 10px;">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+              <span style="color: #7aa2f7; font-weight: bold; font-size: 12px;">code-reviewer</span>
+              <span style="font-size: 10px; background: #9ece6a; color: #1a1b26; padding: 2px 6px; border-radius: 4px;">running</span>
+            </div>
+            <div style="color: #565f89; font-size: 11px; margin-top: 4px;">PR #42 리뷰 진행 중...</div>
+            <div style="margin-top: 6px; background: rgba(255,255,255,0.05); border-radius: 4px; height: 4px; overflow: hidden;">
+              <div style="background: #9ece6a; height: 100%; width: 65%; border-radius: 4px;"></div>
+            </div>
+          </div>
+
+          <div style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 8px; padding: 10px;">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+              <span style="color: #c0caf5; font-weight: bold; font-size: 12px;">qa-engineer</span>
+              <span style="font-size: 10px; color: #565f89;">idle</span>
+            </div>
+            <div style="color: #565f89; font-size: 11px; margin-top: 4px;">테스트 작성 및 실행</div>
+          </div>
+
+          <div style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 8px; padding: 10px;">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+              <span style="color: #c0caf5; font-weight: bold; font-size: 12px;">frontend-dev</span>
+              <span style="font-size: 10px; color: #565f89;">idle</span>
+            </div>
+            <div style="color: #565f89; font-size: 11px; margin-top: 4px;">웹 프론트엔드 개발</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Main chat area showing agent activity -->
+      <div style="flex: 1; padding: 20px;">
+        <div style="color: #565f89; font-size: 12px; margin-bottom: 12px;">
+          <span style="color: #7aa2f7;">code-reviewer</span> agent 실행 중
+        </div>
+
+        <div style="background: rgba(122,162,247,0.05); border-left: 3px solid #7aa2f7; padding: 12px 16px; border-radius: 0 8px 8px 0; margin-bottom: 12px;">
+          <div style="color: #7aa2f7; font-size: 11px; font-weight: bold; margin-bottom: 6px;">code-reviewer</div>
+          <div style="color: #c0caf5; font-size: 13px; line-height: 1.6;">
+            PR의 변경사항을 분석하고 있습니다.<br/>
+            <span style="color: #565f89;">3개 파일 읽기 완료, 보안 체크 진행 중...</span>
+          </div>
+        </div>
+
+        <div style="background: rgba(158,206,106,0.05); border-left: 3px solid #9ece6a; padding: 12px 16px; border-radius: 0 8px 8px 0;">
+          <div style="color: #9ece6a; font-size: 11px; font-weight: bold; margin-bottom: 6px;">Tool: Grep</div>
+          <div style="color: #c0caf5; font-size: 12px; font-family: monospace;">
+            pattern: "unwrap()" → 2 matches found
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- UnifiedMessage extension -->
+<h3 style="margin-top: 32px;">UnifiedMessage 확장</h3>
+<div class="mockup">
+  <div class="mockup-header">Skills/Agents를 위한 추가 메시지 타입</div>
+  <div class="mockup-body" style="padding: 20px; font-family: monospace; font-size: 13px; line-height: 1.8;">
+<pre style="margin: 0; color: #c0caf5;">
+<span style="color: #bb9af7;">enum</span> <span style="color: #7aa2f7;">UnifiedMessage</span> {
+  <span style="color: #565f89;">// ... 기존 variants ...</span>
+
+  <span style="color: #9ece6a;">// Agent가 spawn됨</span>
+  AgentStart { id: String, name: String, description: String },
+
+  <span style="color: #9ece6a;">// Agent 진행 상황 업데이트</span>
+  AgentProgress { id: String, message: String },
+
+  <span style="color: #9ece6a;">// Agent 완료</span>
+  AgentEnd { id: String, result: String },
+
+  <span style="color: #9ece6a;">// Skill 호출됨</span>
+  SkillInvoked { name: String, args: Option&lt;String&gt; },
+}
+</pre>
+  </div>
+</div>
