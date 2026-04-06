@@ -260,7 +260,7 @@ mod tests {
         let conn = setup_db();
         // Need a conversation for FK
         conn.execute(
-            "INSERT INTO conversations (id, title, provider) VALUES ('conv-1', 'Test', 'test')",
+            "INSERT INTO conversations (id, title, cli_provider) VALUES ('conv-1', 'Test', 'test')",
             [],
         ).unwrap();
 
@@ -282,7 +282,7 @@ mod tests {
     fn test_agent_run_fail() {
         let conn = setup_db();
         conn.execute(
-            "INSERT INTO conversations (id, title, provider) VALUES ('conv-2', 'Test', 'test')",
+            "INSERT INTO conversations (id, title, cli_provider) VALUES ('conv-2', 'Test', 'test')",
             [],
         ).unwrap();
 

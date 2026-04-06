@@ -6,7 +6,7 @@ use uuid::Uuid;
 pub struct Conversation {
     pub id: String,
     pub title: String,
-    pub provider: String,
+    pub cli_provider: String,
     pub model: Option<String>,
     pub pinned: i64,
     pub created_at: i64,
@@ -43,7 +43,7 @@ pub struct SearchResult {
 
 pub fn list_conversations(conn: &Connection) -> Result<Vec<Conversation>, rusqlite::Error> {
     let mut stmt = conn.prepare(
-        "SELECT id, title, provider, model, pinned, created_at, updated_at \
+        "SELECT id, title, cli_provider, model, pinned, created_at, updated_at \
          FROM conversations ORDER BY pinned DESC, updated_at DESC",
     )?;
     let rows = stmt
@@ -51,7 +51,7 @@ pub fn list_conversations(conn: &Connection) -> Result<Vec<Conversation>, rusqli
             Ok(Conversation {
                 id: row.get(0)?,
                 title: row.get(1)?,
-                provider: row.get(2)?,
+                cli_provider: row.get(2)?,
                 model: row.get(3)?,
                 pinned: row.get(4)?,
                 created_at: row.get(5)?,
@@ -65,20 +65,20 @@ pub fn list_conversations(conn: &Connection) -> Result<Vec<Conversation>, rusqli
 
 pub fn create_conversation(
     conn: &Connection,
-    provider: &str,
+    cli_provider: &str,
     model: Option<&str>,
 ) -> Result<Conversation, rusqlite::Error> {
     let id = Uuid::new_v4().to_string();
     let now = chrono::Utc::now().timestamp();
     conn.execute(
-        "INSERT INTO conversations (id, provider, model, created_at, updated_at) \
+        "INSERT INTO conversations (id, cli_provider, model, created_at, updated_at) \
          VALUES (?1, ?2, ?3, ?4, ?5)",
-        params![id, provider, model, now, now],
+        params![id, cli_provider, model, now, now],
     )?;
     Ok(Conversation {
         id,
         title: "New Chat".to_string(),
-        provider: provider.to_string(),
+        cli_provider: cli_provider.to_string(),
         model: model.map(|s| s.to_string()),
         pinned: 0,
         created_at: now,
@@ -100,14 +100,14 @@ pub fn delete_all_conversations(conn: &Connection) -> Result<(), rusqlite::Error
 
 pub fn get_conversation(conn: &Connection, id: &str) -> Option<Conversation> {
     conn.query_row(
-        "SELECT id, title, provider, model, pinned, created_at, updated_at \
+        "SELECT id, title, cli_provider, model, pinned, created_at, updated_at \
          FROM conversations WHERE id = ?1",
         params![id],
         |row| {
             Ok(Conversation {
                 id: row.get(0)?,
                 title: row.get(1)?,
-                provider: row.get(2)?,
+                cli_provider: row.get(2)?,
                 model: row.get(3)?,
                 pinned: row.get(4)?,
                 created_at: row.get(5)?,
@@ -295,7 +295,7 @@ mod tests {
     fn test_create_and_list() {
         let conn = setup_test_db();
         let conv = create_conversation(&conn, "codex", Some("gpt-4")).unwrap();
-        assert_eq!(conv.provider, "codex");
+        assert_eq!(conv.cli_provider, "codex");
         assert_eq!(conv.title, "New Chat");
         let list = list_conversations(&conn).unwrap();
         assert_eq!(list.len(), 1);

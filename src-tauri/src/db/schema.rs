@@ -9,12 +9,12 @@ pub fn run_migrations(conn: &mut Connection) -> Result<()> {
     tx.execute_batch(
         "
         CREATE TABLE IF NOT EXISTS conversations (
-            id          TEXT PRIMARY KEY,
-            title       TEXT NOT NULL DEFAULT 'New Chat',
-            provider    TEXT NOT NULL,
-            model       TEXT,
-            created_at  INTEGER NOT NULL DEFAULT (strftime('%s', 'now')),
-            updated_at  INTEGER NOT NULL DEFAULT (strftime('%s', 'now'))
+            id           TEXT PRIMARY KEY,
+            title        TEXT NOT NULL DEFAULT 'New Chat',
+            cli_provider TEXT NOT NULL DEFAULT 'claude',
+            model        TEXT,
+            created_at   INTEGER NOT NULL DEFAULT (strftime('%s', 'now')),
+            updated_at   INTEGER NOT NULL DEFAULT (strftime('%s', 'now'))
         );
 
         CREATE TABLE IF NOT EXISTS messages (
@@ -41,6 +41,14 @@ pub fn run_migrations(conn: &mut Connection) -> Result<()> {
     // Migration: add tool_name and tool_args columns to messages
     let _ = tx.execute_batch("ALTER TABLE messages ADD COLUMN tool_name TEXT");
     let _ = tx.execute_batch("ALTER TABLE messages ADD COLUMN tool_args TEXT");
+
+    // Migration: add message_type column
+    let _ = tx.execute_batch("ALTER TABLE messages ADD COLUMN message_type TEXT NOT NULL DEFAULT 'text'");
+
+    // Migration: rename provider → cli_provider in conversations
+    // SQLite does not support RENAME COLUMN before 3.25.0; use ADD + UPDATE pattern
+    let _ = tx.execute_batch("ALTER TABLE conversations ADD COLUMN cli_provider TEXT NOT NULL DEFAULT 'claude'");
+    let _ = tx.execute_batch("UPDATE conversations SET cli_provider = provider WHERE cli_provider = 'claude' AND provider != ''");
 
     // ── MCP servers ──
 
