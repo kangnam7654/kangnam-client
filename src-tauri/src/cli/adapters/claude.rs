@@ -3,7 +3,7 @@ use tokio::process::Command;
 use std::process::Stdio;
 
 use crate::cli::adapter::CliAdapter;
-use crate::cli::types::{UnifiedMessage, TokenUsage, SkillInfo, AgentInfo};
+use crate::cli::types::UnifiedMessage;
 
 pub struct ClaudeAdapter;
 

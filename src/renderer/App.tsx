@@ -3,11 +3,11 @@ import { Sidebar } from './components/sidebar/Sidebar'
 import { ChatView } from './components/chat/ChatView'
 import { SettingsPanel } from './components/settings/SettingsPanel'
 import { SearchOverlay } from './components/sidebar/SearchPanel'
-import { EvalWorkbench } from './components/eval/EvalWorkbench'
-import { useAppStore, type AuthStatus, type Conversation } from './stores/app-store'
+import { SetupWizard } from './components/setup/SetupWizard'
+import { useAppStore } from './stores/app-store'
 
 export default function App() {
-  const { setAuthStatuses, theme, showEval } = useAppStore()
+  const { theme, setupComplete } = useAppStore()
 
   // Apply theme to document root
   useEffect(() => {
@@ -34,33 +34,9 @@ export default function App() {
     return () => window.removeEventListener('keydown', handler)
   }, [])
 
-  useEffect(() => {
-    // Load initial auth status
-    window.api.auth.status().then(r => setAuthStatuses(r as AuthStatus[])).catch(console.error)
-
-    // Listen for auth changes
-    const unsubConnected = window.api.auth.onConnected(async () => {
-      const statuses = await window.api.auth.status() as AuthStatus[]
-      setAuthStatuses(statuses)
-    })
-
-    const unsubDisconnected = window.api.auth.onDisconnected(async () => {
-      const statuses = await window.api.auth.status() as AuthStatus[]
-      setAuthStatuses(statuses)
-    })
-
-    // Listen for smart title updates (LLM-generated conversation titles)
-    const unsubTitle = window.api.conv.onTitleUpdated?.(async () => {
-      const convs = await window.api.conv.list() as Conversation[]
-      useAppStore.getState().setConversations(convs)
-    })
-
-    return () => {
-      unsubConnected()
-      unsubDisconnected()
-      unsubTitle?.()
-    }
-  }, [setAuthStatuses])
+  if (!setupComplete) {
+    return <SetupWizard />
+  }
 
   return (
     <div style={{ display: 'flex', height: '100vh', width: '100vw', overflow: 'hidden', background: 'var(--bg-main, #2b2b2b)' }}>
@@ -68,7 +44,6 @@ export default function App() {
       <ChatView />
       <SettingsPanel />
       <SearchOverlay />
-      {showEval && <EvalWorkbench />}
     </div>
   )
 }

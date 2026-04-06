@@ -1,7 +1,7 @@
 use std::path::Path;
 use tokio::process::Command;
 
-use crate::cli::types::{UnifiedMessage, SkillInfo, AgentInfo};
+use crate::cli::types::UnifiedMessage;
 
 /// Each CLI provider implements this trait to handle its specific JSON format
 /// and subprocess configuration.

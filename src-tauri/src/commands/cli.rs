@@ -1,6 +1,5 @@
 use tauri::{AppHandle, State};
 
-use crate::cli::manager::CliManager;
 use crate::cli::registry::{CliRegistry, ProviderMeta};
 use crate::cli::types::CliStatus;
 use crate::state::AppState;

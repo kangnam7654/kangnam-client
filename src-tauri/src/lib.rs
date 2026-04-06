@@ -1,9 +1,8 @@
-mod auth;
+mod cli;
 mod commands;
 mod db;
 mod error;
 mod mcp;
-mod providers;
 mod skills;
 mod state;
 
@@ -25,13 +24,17 @@ pub fn run() {
         .plugin(tauri_plugin_single_instance())
         .manage(app_state)
         .invoke_handler(tauri::generate_handler![
+            // CLI
+            commands::cli::cli_list_providers,
+            commands::cli::cli_check_installed,
+            commands::cli::cli_install,
+            commands::cli::cli_start_session,
+            commands::cli::cli_send_message,
+            commands::cli::cli_send_permission,
+            commands::cli::cli_stop_session,
             // Settings
             commands::settings::settings_get,
             commands::settings::settings_set,
-            // Auth
-            commands::auth::auth_connect,
-            commands::auth::auth_disconnect,
-            commands::auth::auth_status,
             // Conversations
             commands::conv::conv_list,
             commands::conv::conv_create,
@@ -53,17 +56,6 @@ pub fn run() {
             commands::skills::prompts_ref_add,
             commands::skills::prompts_ref_update,
             commands::skills::prompts_ref_delete,
-            // Skills AI
-            commands::prompts_ai::prompts_ai_generate,
-            commands::prompts_ai::prompts_ai_improve,
-            commands::prompts_ai::prompts_ai_generate_ref,
-            commands::prompts_ai::prompts_ai_generate_evals,
-            commands::prompts_ai::prompts_ai_grade,
-            commands::prompts_ai::prompts_ai_compare,
-            commands::prompts_ai::prompts_ai_analyze,
-            // Chat
-            commands::chat::chat_send,
-            commands::chat::chat_stop,
             // MCP
             commands::mcp::mcp_list_servers,
             commands::mcp::mcp_add_server,
@@ -74,36 +66,12 @@ pub fn run() {
             commands::mcp::mcp_server_status,
             commands::mcp::mcp_get_config,
             commands::mcp::mcp_ai_assist,
-            // Eval
-            commands::eval::eval_set_create,
-            commands::eval::eval_set_list,
-            commands::eval::eval_set_delete,
-            commands::eval::eval_case_add,
-            commands::eval::eval_case_bulk_add,
-            commands::eval::eval_case_update,
-            commands::eval::eval_case_delete,
-            commands::eval::eval_case_list,
-            commands::eval::eval_run_start,
-            commands::eval::eval_run_stop,
-            commands::eval::eval_run_list,
-            commands::eval::eval_run_get,
-            commands::eval::eval_run_results,
-            commands::eval::eval_run_stats,
-            commands::eval::eval_run_delete,
-            commands::eval::eval_result_feedback,
-            commands::eval::eval_ai_generate,
-            commands::eval::eval_optimize_start,
             // Agents
             commands::agents::agents_list,
             commands::agents::agents_get,
             commands::agents::agents_create,
             commands::agents::agents_update,
             commands::agents::agents_delete,
-            commands::agents::agents_execute,
-            // Cowork
-            commands::cowork::cowork_start,
-            commands::cowork::cowork_stop,
-            commands::cowork::cowork_follow_up,
         ])
         .setup(|app| {
             // ── System tray ──
@@ -140,7 +108,6 @@ pub fn run() {
             if let Some(win) = app.get_webview_window("main") {
                 restore_window_state(&win);
 
-                // Save state on close
                 let win_clone = win.clone();
                 win.on_window_event(move |event| {
                     if let tauri::WindowEvent::CloseRequested { .. } = event {
@@ -167,7 +134,6 @@ pub fn run() {
 fn tauri_plugin_single_instance() -> tauri::plugin::TauriPlugin<tauri::Wry> {
     tauri::plugin::Builder::new("single-instance")
         .on_event(|app, event| {
-            // Reopen is macOS-only (dock icon click when app is running)
             #[cfg(target_os = "macos")]
             if let tauri::RunEvent::Reopen { .. } = event {
                 if let Some(win) = app.get_webview_window("main") {
@@ -175,7 +141,7 @@ fn tauri_plugin_single_instance() -> tauri::plugin::TauriPlugin<tauri::Wry> {
                     let _ = win.set_focus();
                 }
             }
-            let _ = (app, event); // suppress unused warnings on non-macOS
+            let _ = (app, event);
         })
         .build()
 }

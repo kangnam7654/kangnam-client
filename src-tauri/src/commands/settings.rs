@@ -27,8 +27,14 @@ impl Default for Settings {
     }
 }
 
-fn settings_path(state: &AppState) -> PathBuf {
-    state.data_dir.parent().unwrap_or(&state.data_dir).join("settings.json")
+fn settings_path(_state: &AppState) -> PathBuf {
+    #[cfg(target_os = "macos")]
+    let base = dirs::config_dir().unwrap_or_default().join("kangnam-client");
+    #[cfg(target_os = "windows")]
+    let base = dirs::data_dir().unwrap_or_default().join("kangnam-client");
+    #[cfg(target_os = "linux")]
+    let base = dirs::config_dir().unwrap_or_default().join("kangnam-client");
+    base.join("settings.json")
 }
 
 fn load_settings(state: &AppState) -> Settings {

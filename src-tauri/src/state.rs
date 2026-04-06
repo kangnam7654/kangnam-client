@@ -1,46 +1,47 @@
-use rusqlite::Connection;
-use std::path::PathBuf;
 use std::sync::Mutex;
+use rusqlite::Connection;
 
-use crate::auth::manager::AuthManager;
+use crate::cli::manager::CliManager;
 use crate::db;
 use crate::mcp::bridge::McpBridge;
-use crate::providers::router::LLMRouter;
 
 pub struct AppState {
     pub db: Mutex<Connection>,
-    pub data_dir: PathBuf,
-    pub auth: AuthManager,
-    pub router: LLMRouter,
+    pub cli_manager: tokio::sync::Mutex<CliManager>,
     pub mcp: McpBridge,
 }
 
 impl AppState {
     pub fn new() -> Result<Self, Box<dyn std::error::Error>> {
-        let data_dir = Self::get_data_dir()?;
+        let data_dir = get_data_dir()?;
         std::fs::create_dir_all(&data_dir)?;
 
         let db_path = data_dir.join("kangnam-client.db");
         let mut conn = db::connection::open_database(&db_path)?;
-
         db::schema::run_migrations(&mut conn)?;
+
+        let mut cli_manager = CliManager::new();
+        cli_manager.register_adapter(Box::new(
+            crate::cli::adapters::claude::ClaudeAdapter::new(),
+        ));
+        cli_manager.register_adapter(Box::new(
+            crate::cli::adapters::codex::CodexAdapter::new(),
+        ));
 
         Ok(Self {
             db: Mutex::new(conn),
-            data_dir,
-            auth: AuthManager::new(),
-            router: LLMRouter::new(),
+            cli_manager: tokio::sync::Mutex::new(cli_manager),
             mcp: McpBridge::new(),
         })
     }
-
-    fn get_data_dir() -> Result<PathBuf, Box<dyn std::error::Error>> {
-        let app_dir = get_app_data_dir().ok_or("Could not determine app data directory")?;
-        Ok(app_dir.join("data"))
-    }
 }
 
-fn get_app_data_dir() -> Option<PathBuf> {
+fn get_data_dir() -> Result<std::path::PathBuf, Box<dyn std::error::Error>> {
+    let app_dir = get_app_data_dir().ok_or("Could not determine app data directory")?;
+    Ok(app_dir.join("data"))
+}
+
+fn get_app_data_dir() -> Option<std::path::PathBuf> {
     #[cfg(target_os = "macos")]
     {
         dirs::config_dir().map(|p| p.join("kangnam-client"))

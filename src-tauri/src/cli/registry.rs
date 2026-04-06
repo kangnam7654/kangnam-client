@@ -1,5 +1,3 @@
-use crate::cli::types::CliStatus;
-
 /// Supported CLI providers and their metadata.
 pub struct CliRegistry;
 
