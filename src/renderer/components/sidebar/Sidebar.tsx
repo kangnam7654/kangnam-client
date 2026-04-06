@@ -1,6 +1,7 @@
 import { useEffect, useCallback } from 'react'
 import { useAppStore, type Conversation } from '../../stores/app-store'
 import { ConversationList } from './ConversationList'
+import { AgentPanel } from './AgentPanel'
 
 export function Sidebar() {
   const {
@@ -117,6 +118,9 @@ export function Sidebar() {
         <div className="flex-1 overflow-y-auto" style={{ padding: 8 }}>
           <ConversationList />
         </div>
+
+        {/* Agent Panel */}
+        <AgentPanel />
 
         {/* Bottom — User + Settings */}
         <div style={{ borderTop: '1px solid var(--border-subtle)', padding: '12px 16px' }}>
