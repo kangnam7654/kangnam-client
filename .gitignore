@@ -13,3 +13,6 @@ dist/
 # Tauri
 src-tauri/target/
 src-tauri/gen/schemas/
+
+# Superpowers internal state
+.superpowers/
