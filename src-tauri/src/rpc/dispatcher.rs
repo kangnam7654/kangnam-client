@@ -9,7 +9,7 @@ pub async fn dispatch(request: JsonRpcRequest, state: &AppState) -> JsonRpcRespo
         "cli.install" => handlers::install(request.params, state).await,
         "cli.startSession" => handlers::start_session(request.params, state).await,
         "cli.sendMessage" => handlers::send_message(request.params, state).await,
-        "cli.sendPermission" => handlers::send_permission(request.params, state).await,
+        "cli.permissionResponse" => handlers::permission_response(request.params, state).await,
         "cli.stopSession" => handlers::stop_session(request.params, state).await,
         _ => Err(JsonRpcError::method_not_found()),
     };

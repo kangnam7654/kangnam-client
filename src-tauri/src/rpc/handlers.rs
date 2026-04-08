@@ -95,14 +95,23 @@ pub async fn send_message(params: Option<serde_json::Value>, state: &AppState) -
     Ok(serde_json::Value::Null)
 }
 
-pub async fn send_permission(params: Option<serde_json::Value>, state: &AppState) -> RpcResult {
-    let p: SendPermissionParams = parse_params(params)?;
-    let manager = state.cli_manager.lock().await;
-    manager
-        .send_permission_response(&p.session_id, &p.request_id, p.allowed)
-        .await
-        .map_err(|e| JsonRpcError::internal(&e))?;
-    Ok(serde_json::Value::Null)
+pub async fn permission_response(params: Option<serde_json::Value>, state: &AppState) -> RpcResult {
+    let p: PermissionResponseParams = parse_params(params)?;
+
+    let tx = {
+        let mut pending = state.pending_permissions.lock().await;
+        pending.remove(&p.id)
+    };
+
+    match tx {
+        Some(sender) => {
+            let _ = sender.send(p.allowed);
+            Ok(serde_json::Value::Null)
+        }
+        None => Err(JsonRpcError::internal(&format!(
+            "No pending permission request with id: {}", p.id
+        ))),
+    }
 }
 
 pub async fn stop_session(params: Option<serde_json::Value>, state: &AppState) -> RpcResult {
@@ -137,10 +146,8 @@ struct SendMessageParams {
 }
 
 #[derive(Deserialize)]
-#[serde(rename_all = "camelCase")]
-struct SendPermissionParams {
-    session_id: String,
-    request_id: String,
+struct PermissionResponseParams {
+    id: String,
     allowed: bool,
 }
 
