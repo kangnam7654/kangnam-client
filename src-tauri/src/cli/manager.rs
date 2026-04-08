@@ -63,6 +63,7 @@ impl CliManager {
         working_dir: &Path,
         session_id: &str,
         broadcast_tx: BroadcastTx,
+        enhanced_tx: Option<crate::server::broadcast::EnhancedBroadcastTx>,
     ) -> Result<(), String> {
         let adapter = self.get_adapter(provider)?;
         let mut cmd = adapter.build_command(working_dir);
@@ -90,6 +91,8 @@ impl CliManager {
             );
         }
 
+        let enhanced_tx_clone = enhanced_tx;
+
         tokio::spawn(async move {
             let reader = BufReader::new(stdout);
             let mut lines = reader.lines();
@@ -113,6 +116,21 @@ impl CliManager {
                                 message: format!("Parse error: {}", e),
                             },
                         );
+                    }
+                }
+
+                // Enhanced events (Claude only)
+                if is_claude {
+                    if let Some(ref etx) = enhanced_tx_clone {
+                        let enhanced = crate::cli::adapters::claude::ClaudeAdapter::new()
+                            .parse_enhanced(&line);
+                        if let Ok(Some(event)) = enhanced {
+                            let notification = crate::rpc::types::JsonRpcNotification::new(
+                                "cli.enhanced",
+                                serde_json::to_value(&event).unwrap_or_default(),
+                            );
+                            let _ = etx.send(notification);
+                        }
                     }
                 }
             }

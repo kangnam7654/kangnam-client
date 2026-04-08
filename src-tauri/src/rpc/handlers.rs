@@ -63,9 +63,10 @@ pub async fn start_session(params: Option<serde_json::Value>, state: &AppState) 
     }
 
     let broadcast_tx = state.broadcast_tx.clone();
+    let enhanced_tx = state.enhanced_broadcast_tx.clone();
     let manager = state.cli_manager.lock().await;
     manager
-        .start_session(&p.provider, &working_dir, &session_id, broadcast_tx)
+        .start_session(&p.provider, &working_dir, &session_id, broadcast_tx, Some(enhanced_tx))
         .await
         .map_err(|e| JsonRpcError::internal(&e))?;
 
