@@ -1,12 +1,20 @@
 # CLI Agent GUI Wrapper Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **Status: All 21 tasks COMPLETE (2026-04-08)**
+> Tasks 1-21 구현 완료. 아래 체크박스는 모두 완료 상태.
 
 **Goal:** kangnam-client를 Claude Code + Codex CLI의 GUI 래퍼로 피벗. CLI subprocess의 JSON 스트림을 파싱하여 비개발자용 채팅 UI로 렌더링한다.
 
-**Architecture:** Rust backend에서 CLI를 subprocess로 spawn하고 stdin/stdout NDJSON 파이프로 양방향 통신. CliAdapter trait으로 CLI별 파서를 분리하고, UnifiedMessage enum으로 통일된 프론트엔드 이벤트를 emit. React frontend는 Tauri event를 리스닝하여 실시간 렌더링.
+**Architecture:** Rust backend에서 CLI를 subprocess로 spawn하고 stdin/stdout NDJSON 파이프로 양방향 통신. CliAdapter trait으로 CLI별 파서를 분리하고, UnifiedMessage enum으로 통일된 프론트엔드 이벤트를 emit. **Axum WebSocket 서버 (port 3001) + JSON-RPC 2.0 프로토콜**로 프론트엔드와 통신. (원래 계획의 Tauri IPC 대신 transport-agnostic WebSocket으로 전환됨)
 
-**Tech Stack:** Tauri 2 (Rust), React 19, Tailwind CSS 4, Zustand, tokio (subprocess async I/O)
+**Tech Stack:** Tauri 2 (Rust), React 19, Tailwind CSS 4, Zustand, tokio (subprocess async I/O), Axum (WebSocket), JSON-RPC 2.0
+
+**Post-Plan Changes (계획 이후 추가 구현):**
+- Tauri IPC → Axum WebSocket + JSON-RPC 2.0 전환 (`src-tauri/src/rpc/`, `src-tauri/src/server/`)
+- 실시간 스트리밍: `--verbose --include-partial-messages` 플래그 추가
+- 대화 DB 저장: `saver.rs` 백그라운드 태스크 (TextDelta 누적 → TurnEnd시 저장)
+- Codex 멀티턴: CliSession에 history 저장, 프롬프트에 prepend
+- 프론트엔드 RPC 클라이언트: `src/renderer/lib/rpc/` (transport-ws.ts, client.ts, types.ts)
 
 **CLI JSON Formats (Phase 0 Research Results):**
 
@@ -92,14 +100,14 @@ Codex CLI: `codex exec --json "<prompt>"`
 - Create: `src-tauri/src/cli/types.rs`
 - Create: `src-tauri/src/cli/mod.rs`
 
-- [ ] **Step 1: Create cli module root**
+- [x] **Step 1: Create cli module root**
 
 ```rust
 // src-tauri/src/cli/mod.rs
 pub mod types;
 ```
 
-- [ ] **Step 2: Define UnifiedMessage and supporting types**
+- [x] **Step 2: Define UnifiedMessage and supporting types**
 
 ```rust
 // src-tauri/src/cli/types.rs
@@ -198,13 +206,13 @@ pub struct AgentInfo {
 }
 ```
 
-- [ ] **Step 3: Verify it compiles**
+- [x] **Step 3: Verify it compiles**
 
 Run: `cd /Users/kangnam/projects/kangnam-client/src-tauri && cargo check 2>&1 | head -20`
 
 Note: This will fail because `mod cli` is not yet registered in `lib.rs`. That is expected — just verify `types.rs` has no syntax errors by checking the error is about the missing module, not about the types file.
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add src-tauri/src/cli/
@@ -220,7 +228,7 @@ git commit -m "feat: add CLI types module with UnifiedMessage enum"
 - Create: `src-tauri/src/cli/adapters/mod.rs`
 - Modify: `src-tauri/src/cli/mod.rs`
 
-- [ ] **Step 1: Create adapter trait**
+- [x] **Step 1: Create adapter trait**
 
 ```rust
 // src-tauri/src/cli/adapter.rs
@@ -274,7 +282,7 @@ pub trait CliAdapter: Send + Sync {
 }
 ```
 
-- [ ] **Step 2: Create adapters module root**
+- [x] **Step 2: Create adapters module root**
 
 ```rust
 // src-tauri/src/cli/adapters/mod.rs
@@ -282,7 +290,7 @@ pub mod claude;
 pub mod codex;
 ```
 
-- [ ] **Step 3: Update cli/mod.rs**
+- [x] **Step 3: Update cli/mod.rs**
 
 ```rust
 // src-tauri/src/cli/mod.rs
@@ -291,7 +299,7 @@ pub mod adapters;
 pub mod types;
 ```
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add src-tauri/src/cli/
@@ -305,7 +313,7 @@ git commit -m "feat: add CliAdapter trait and adapters module"
 **Files:**
 - Create: `src-tauri/src/cli/adapters/claude.rs`
 
-- [ ] **Step 1: Implement Claude Code adapter**
+- [x] **Step 1: Implement Claude Code adapter**
 
 ```rust
 // src-tauri/src/cli/adapters/claude.rs
@@ -519,13 +527,13 @@ impl CliAdapter for ClaudeAdapter {
 }
 ```
 
-- [ ] **Step 2: Verify it compiles (syntax only)**
+- [x] **Step 2: Verify it compiles (syntax only)**
 
 Run: `cd /Users/kangnam/projects/kangnam-client/src-tauri && cargo check 2>&1 | head -20`
 
 Expected: Module registration errors (cli not in lib.rs yet), not syntax errors in claude.rs.
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git add src-tauri/src/cli/adapters/claude.rs
@@ -539,7 +547,7 @@ git commit -m "feat: implement Claude Code CLI adapter"
 **Files:**
 - Create: `src-tauri/src/cli/adapters/codex.rs`
 
-- [ ] **Step 1: Implement Codex CLI adapter**
+- [x] **Step 1: Implement Codex CLI adapter**
 
 ```rust
 // src-tauri/src/cli/adapters/codex.rs
@@ -704,7 +712,7 @@ impl CliAdapter for CodexAdapter {
 }
 ```
 
-- [ ] **Step 2: Commit**
+- [x] **Step 2: Commit**
 
 ```bash
 git add src-tauri/src/cli/adapters/codex.rs
@@ -719,7 +727,7 @@ git commit -m "feat: implement Codex CLI adapter"
 - Create: `src-tauri/src/cli/manager.rs`
 - Modify: `src-tauri/src/cli/mod.rs`
 
-- [ ] **Step 1: Implement CliManager**
+- [x] **Step 1: Implement CliManager**
 
 ```rust
 // src-tauri/src/cli/manager.rs
@@ -1070,7 +1078,7 @@ impl CliManager {
 }
 ```
 
-- [ ] **Step 2: Update cli/mod.rs**
+- [x] **Step 2: Update cli/mod.rs**
 
 ```rust
 // src-tauri/src/cli/mod.rs
@@ -1080,7 +1088,7 @@ pub mod manager;
 pub mod types;
 ```
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git add src-tauri/src/cli/
@@ -1095,7 +1103,7 @@ git commit -m "feat: implement CLI Manager with subprocess lifecycle"
 - Create: `src-tauri/src/cli/registry.rs`
 - Modify: `src-tauri/src/cli/mod.rs`
 
-- [ ] **Step 1: Implement registry**
+- [x] **Step 1: Implement registry**
 
 ```rust
 // src-tauri/src/cli/registry.rs
@@ -1133,7 +1141,7 @@ pub struct ProviderMeta {
 }
 ```
 
-- [ ] **Step 2: Update cli/mod.rs**
+- [x] **Step 2: Update cli/mod.rs**
 
 ```rust
 // src-tauri/src/cli/mod.rs
@@ -1144,7 +1152,7 @@ pub mod registry;
 pub mod types;
 ```
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git add src-tauri/src/cli/
@@ -1158,7 +1166,7 @@ git commit -m "feat: add CLI registry with provider metadata"
 **Files:**
 - Create: `src-tauri/src/commands/cli.rs`
 
-- [ ] **Step 1: Implement Tauri commands**
+- [x] **Step 1: Implement Tauri commands**
 
 ```rust
 // src-tauri/src/commands/cli.rs
@@ -1248,7 +1256,7 @@ pub async fn cli_stop_session(
 }
 ```
 
-- [ ] **Step 2: Commit**
+- [x] **Step 2: Commit**
 
 ```bash
 git add src-tauri/src/commands/cli.rs
@@ -1271,7 +1279,7 @@ git commit -m "feat: add Tauri IPC commands for CLI operations"
 - Delete: `src/renderer/hooks/use-assistant-runtime.ts`
 - Delete: `src/renderer/lib/providers.ts`
 
-- [ ] **Step 1: Delete Rust backend files**
+- [x] **Step 1: Delete Rust backend files**
 
 ```bash
 rm -rf src-tauri/src/providers/
@@ -1282,7 +1290,7 @@ rm -f src-tauri/src/commands/chat.rs
 rm -f src-tauri/src/commands/cowork.rs
 ```
 
-- [ ] **Step 2: Delete frontend files**
+- [x] **Step 2: Delete frontend files**
 
 ```bash
 rm -rf src/renderer/components/cowork/
@@ -1291,7 +1299,7 @@ rm -f src/renderer/hooks/use-assistant-runtime.ts
 rm -f src/renderer/lib/providers.ts
 ```
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git add -A
@@ -1310,7 +1318,7 @@ git commit -m "refactor: remove old provider/auth/cowork/eval code"
 
 This task requires reading the current content of each file and surgically editing. Steps below describe the changes; the implementing agent must read each file first.
 
-- [ ] **Step 1: Update state.rs**
+- [x] **Step 1: Update state.rs**
 
 Remove all provider/auth state fields. Add CliManager. The new `AppState` should look like:
 
@@ -1327,15 +1335,15 @@ pub struct AppState {
 
 Remove any imports referencing `providers`, `auth`, or `AuthManager`.
 
-- [ ] **Step 2: Update commands/mod.rs**
+- [x] **Step 2: Update commands/mod.rs**
 
 Remove `pub mod auth;`, `pub mod chat;`, `pub mod cowork;`. Add `pub mod cli;`. Keep `pub mod conv;`, `pub mod settings;`, `pub mod mcp;`, `pub mod skills;`, `pub mod agents;`, `pub mod eval;` (eval will be cleaned up later if it has DB-only operations; if it references deleted code, remove it too).
 
-- [ ] **Step 3: Update skills/mod.rs**
+- [x] **Step 3: Update skills/mod.rs**
 
 Remove `pub mod ai;` if it exists. Keep remaining skill DB operations.
 
-- [ ] **Step 4: Update lib.rs**
+- [x] **Step 4: Update lib.rs**
 
 Read the current lib.rs. Remove:
 - `mod providers;`
@@ -1381,13 +1389,13 @@ Register commands:
 ])
 ```
 
-- [ ] **Step 5: Verify Rust backend compiles**
+- [x] **Step 5: Verify Rust backend compiles**
 
 Run: `cd /Users/kangnam/projects/kangnam-client/src-tauri && cargo check 2>&1`
 
 Fix any compilation errors. There will likely be remaining references to deleted modules in various files — find and remove them.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add -A
@@ -1402,23 +1410,23 @@ git commit -m "refactor: wire up CLI Manager in Tauri backend, remove old provid
 - Modify: `src-tauri/src/db/schema.rs`
 - Modify: `src-tauri/src/db/conversations.rs`
 
-- [ ] **Step 1: Read current schema and conversations files**
+- [x] **Step 1: Read current schema and conversations files**
 
 Read `src-tauri/src/db/schema.rs` and `src-tauri/src/db/conversations.rs` to understand current structure.
 
-- [ ] **Step 2: Update schema**
+- [x] **Step 2: Update schema**
 
 Add `message_type TEXT NOT NULL DEFAULT 'text'` to the messages table CREATE statement. Change `provider` to `cli_provider` in conversations table. Add migration logic that runs on startup to ALTER existing tables if they exist.
 
-- [ ] **Step 3: Update conversations.rs**
+- [x] **Step 3: Update conversations.rs**
 
 Change any references from `provider` to `cli_provider` in query strings and struct fields.
 
-- [ ] **Step 4: Verify Rust compiles**
+- [x] **Step 4: Verify Rust compiles**
 
 Run: `cd /Users/kangnam/projects/kangnam-client/src-tauri && cargo check`
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add src-tauri/src/db/
@@ -1433,11 +1441,11 @@ git commit -m "refactor: update DB schema for CLI wrapper (message_type, cli_pro
 - Modify: `src/renderer/stores/app-store.ts`
 - Create: `src/renderer/lib/cli-api.ts`
 
-- [ ] **Step 1: Read current app-store.ts**
+- [x] **Step 1: Read current app-store.ts**
 
 Read the full file to understand all existing state.
 
-- [ ] **Step 2: Update app-store.ts**
+- [x] **Step 2: Update app-store.ts**
 
 Remove `AuthStatus` type and `authStatuses`/`setAuthStatuses` state. Add:
 
@@ -1485,7 +1493,7 @@ setPendingPermission: (msg: UnifiedMessage | null) => set({ pendingPermission: m
 
 Remove: `showEval`, `authStatuses`, `setAuthStatuses`, and any cowork-related state.
 
-- [ ] **Step 3: Create cli-api.ts**
+- [x] **Step 3: Create cli-api.ts**
 
 ```typescript
 // src/renderer/lib/cli-api.ts
@@ -1527,7 +1535,7 @@ export const cliApi = {
 }
 ```
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add src/renderer/stores/app-store.ts src/renderer/lib/cli-api.ts
@@ -1541,7 +1549,7 @@ git commit -m "feat: update store types and add CLI API wrapper"
 **Files:**
 - Create: `src/renderer/components/chat/MessageRenderer.tsx`
 
-- [ ] **Step 1: Create MessageRenderer**
+- [x] **Step 1: Create MessageRenderer**
 
 ```tsx
 // src/renderer/components/chat/MessageRenderer.tsx
@@ -1653,7 +1661,7 @@ function TurnEndIndicator({ usage }: { usage?: { input_tokens: number; output_to
 }
 ```
 
-- [ ] **Step 2: Commit**
+- [x] **Step 2: Commit**
 
 ```bash
 git add src/renderer/components/chat/MessageRenderer.tsx
@@ -1667,7 +1675,7 @@ git commit -m "feat: add MessageRenderer for UnifiedMessage types"
 **Files:**
 - Create: `src/renderer/components/chat/SafetyDialog.tsx`
 
-- [ ] **Step 1: Create SafetyDialog**
+- [x] **Step 1: Create SafetyDialog**
 
 ```tsx
 // src/renderer/components/chat/SafetyDialog.tsx
@@ -1746,7 +1754,7 @@ export function SafetyDialog() {
 }
 ```
 
-- [ ] **Step 2: Commit**
+- [x] **Step 2: Commit**
 
 ```bash
 git add src/renderer/components/chat/SafetyDialog.tsx
@@ -1764,9 +1772,9 @@ git commit -m "feat: add SafetyDialog for CLI permission requests"
 
 This task requires reading the current files and adapting. Key changes:
 
-- [ ] **Step 1: Read current ChatView.tsx, App.tsx, InputControls.tsx**
+- [x] **Step 1: Read current ChatView.tsx, App.tsx, InputControls.tsx**
 
-- [ ] **Step 2: Update ChatView.tsx**
+- [x] **Step 2: Update ChatView.tsx**
 
 Replace the SSE/assistant-ui streaming logic with Tauri event listening:
 
@@ -1804,7 +1812,7 @@ useEffect(() => {
 // <SafetyDialog />
 ```
 
-- [ ] **Step 3: Update App.tsx**
+- [x] **Step 3: Update App.tsx**
 
 Remove cowork/eval imports and rendering. Remove auth status loading. Add setup check:
 
@@ -1821,19 +1829,19 @@ import { SetupWizard } from './components/setup/SetupWizard'  // will be created
 // else render the main app layout
 ```
 
-- [ ] **Step 4: Update InputControls.tsx**
+- [x] **Step 4: Update InputControls.tsx**
 
 Read the current file. Modify the submit handler to use `cliApi.sendMessage` instead of the old provider-based send. The input should:
 - Call `cliApi.sendMessage(currentSessionId, message)` on submit
 - Detect `/` prefix for future CommandPalette integration (just a comment for now)
 
-- [ ] **Step 5: Verify frontend compiles**
+- [x] **Step 5: Verify frontend compiles**
 
 Run: `cd /Users/kangnam/projects/kangnam-client && npm run typecheck`
 
 Fix any TypeScript errors from removed imports or changed types.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add -A
@@ -1848,7 +1856,7 @@ git commit -m "feat: wire up ChatView with Tauri event streaming, update App lay
 - Create: `src/renderer/components/setup/SetupWizard.tsx`
 - Create: `src/renderer/components/setup/CliCard.tsx`
 
-- [ ] **Step 1: Create CliCard**
+- [x] **Step 1: Create CliCard**
 
 ```tsx
 // src/renderer/components/setup/CliCard.tsx
@@ -1901,7 +1909,7 @@ export function CliCard({ meta, status, selected, onToggle, onInstall, installin
 }
 ```
 
-- [ ] **Step 2: Create SetupWizard**
+- [x] **Step 2: Create SetupWizard**
 
 ```tsx
 // src/renderer/components/setup/SetupWizard.tsx
@@ -2011,7 +2019,7 @@ export function SetupWizard() {
 }
 ```
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git add src/renderer/components/setup/
@@ -2025,7 +2033,7 @@ git commit -m "feat: add SetupWizard with CLI detection and install"
 **Files:**
 - Create: `src/renderer/components/chat/WorkdirSelector.tsx`
 
-- [ ] **Step 1: Create WorkdirSelector**
+- [x] **Step 1: Create WorkdirSelector**
 
 ```tsx
 // src/renderer/components/chat/WorkdirSelector.tsx
@@ -2100,7 +2108,7 @@ export function WorkdirSelector({ onSessionStarted }: WorkdirSelectorProps) {
 }
 ```
 
-- [ ] **Step 2: Commit**
+- [x] **Step 2: Commit**
 
 ```bash
 git add src/renderer/components/chat/WorkdirSelector.tsx
@@ -2115,7 +2123,7 @@ git commit -m "feat: add WorkdirSelector for choosing working directory"
 - Create: `src/renderer/components/chat/CommandPalette.tsx`
 - Modify: `src/renderer/components/InputControls.tsx`
 
-- [ ] **Step 1: Create CommandPalette**
+- [x] **Step 1: Create CommandPalette**
 
 ```tsx
 // src/renderer/components/chat/CommandPalette.tsx
@@ -2179,7 +2187,7 @@ export function CommandPalette({ query, skills, onSelect, onClose }: CommandPale
 }
 ```
 
-- [ ] **Step 2: Update InputControls.tsx**
+- [x] **Step 2: Update InputControls.tsx**
 
 Read the current file. Add state for showing the CommandPalette:
 
@@ -2205,7 +2213,7 @@ const handleInputChange = (value: string) => {
 // Render CommandPalette above the input when showPalette is true
 ```
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git add src/renderer/components/chat/CommandPalette.tsx src/renderer/components/InputControls.tsx
@@ -2220,7 +2228,7 @@ git commit -m "feat: add CommandPalette for slash command skills"
 - Create: `src/renderer/components/sidebar/AgentPanel.tsx`
 - Modify: `src/renderer/components/sidebar/Sidebar.tsx`
 
-- [ ] **Step 1: Create AgentPanel**
+- [x] **Step 1: Create AgentPanel**
 
 ```tsx
 // src/renderer/components/sidebar/AgentPanel.tsx
@@ -2306,7 +2314,7 @@ export function AgentPanel() {
 }
 ```
 
-- [ ] **Step 2: Update Sidebar.tsx**
+- [x] **Step 2: Update Sidebar.tsx**
 
 Read current file. Add `<AgentPanel />` at the bottom of the sidebar, before the closing tag:
 
@@ -2317,7 +2325,7 @@ import { AgentPanel } from './AgentPanel'
 <AgentPanel />
 ```
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git add src/renderer/components/sidebar/AgentPanel.tsx src/renderer/components/sidebar/Sidebar.tsx
@@ -2331,9 +2339,9 @@ git commit -m "feat: add AgentPanel to sidebar showing running agents"
 **Files:**
 - Modify: `src/renderer/components/settings/tabs/ProvidersTab.tsx`
 
-- [ ] **Step 1: Read current ProvidersTab.tsx**
+- [x] **Step 1: Read current ProvidersTab.tsx**
 
-- [ ] **Step 2: Rewrite ProvidersTab**
+- [x] **Step 2: Rewrite ProvidersTab**
 
 Replace OAuth provider configuration with CLI management:
 
@@ -2347,7 +2355,7 @@ Replace OAuth provider configuration with CLI management:
 // Layout should follow the existing settings tab pattern
 ```
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git add src/renderer/components/settings/tabs/ProvidersTab.tsx
@@ -2358,7 +2366,7 @@ git commit -m "refactor: update ProvidersTab for CLI management"
 
 ## Task 20: Integration Test — Full Build Verification
 
-- [ ] **Step 1: Verify Rust backend compiles**
+- [x] **Step 1: Verify Rust backend compiles**
 
 ```bash
 cd /Users/kangnam/projects/kangnam-client/src-tauri && cargo check
@@ -2366,7 +2374,7 @@ cd /Users/kangnam/projects/kangnam-client/src-tauri && cargo check
 
 Fix all compilation errors.
 
-- [ ] **Step 2: Verify frontend compiles**
+- [x] **Step 2: Verify frontend compiles**
 
 ```bash
 cd /Users/kangnam/projects/kangnam-client && npm run typecheck
@@ -2374,7 +2382,7 @@ cd /Users/kangnam/projects/kangnam-client && npm run typecheck
 
 Fix all TypeScript errors.
 
-- [ ] **Step 3: Verify Tauri dev build starts**
+- [x] **Step 3: Verify Tauri dev build starts**
 
 ```bash
 cd /Users/kangnam/projects/kangnam-client && npm run tauri:dev
@@ -2382,7 +2390,7 @@ cd /Users/kangnam/projects/kangnam-client && npm run tauri:dev
 
 Verify the app launches and shows the SetupWizard.
 
-- [ ] **Step 4: Run existing tests**
+- [x] **Step 4: Run existing tests**
 
 ```bash
 cd /Users/kangnam/projects/kangnam-client && npm test
@@ -2390,7 +2398,7 @@ cd /Users/kangnam/projects/kangnam-client && npm test
 
 Fix any broken tests. Remove tests for deleted code.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add -A
@@ -2401,13 +2409,13 @@ git commit -m "fix: resolve build errors and update tests for CLI wrapper"
 
 ## Task 21: Final Cleanup and .gitignore
 
-- [ ] **Step 1: Add .superpowers/ to .gitignore**
+- [x] **Step 1: Add .superpowers/ to .gitignore**
 
 ```bash
 echo ".superpowers/" >> .gitignore
 ```
 
-- [ ] **Step 2: Remove unused dependencies from package.json**
+- [x] **Step 2: Remove unused dependencies from package.json**
 
 If `@assistant-ui/react` and `@assistant-ui/react-markdown` are no longer used (since we removed use-assistant-runtime.ts), remove them:
 
@@ -2415,11 +2423,11 @@ If `@assistant-ui/react` and `@assistant-ui/react-markdown` are no longer used (
 npm uninstall @assistant-ui/react @assistant-ui/react-markdown
 ```
 
-- [ ] **Step 3: Remove unused Rust dependencies from Cargo.toml**
+- [x] **Step 3: Remove unused Rust dependencies from Cargo.toml**
 
 Check if `hyper` (was used for OAuth server), `sha2`, `base64`, `rand` (were used for PKCE) are still needed. Remove unused ones.
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add -A
