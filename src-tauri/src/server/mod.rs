@@ -1,4 +1,5 @@
 pub mod broadcast;
+pub mod mcp;
 pub mod router;
 pub mod saver;
 pub mod ws;
