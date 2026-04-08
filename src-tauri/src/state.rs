@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::sync::Mutex;
 use rusqlite::Connection;
 
@@ -12,6 +13,7 @@ pub struct AppState {
     pub mcp: McpBridge,
     pub broadcast_tx: BroadcastTx,
     pub enhanced_broadcast_tx: EnhancedBroadcastTx,
+    pub pending_permissions: tokio::sync::Mutex<HashMap<String, tokio::sync::oneshot::Sender<bool>>>,
 }
 
 impl AppState {
@@ -40,6 +42,7 @@ impl AppState {
             mcp: McpBridge::new(),
             broadcast_tx,
             enhanced_broadcast_tx,
+            pending_permissions: tokio::sync::Mutex::new(HashMap::new()),
         })
     }
 }
