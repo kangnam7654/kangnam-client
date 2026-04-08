@@ -4,13 +4,14 @@ use rusqlite::Connection;
 use crate::cli::manager::CliManager;
 use crate::db;
 use crate::mcp::bridge::McpBridge;
-use crate::server::broadcast::{self, BroadcastTx};
+use crate::server::broadcast::{self, BroadcastTx, EnhancedBroadcastTx};
 
 pub struct AppState {
     pub db: Mutex<Connection>,
     pub cli_manager: tokio::sync::Mutex<CliManager>,
     pub mcp: McpBridge,
     pub broadcast_tx: BroadcastTx,
+    pub enhanced_broadcast_tx: EnhancedBroadcastTx,
 }
 
 impl AppState {
@@ -31,12 +32,14 @@ impl AppState {
         ));
 
         let (broadcast_tx, _) = broadcast::create_channel();
+        let (enhanced_broadcast_tx, _) = broadcast::create_enhanced_channel();
 
         Ok(Self {
             db: Mutex::new(conn),
             cli_manager: tokio::sync::Mutex::new(cli_manager),
             mcp: McpBridge::new(),
             broadcast_tx,
+            enhanced_broadcast_tx,
         })
     }
 }
