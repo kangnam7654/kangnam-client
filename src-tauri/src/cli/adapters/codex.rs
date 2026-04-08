@@ -173,4 +173,8 @@ impl CliAdapter for CodexAdapter {
     fn list_agents_command(&self) -> Option<Vec<String>> {
         None
     }
+
+    fn enhanced_features(&self) -> bool {
+        false
+    }
 }
