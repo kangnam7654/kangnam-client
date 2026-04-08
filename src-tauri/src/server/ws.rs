@@ -49,6 +49,19 @@ async fn handle_socket(socket: WebSocket, state: Arc<AppState>) {
         }
     });
 
+    // Task 3: enhanced broadcast notifications → outbound channel
+    let mut enhanced_rx = state.enhanced_broadcast_tx.subscribe();
+    let enhanced_notify_tx = outbound_tx.clone();
+    let enhanced_task = tokio::spawn(async move {
+        while let Ok(notification) = enhanced_rx.recv().await {
+            if let Ok(text) = serde_json::to_string(&notification) {
+                if enhanced_notify_tx.send(text).await.is_err() {
+                    break;
+                }
+            }
+        }
+    });
+
     // Main loop: receive JSON-RPC requests → dispatch → send response via outbound channel
     while let Some(Ok(msg)) = ws_receiver.next().await {
         match msg {
@@ -69,6 +82,7 @@ async fn handle_socket(socket: WebSocket, state: Arc<AppState>) {
     }
 
     // Cleanup
+    enhanced_task.abort();
     notify_task.abort();
     send_task.abort();
 }
