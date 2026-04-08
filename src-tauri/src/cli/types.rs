@@ -93,3 +93,73 @@ pub struct AgentInfo {
     pub name: String,
     pub description: String,
 }
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct McpServerInfo {
+    pub name: String,
+    pub status: String,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(tag = "type", rename_all = "snake_case")]
+pub enum ClaudeEnhancedEvent {
+    SessionMeta {
+        session_id: String,
+        tools: Vec<String>,
+        skills: Vec<String>,
+        slash_commands: Vec<String>,
+        mcp_servers: Vec<McpServerInfo>,
+        model: String,
+        permission_mode: String,
+        cwd: String,
+        claude_code_version: String,
+    },
+    TaskStarted {
+        task_id: String,
+        tool_use_id: String,
+        description: String,
+        task_type: String,
+    },
+    TaskProgress {
+        task_id: String,
+        description: String,
+        usage: Option<serde_json::Value>,
+        last_tool_name: Option<String>,
+    },
+    TaskNotification {
+        task_id: String,
+        status: String,
+        summary: Option<String>,
+    },
+    ResultSummary {
+        cost_usd: Option<f64>,
+        usage: Option<serde_json::Value>,
+        duration_ms: Option<u64>,
+        num_turns: Option<u32>,
+        model_usage: Option<serde_json::Value>,
+        permission_denials: Vec<serde_json::Value>,
+    },
+    RateLimit {
+        status: String,
+        utilization: Option<f64>,
+        rate_limit_type: String,
+    },
+    HookStarted {
+        hook_id: String,
+        hook_name: String,
+        hook_event: String,
+    },
+    HookProgress {
+        hook_id: String,
+        stdout: Option<String>,
+        stderr: Option<String>,
+    },
+    HookResponse {
+        hook_id: String,
+    },
+    StatusUpdate {
+        status: String,
+        permission_mode: Option<String>,
+    },
+    CompactBoundary,
+}
