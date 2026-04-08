@@ -1,15 +1,16 @@
 use std::sync::Arc;
 
-use axum::{routing::get, Router};
+use axum::{routing::{get, post}, Router};
 use tower_http::cors::CorsLayer;
 use tower_http::services::ServeDir;
 
-use crate::server::ws;
+use crate::server::{mcp, ws};
 use crate::state::AppState;
 
 pub fn create_router(state: Arc<AppState>, static_dir: Option<String>) -> Router {
     let mut router = Router::new()
         .route("/ws", get(ws::ws_handler))
+        .route("/mcp", post(mcp::mcp_handler))
         .layer(CorsLayer::permissive())
         .with_state(state);
 
