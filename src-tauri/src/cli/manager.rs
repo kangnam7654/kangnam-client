@@ -17,6 +17,11 @@ struct CliSession {
     provider: String,
     working_dir: PathBuf,
     session_id: String,
+    /// Conversation history for non-persistent CLIs (Codex).
+    /// Pairs of (user_message, assistant_response).
+    history: Vec<(String, String)>,
+    /// Buffer for accumulating current assistant response text.
+    current_response: Arc<tokio::sync::Mutex<String>>,
 }
 
 pub struct CliManager {
@@ -79,6 +84,8 @@ impl CliManager {
                     provider: provider.to_string(),
                     working_dir: working_dir.to_path_buf(),
                     session_id: session_id.to_string(),
+                    history: Vec::new(),
+                    current_response: Arc::new(tokio::sync::Mutex::new(String::new())),
                 },
             );
         }
@@ -150,24 +157,44 @@ impl CliManager {
                 }
                 Ok(())
             } else {
+                // Non-persistent (Codex): build prompt with history context
                 let provider = session.provider.clone();
                 let working_dir = session.working_dir.clone();
+                let history = session.history.clone();
+
+                // Build contextual prompt from history
+                let mut prompt = String::new();
+                if !history.is_empty() {
+                    prompt.push_str("Previous conversation:\n");
+                    for (user_msg, assistant_msg) in &history {
+                        prompt.push_str(&format!("User: {}\nAssistant: {}\n\n", user_msg, assistant_msg));
+                    }
+                    prompt.push_str("Now respond to:\n");
+                }
+                prompt.push_str(message);
+
+                let current_response = session.current_response.clone();
+                let user_msg = message.to_string();
                 drop(sessions_lock);
 
-                self.start_codex_exec(&provider, &working_dir, session_id, message, broadcast_tx)
-                    .await
+                self.start_codex_exec_with_history(
+                    &provider, &working_dir, session_id, &prompt, &user_msg,
+                    current_response, broadcast_tx,
+                ).await
             }
         } else {
             Err(format!("Session not found: {}", session_id))
         }
     }
 
-    async fn start_codex_exec(
+    async fn start_codex_exec_with_history(
         &self,
         provider: &str,
         working_dir: &Path,
         session_id: &str,
         prompt: &str,
+        user_msg: &str,
+        current_response: Arc<tokio::sync::Mutex<String>>,
         broadcast_tx: BroadcastTx,
     ) -> Result<(), String> {
         let adapter = self.get_adapter(provider)?;
@@ -180,30 +207,24 @@ impl CliManager {
         let stdout = child.stdout.take().ok_or("Failed to capture stdout")?;
         let sessions = self.sessions.clone();
         let sid = session_id.to_string();
-
-        {
-            let mut sessions_lock = sessions.lock().await;
-            sessions_lock.insert(
-                session_id.to_string(),
-                CliSession {
-                    child,
-                    provider: provider.to_string(),
-                    working_dir: working_dir.to_path_buf(),
-                    session_id: session_id.to_string(),
-                },
-            );
-        }
+        let user_msg_owned = user_msg.to_string();
+        let _response_collector = current_response.clone();
 
         tokio::spawn(async move {
             let reader = BufReader::new(stdout);
             let mut lines = reader.lines();
+            let mut response_text = String::new();
 
             while let Ok(Some(line)) = lines.next_line().await {
                 let parsed =
                     crate::cli::adapters::codex::CodexAdapter::new().parse_line(&line);
                 match parsed {
-                    Ok(Some(msg)) => {
-                        Self::emit_notification(&broadcast_tx, &msg);
+                    Ok(Some(ref msg)) => {
+                        // Collect text for history
+                        if let UnifiedMessage::TextDelta { ref text } = msg {
+                            response_text.push_str(text);
+                        }
+                        Self::emit_notification(&broadcast_tx, msg);
                     }
                     Ok(None) => {}
                     Err(e) => {
@@ -221,6 +242,14 @@ impl CliManager {
                 &broadcast_tx,
                 &UnifiedMessage::TurnEnd { usage: None },
             );
+
+            // Save response to history for multi-turn
+            if !response_text.is_empty() {
+                let mut sessions_lock = sessions.lock().await;
+                if let Some(session) = sessions_lock.get_mut(&sid) {
+                    session.history.push((user_msg_owned, response_text));
+                }
+            }
 
             let mut sessions_lock = sessions.lock().await;
             sessions_lock.remove(&sid);
