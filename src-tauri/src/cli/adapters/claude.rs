@@ -5,11 +5,17 @@ use std::process::Stdio;
 use crate::cli::adapter::CliAdapter;
 use crate::cli::types::{UnifiedMessage, ClaudeEnhancedEvent, McpServerInfo};
 
-pub struct ClaudeAdapter;
+pub struct ClaudeAdapter {
+    mcp_port: u16,
+}
 
 impl ClaudeAdapter {
     pub fn new() -> Self {
-        Self
+        Self { mcp_port: 3001 }
+    }
+
+    pub fn with_port(port: u16) -> Self {
+        Self { mcp_port: port }
     }
 
     /// Parse a stream_event from Claude Code's NDJSON output
@@ -258,20 +264,6 @@ impl ClaudeAdapter {
         }))
     }
 
-    /// Parse a control_request (permission prompt)
-    fn parse_control_request(&self, value: &serde_json::Value) -> Result<Option<UnifiedMessage>, String> {
-        let id = value.get("id").and_then(|v| v.as_str()).unwrap_or("").to_string();
-        let tool = value.get("tool_name").and_then(|v| v.as_str()).unwrap_or("").to_string();
-        let description = value.get("description").and_then(|v| v.as_str()).unwrap_or("").to_string();
-        let diff = value.get("diff").and_then(|v| v.as_str()).map(|s| s.to_string());
-
-        Ok(Some(UnifiedMessage::PermissionRequest {
-            id,
-            tool,
-            description,
-            diff,
-        }))
-    }
 }
 
 impl CliAdapter for ClaudeAdapter {
@@ -293,6 +285,16 @@ impl CliAdapter for ClaudeAdapter {
             "--include-partial-messages",
             "--include-hook-events",
         ]);
+        // Register our MCP server for permission handling
+        let mcp_config = serde_json::json!({
+            "kangnam": {
+                "url": format!("http://localhost:{}/mcp", self.mcp_port)
+            }
+        });
+        cmd.arg("--mcp-config");
+        cmd.arg(mcp_config.to_string());
+        cmd.arg("--permission-prompt-tool");
+        cmd.arg("mcp__kangnam__approve");
         cmd.current_dir(working_dir);
         cmd.stdin(Stdio::piped());
         cmd.stdout(Stdio::piped());
@@ -324,7 +326,6 @@ impl CliAdapter for ClaudeAdapter {
             "stream_event" => self.parse_stream_event(&value),
             "assistant" => self.parse_assistant(&value),
             "result" => self.parse_result(&value),
-            "control_request" => self.parse_control_request(&value),
             _ => Ok(None),
         }
     }

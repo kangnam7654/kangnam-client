@@ -26,8 +26,12 @@ impl AppState {
         db::schema::run_migrations(&mut conn)?;
 
         let mut cli_manager = CliManager::new();
+        let port: u16 = std::env::var("KANGNAM_PORT")
+            .ok()
+            .and_then(|p| p.parse().ok())
+            .unwrap_or(3001);
         cli_manager.register_adapter(Box::new(
-            crate::cli::adapters::claude::ClaudeAdapter::new(),
+            crate::cli::adapters::claude::ClaudeAdapter::with_port(port),
         ));
         cli_manager.register_adapter(Box::new(
             crate::cli::adapters::codex::CodexAdapter::new(),
