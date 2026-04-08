@@ -3,7 +3,7 @@
 use std::path::Path;
 use tokio::process::Command;
 
-use crate::cli::types::UnifiedMessage;
+use crate::cli::types::{UnifiedMessage, ClaudeEnhancedEvent};
 
 /// Each CLI provider implements this trait to handle its specific JSON format
 /// and subprocess configuration.
@@ -46,4 +46,12 @@ pub trait CliAdapter: Send + Sync {
 
     /// Command args to list available agents. None if not supported.
     fn list_agents_command(&self) -> Option<Vec<String>>;
+
+    fn enhanced_features(&self) -> bool {
+        false
+    }
+
+    fn parse_enhanced(&self, _line: &str) -> Result<Option<ClaudeEnhancedEvent>, String> {
+        Ok(None)
+    }
 }
