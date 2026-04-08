@@ -3,6 +3,7 @@ mod commands;
 mod db;
 mod error;
 mod mcp;
+mod rpc;
 mod skills;
 mod state;
 
@@ -24,14 +25,8 @@ pub fn run() {
         .plugin(tauri_plugin_single_instance())
         .manage(app_state)
         .invoke_handler(tauri::generate_handler![
-            // CLI
-            commands::cli::cli_list_providers,
-            commands::cli::cli_check_installed,
-            commands::cli::cli_install,
-            commands::cli::cli_start_session,
-            commands::cli::cli_send_message,
-            commands::cli::cli_send_permission,
-            commands::cli::cli_stop_session,
+            // JSON-RPC 2.0
+            commands::cli::rpc,
             // Settings
             commands::settings::settings_get,
             commands::settings::settings_set,

@@ -16,7 +16,7 @@ export function ProviderSelector() {
     >
       <div style={{
         width: 8, height: 8, borderRadius: '50%',
-        background: 'var(--accent-primary)', flexShrink: 0
+        background: 'var(--accent)', flexShrink: 0
       }} />
       <span style={{ fontWeight: 500 }}>{currentProvider}</span>
     </div>

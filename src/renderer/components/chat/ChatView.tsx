@@ -68,7 +68,7 @@ function MessageInput() {
         <button
           onClick={handleSubmit}
           disabled={!text.trim() || !currentSessionId}
-          className="shrink-0 flex h-8 w-8 items-center justify-center rounded-lg bg-[var(--accent-primary)] text-white disabled:opacity-40 hover:opacity-85 transition-opacity"
+          className="shrink-0 flex h-8 w-8 items-center justify-center rounded-lg bg-[var(--accent)] text-white disabled:opacity-40 hover:opacity-85 transition-opacity"
           aria-label="Send message"
         >
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
@@ -94,7 +94,7 @@ function ChatContent() {
         addMessage(msg)
       }
     })
-    return () => { unlisten.then(fn => fn()) }
+    return unlisten
   }, [addMessage, setPendingPermission])
 
   useEffect(() => {

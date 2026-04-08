@@ -1,5 +1,5 @@
-import { invoke } from '@tauri-apps/api/core'
-import { listen, type UnlistenFn } from '@tauri-apps/api/event'
+import { RpcClient } from './rpc/client'
+import { tauriTransport } from './rpc/transport-tauri'
 import type { CliStatus, UnifiedMessage } from '../stores/app-store'
 
 export interface ProviderMeta {
@@ -9,28 +9,36 @@ export interface ProviderMeta {
   install_hint: string
 }
 
+// Single RPC client instance — transport can be swapped for web
+const rpc = new RpcClient(tauriTransport)
+
 export const cliApi = {
   listProviders: () =>
-    invoke<ProviderMeta[]>('cli_list_providers'),
+    rpc.call<ProviderMeta[]>('cli.listProviders'),
 
   checkInstalled: (provider: string) =>
-    invoke<CliStatus>('cli_check_installed', { provider }),
+    rpc.call<CliStatus>('cli.checkInstalled', { provider }),
 
   install: (provider: string) =>
-    invoke<void>('cli_install', { provider }),
+    rpc.call<void>('cli.install', { provider }),
 
   startSession: (provider: string, workingDir: string) =>
-    invoke<string>('cli_start_session', { provider, workingDir }),
+    rpc.call<string>('cli.startSession', { provider, workingDir }),
 
   sendMessage: (sessionId: string, message: string) =>
-    invoke<void>('cli_send_message', { sessionId, message }),
+    rpc.call<void>('cli.sendMessage', { sessionId, message }),
 
   sendPermission: (sessionId: string, requestId: string, allowed: boolean) =>
-    invoke<void>('cli_send_permission', { sessionId, requestId, allowed }),
+    rpc.call<void>('cli.sendPermission', { sessionId, requestId, allowed }),
 
   stopSession: (sessionId: string) =>
-    invoke<void>('cli_stop_session', { sessionId }),
+    rpc.call<void>('cli.stopSession', { sessionId }),
 
-  onMessage: (callback: (msg: UnifiedMessage) => void): Promise<UnlistenFn> =>
-    listen<UnifiedMessage>('cli-stream', (event) => callback(event.payload)),
+  /** Subscribe to CLI stream events (JSON-RPC Notifications) */
+  onMessage: (callback: (msg: UnifiedMessage) => void): (() => void) =>
+    rpc.onNotification((method, params) => {
+      if (method === 'cli.stream') {
+        callback(params as UnifiedMessage)
+      }
+    }),
 }

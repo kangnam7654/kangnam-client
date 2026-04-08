@@ -46,10 +46,10 @@ export function CommandPalette({ query, skills, onSelect, onClose }: CommandPale
           key={skill.name}
           onClick={() => onSelect(skill.name)}
           className={`flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left ${
-            i === selectedIndex ? 'bg-[var(--accent-primary)]/15' : ''
+            i === selectedIndex ? 'bg-[var(--accent)]/15' : ''
           }`}
         >
-          <span className="font-mono text-sm font-bold text-[var(--accent-primary)]">/{skill.name}</span>
+          <span className="font-mono text-sm font-bold text-[var(--accent)]">/{skill.name}</span>
           <span className="text-xs text-[var(--text-tertiary)]">— {skill.description}</span>
         </button>
       ))}

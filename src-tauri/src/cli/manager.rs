@@ -8,6 +8,7 @@ use tauri::{AppHandle, Emitter};
 
 use crate::cli::adapter::CliAdapter;
 use crate::cli::types::{CliStatus, UnifiedMessage};
+use crate::rpc::types::JsonRpcNotification;
 
 struct CliSession {
     child: Child,
@@ -86,21 +87,30 @@ impl CliManager {
 
                 match parsed {
                     Ok(Some(msg)) => {
-                        let _ = app_handle.emit("cli-stream", &msg);
+                        let notification = JsonRpcNotification::new(
+                            "cli.stream",
+                            serde_json::to_value(&msg).unwrap_or_default(),
+                        );
+                        let _ = app_handle.emit("rpc-notification", &notification);
                     }
                     Ok(None) => {}
                     Err(e) => {
-                        let _ = app_handle.emit(
-                            "cli-stream",
-                            &UnifiedMessage::Error {
+                        let err_notification = JsonRpcNotification::new(
+                            "cli.stream",
+                            serde_json::to_value(&UnifiedMessage::Error {
                                 message: format!("Parse error: {}", e),
-                            },
+                            }).unwrap_or_default(),
                         );
+                        let _ = app_handle.emit("rpc-notification", &err_notification);
                     }
                 }
             }
 
-            let _ = app_handle.emit("cli-stream", &UnifiedMessage::TurnEnd { usage: None });
+            let turn_end = JsonRpcNotification::new(
+                "cli.stream",
+                serde_json::to_value(&UnifiedMessage::TurnEnd { usage: None }).unwrap_or_default(),
+            );
+            let _ = app_handle.emit("rpc-notification", &turn_end);
 
             let mut sessions_lock = sessions.lock().await;
             sessions_lock.remove(&sid);
@@ -193,21 +203,30 @@ impl CliManager {
                     crate::cli::adapters::codex::CodexAdapter::new().parse_line(&line);
                 match parsed {
                     Ok(Some(msg)) => {
-                        let _ = app_handle.emit("cli-stream", &msg);
+                        let notification = JsonRpcNotification::new(
+                            "cli.stream",
+                            serde_json::to_value(&msg).unwrap_or_default(),
+                        );
+                        let _ = app_handle.emit("rpc-notification", &notification);
                     }
                     Ok(None) => {}
                     Err(e) => {
-                        let _ = app_handle.emit(
-                            "cli-stream",
-                            &UnifiedMessage::Error {
+                        let err_notification = JsonRpcNotification::new(
+                            "cli.stream",
+                            serde_json::to_value(&UnifiedMessage::Error {
                                 message: format!("Parse error: {}", e),
-                            },
+                            }).unwrap_or_default(),
                         );
+                        let _ = app_handle.emit("rpc-notification", &err_notification);
                     }
                 }
             }
 
-            let _ = app_handle.emit("cli-stream", &UnifiedMessage::TurnEnd { usage: None });
+            let turn_end = JsonRpcNotification::new(
+                "cli.stream",
+                serde_json::to_value(&UnifiedMessage::TurnEnd { usage: None }).unwrap_or_default(),
+            );
+            let _ = app_handle.emit("rpc-notification", &turn_end);
 
             let mut sessions_lock = sessions.lock().await;
             sessions_lock.remove(&sid);
