@@ -5,6 +5,7 @@ import { cliApi } from '../../lib/cli-api'
 import { MessageRenderer } from './MessageRenderer'
 import { SafetyDialog } from './SafetyDialog'
 import { WorkdirSelector } from './WorkdirSelector'
+import { StatusBar } from './StatusBar'
 
 function TopBar() {
   const { currentProvider, currentWorkingDir, currentSessionId, clearMessages, setCurrentSessionId, isStreaming, sessionMeta } = useAppStore()
@@ -258,6 +259,7 @@ function ChatContent() {
             </div>
           </div>
           <MessageInput />
+          <StatusBar />
         </>
       )}
 
