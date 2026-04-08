@@ -70,8 +70,36 @@ impl ClaudeAdapter {
         }
     }
 
-    /// Parse an assistant turn message (complete turn — already streamed via stream_events)
-    fn parse_assistant(&self, _value: &serde_json::Value) -> Result<Option<UnifiedMessage>, String> {
+    /// Parse an assistant turn message with content blocks
+    fn parse_assistant(&self, value: &serde_json::Value) -> Result<Option<UnifiedMessage>, String> {
+        let message = match value.get("message") {
+            Some(m) => m,
+            None => return Ok(None),
+        };
+        let content = match message.get("content").and_then(|c| c.as_array()) {
+            Some(c) => c,
+            None => return Ok(None),
+        };
+
+        let mut text_parts = Vec::new();
+
+        for block in content {
+            let block_type = block.get("type").and_then(|t| t.as_str()).unwrap_or("");
+            if block_type == "text" {
+                if let Some(text) = block.get("text").and_then(|t| t.as_str()) {
+                    text_parts.push(text);
+                }
+            }
+            // tool_use blocks are handled via stream_event content_block_start
+        }
+
+        if !text_parts.is_empty() {
+            let combined: String = text_parts.join("");
+            if !combined.trim().is_empty() {
+                return Ok(Some(UnifiedMessage::TextDelta { text: combined }));
+            }
+        }
+
         Ok(None)
     }
 
@@ -119,7 +147,7 @@ impl CliAdapter for ClaudeAdapter {
             "-p",
             "--output-format", "stream-json",
             "--input-format", "stream-json",
-            "--include-partial-messages",
+            "--verbose",
         ]);
         cmd.current_dir(working_dir);
         cmd.stdin(Stdio::piped());

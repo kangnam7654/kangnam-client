@@ -2,8 +2,11 @@ use serde::Deserialize;
 use std::path::PathBuf;
 
 use crate::cli::registry::CliRegistry;
+use crate::db::conversations;
 use crate::rpc::types::JsonRpcError;
 use crate::state::AppState;
+use chrono;
+use rusqlite;
 
 type RpcResult = Result<serde_json::Value, JsonRpcError>;
 
@@ -36,10 +39,10 @@ pub async fn start_session(params: Option<serde_json::Value>, state: &AppState) 
     let p: StartSessionParams = parse_params(params)?;
 
     let working_dir = match p.working_dir {
-        Some(dir) => {
-            let path = PathBuf::from(&dir);
+        Some(ref dir) => {
+            let path = PathBuf::from(dir);
             if !path.is_dir() {
-                return Err(JsonRpcError::dir_not_found(&dir));
+                return Err(JsonRpcError::dir_not_found(dir));
             }
             path
         }
@@ -47,6 +50,18 @@ pub async fn start_session(params: Option<serde_json::Value>, state: &AppState) 
     };
 
     let session_id = uuid::Uuid::new_v4().to_string();
+
+    // Create conversation in DB using session_id as conversation id
+    {
+        let db = state.db.lock().map_err(|e| JsonRpcError::internal(&e.to_string()))?;
+        let now = chrono::Utc::now().timestamp();
+        db.execute(
+            "INSERT INTO conversations (id, title, cli_provider, created_at, updated_at) \
+             VALUES (?1, 'New Chat', ?2, ?3, ?4)",
+            rusqlite::params![session_id, p.provider, now, now],
+        ).map_err(|e| JsonRpcError::internal(&e.to_string()))?;
+    }
+
     let broadcast_tx = state.broadcast_tx.clone();
     let manager = state.cli_manager.lock().await;
     manager
@@ -59,6 +74,17 @@ pub async fn start_session(params: Option<serde_json::Value>, state: &AppState) 
 
 pub async fn send_message(params: Option<serde_json::Value>, state: &AppState) -> RpcResult {
     let p: SendMessageParams = parse_params(params)?;
+
+    // Save user message to DB
+    {
+        let db = state.db.lock().map_err(|e| JsonRpcError::internal(&e.to_string()))?;
+        let _ = conversations::add_message(
+            &db, &p.session_id, "user", &p.message,
+            None, None, None, None, None,
+        );
+        let _ = conversations::auto_title_if_needed(&db, &p.session_id, &p.message);
+    }
+
     let broadcast_tx = state.broadcast_tx.clone();
     let manager = state.cli_manager.lock().await;
     manager
