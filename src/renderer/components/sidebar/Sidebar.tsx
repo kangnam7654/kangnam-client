@@ -1,7 +1,10 @@
 import { useEffect, useCallback } from 'react'
 import { useAppStore, type Conversation } from '../../stores/app-store'
+import { cliApi } from '../../lib/cli-api'
 import { ConversationList } from './ConversationList'
 import { AgentPanel } from './AgentPanel'
+import { SkillBrowser } from './SkillBrowser'
+import { TaskPanel } from './TaskPanel'
 
 export function Sidebar() {
   const {
@@ -11,15 +14,27 @@ export function Sidebar() {
   } = useAppStore()
 
   const loadConversations = useCallback(async () => {
-    const convs = await window.api.conv.list() as Conversation[]
-    setConversations(convs)
+    try {
+      const convs = await window.api.conv.list() as Conversation[]
+      setConversations(convs)
+    } catch {
+      // conv.list may fail if Tauri commands aren't registered — ignore silently
+    }
   }, [setConversations])
 
   useEffect(() => {
     loadConversations()
   }, [loadConversations])
 
-  const handleNewChat = () => {
+  const handleNewChat = async () => {
+    const { currentSessionId, clearMessages, setCurrentSessionId, setIsStreaming, setCurrentWorkingDir } = useAppStore.getState()
+    if (currentSessionId) {
+      try { await cliApi.stopSession(currentSessionId) } catch { /* ignore */ }
+    }
+    clearMessages()
+    setCurrentSessionId(null)
+    setIsStreaming(false)
+    setCurrentWorkingDir(null)
     setActiveConversationId(null)
   }
 
@@ -119,8 +134,14 @@ export function Sidebar() {
           <ConversationList />
         </div>
 
-        {/* Agent Panel */}
+        {/* Skills (shown when session is active) */}
+        <SkillBrowser />
+
+        {/* Active Agents */}
         <AgentPanel />
+
+        {/* Background Tasks */}
+        <TaskPanel />
 
         {/* Bottom — User + Settings */}
         <div style={{ borderTop: '1px solid var(--border-subtle)', padding: '12px 16px' }}>
