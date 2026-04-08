@@ -145,10 +145,6 @@ impl CliAdapter for CodexAdapter {
         None
     }
 
-    fn format_permission_response(&self, _request_id: &str, _allowed: bool) -> Option<String> {
-        None
-    }
-
     fn supports_persistent_session(&self) -> bool {
         false
     }

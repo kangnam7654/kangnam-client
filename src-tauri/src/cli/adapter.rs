@@ -27,10 +27,6 @@ pub trait CliAdapter: Send + Sync {
     /// Returns None if the CLI does not support stdin messaging (e.g., Codex).
     fn format_user_message(&self, message: &str, session_id: &str) -> Option<String>;
 
-    /// Format a permission response for writing to stdin.
-    /// Returns None if not supported.
-    fn format_permission_response(&self, request_id: &str, allowed: bool) -> Option<String>;
-
     /// Whether the CLI supports persistent stdin (multi-turn in one process).
     /// Claude Code: true. Codex CLI: false (one process per prompt).
     fn supports_persistent_session(&self) -> bool;

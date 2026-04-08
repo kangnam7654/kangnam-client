@@ -342,15 +342,6 @@ impl CliAdapter for ClaudeAdapter {
         Some(format!("{}\n", msg))
     }
 
-    fn format_permission_response(&self, request_id: &str, allowed: bool) -> Option<String> {
-        let msg = serde_json::json!({
-            "type": "control_response",
-            "id": request_id,
-            "allowed": allowed
-        });
-        Some(format!("{}\n", msg))
-    }
-
     fn supports_persistent_session(&self) -> bool {
         true
     }

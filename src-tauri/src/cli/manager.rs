@@ -276,33 +276,6 @@ impl CliManager {
         Ok(())
     }
 
-    pub async fn send_permission_response(
-        &self,
-        session_id: &str,
-        request_id: &str,
-        allowed: bool,
-    ) -> Result<(), String> {
-        let mut sessions_lock = self.sessions.lock().await;
-        let session = sessions_lock
-            .get_mut(session_id)
-            .ok_or_else(|| format!("Session not found: {}", session_id))?;
-
-        let adapter = self.get_adapter(&session.provider.clone())?;
-        if let Some(formatted) = adapter.format_permission_response(request_id, allowed) {
-            if let Some(stdin) = session.child.stdin.as_mut() {
-                stdin
-                    .write_all(formatted.as_bytes())
-                    .await
-                    .map_err(|e| format!("stdin write error: {}", e))?;
-                stdin
-                    .flush()
-                    .await
-                    .map_err(|e| format!("stdin flush error: {}", e))?;
-            }
-        }
-        Ok(())
-    }
-
     pub async fn stop_session(&self, session_id: &str) -> Result<(), String> {
         let mut sessions_lock = self.sessions.lock().await;
         if let Some(mut session) = sessions_lock.remove(session_id) {
