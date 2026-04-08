@@ -44,4 +44,12 @@ export const cliApi = {
         callback(params as UnifiedMessage)
       }
     }),
+
+  /** Subscribe to Claude-enhanced events (JSON-RPC Notifications) */
+  onEnhanced: (callback: (event: Record<string, unknown>) => void): (() => void) =>
+    rpc.onNotification((method, params) => {
+      if (method === 'cli.enhanced') {
+        callback(params as Record<string, unknown>)
+      }
+    }),
 }
