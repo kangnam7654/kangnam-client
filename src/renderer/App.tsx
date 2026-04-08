@@ -3,28 +3,46 @@ import { Sidebar } from './components/sidebar/Sidebar'
 import { ChatView } from './components/chat/ChatView'
 import { SettingsPanel } from './components/settings/SettingsPanel'
 import { SearchOverlay } from './components/sidebar/SearchPanel'
-import { SetupWizard } from './components/setup/SetupWizard'
 import { useAppStore } from './stores/app-store'
+import { cliApi } from './lib/cli-api'
 
 export default function App() {
-  const { theme, setupComplete } = useAppStore()
+  const { theme, currentProvider, setCurrentProvider, setSetupComplete } = useAppStore()
 
   // Apply theme to document root
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme)
   }, [theme])
 
-  // Secret dev mode toggle: Ctrl+Shift+D (Cmd+Shift+D on Mac)
+  // Auto-detect CLI providers on startup
+  useEffect(() => {
+    if (currentProvider) return // already set
+    cliApi.listProviders()
+      .then(async (metas) => {
+        for (const meta of metas) {
+          try {
+            const status = await cliApi.checkInstalled(meta.name)
+            if (status.installed) {
+              setCurrentProvider(meta.name)
+              setSetupComplete(true)
+              return
+            }
+          } catch { /* ignore */ }
+        }
+        // No CLI found — open settings so user can install
+        useAppStore.getState().setSettingsTab('providers')
+        useAppStore.getState().setShowSettings(true)
+      })
+      .catch(() => { /* WS not ready yet, will retry on reconnect */ })
+  }, [currentProvider, setCurrentProvider, setSetupComplete])
+
+  // Keyboard shortcuts
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 'D') {
         e.preventDefault()
-        const store = useAppStore.getState()
-        store.toggleDevMode()
-        const next = useAppStore.getState().devMode
-        console.log(`[Dev Mode] ${next ? 'ENABLED' : 'DISABLED'}`)
+        useAppStore.getState().toggleDevMode()
       }
-      // Toggle sidebar: Cmd+\ (Mac) / Ctrl+\ (Windows/Linux)
       if ((e.ctrlKey || e.metaKey) && e.key === '\\') {
         e.preventDefault()
         useAppStore.getState().toggleSidebar()
@@ -33,10 +51,6 @@ export default function App() {
     window.addEventListener('keydown', handler)
     return () => window.removeEventListener('keydown', handler)
   }, [])
-
-  if (!setupComplete) {
-    return <SetupWizard />
-  }
 
   return (
     <div style={{ display: 'flex', height: '100vh', width: '100vw', overflow: 'hidden', background: 'var(--bg-main, #2b2b2b)' }}>

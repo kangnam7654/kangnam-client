@@ -4,7 +4,6 @@ import type { SessionMeta, TaskState } from '../../stores/app-store'
 import { cliApi } from '../../lib/cli-api'
 import { MessageRenderer } from './MessageRenderer'
 import { SafetyDialog } from './SafetyDialog'
-import { WorkdirSelector } from './WorkdirSelector'
 import { StatusBar } from './StatusBar'
 
 function TopBar() {
@@ -75,7 +74,17 @@ function MessageInput() {
   const { currentSessionId, addMessage, isStreaming, setIsStreaming } = useAppStore()
   const textareaRef = useRef<HTMLTextAreaElement>(null)
 
+  const handleStop = async () => {
+    if (!currentSessionId) return
+    try { await cliApi.stopSession(currentSessionId) } catch { /* ignore */ }
+    setIsStreaming(false)
+  }
+
   const handleSubmit = async () => {
+    if (isStreaming) {
+      handleStop()
+      return
+    }
     const trimmed = text.trim()
     if (!trimmed || !currentSessionId) return
     setText('')
@@ -109,30 +118,43 @@ function MessageInput() {
   }, [text])
 
   return (
-    <div className="shrink-0 border-t border-[var(--border-subtle)] p-4">
-      <div className="relative flex items-end gap-2 rounded-xl border border-[var(--border)] bg-[var(--bg-surface)] px-4 py-3">
-        <textarea
-          ref={textareaRef}
-          value={text}
-          onChange={(e) => setText(e.target.value)}
-          onKeyDown={handleKeyDown}
-          placeholder={currentSessionId ? 'Message…' : 'Select a working directory to start'}
-          disabled={!currentSessionId}
-          rows={1}
-          className="flex-1 resize-none bg-transparent text-sm text-[var(--text-primary)] placeholder:text-[var(--text-tertiary)] focus:outline-none disabled:opacity-40"
-          aria-label="Message input"
-        />
-        <button
-          onClick={handleSubmit}
-          disabled={!text.trim() || !currentSessionId}
-          className="shrink-0 flex h-8 w-8 items-center justify-center rounded-lg bg-[var(--accent)] text-white disabled:opacity-40 hover:opacity-85 transition-opacity"
-          aria-label="Send message"
+    <div className="shrink-0 px-4 pb-4 pt-2">
+      <div className="mx-auto max-w-3xl">
+        <div
+          className="relative flex items-end gap-2 rounded-2xl border border-[var(--border-subtle)] px-4 py-3"
+          style={{ background: 'var(--bg-composer)', boxShadow: 'var(--composer-shadow)' }}
         >
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-            <line x1="22" y1="2" x2="11" y2="13" />
-            <polygon points="22 2 15 22 11 13 2 9 22 2" />
-          </svg>
-        </button>
+          <textarea
+            ref={textareaRef}
+            value={text}
+            onChange={(e) => setText(e.target.value)}
+            onKeyDown={handleKeyDown}
+            placeholder={currentSessionId ? 'Ask Claude anything…' : 'Starting session…'}
+            disabled={!currentSessionId}
+            rows={1}
+            className="composer-input flex-1 resize-none bg-transparent text-[15px] text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:outline-none disabled:opacity-40 leading-relaxed"
+            style={{ maxHeight: 200 }}
+            aria-label="Message input"
+          />
+          <button
+            onClick={handleSubmit}
+            disabled={!isStreaming && (!text.trim() || !currentSessionId)}
+            className="shrink-0 flex h-8 w-8 items-center justify-center rounded-lg text-white disabled:opacity-30 hover:opacity-85 transition-opacity"
+            style={{ background: 'var(--accent)' }}
+            aria-label="Send message"
+          >
+            {isStreaming ? (
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
+                <rect x="4" y="4" width="16" height="16" rx="2" />
+              </svg>
+            ) : (
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <line x1="22" y1="2" x2="11" y2="13" />
+                <polygon points="22 2 15 22 11 13 2 9 22 2" />
+              </svg>
+            )}
+          </button>
+        </div>
       </div>
     </div>
   )
@@ -140,18 +162,39 @@ function MessageInput() {
 
 function StreamingIndicator() {
   return (
-    <div className="flex items-center gap-2 py-2 text-sm text-[var(--text-tertiary)]">
-      <span className="inline-block h-2 w-2 animate-pulse rounded-full bg-green-400" />
-      응답 중...
+    <div className="flex items-center gap-1 py-3">
+      <span className="h-1.5 w-1.5 rounded-full bg-[var(--text-muted)] animate-bounce" style={{ animationDelay: '0ms' }} />
+      <span className="h-1.5 w-1.5 rounded-full bg-[var(--text-muted)] animate-bounce" style={{ animationDelay: '150ms' }} />
+      <span className="h-1.5 w-1.5 rounded-full bg-[var(--text-muted)] animate-bounce" style={{ animationDelay: '300ms' }} />
     </div>
   )
 }
 
 function ChatContent() {
-  const { messages, addMessage, setPendingPermission, currentSessionId, setIsStreaming, isStreaming,
+  const { messages, addMessage, setPendingPermission, currentSessionId, setCurrentSessionId,
+          setIsStreaming, isStreaming, currentProvider, setCurrentWorkingDir,
           setSessionMeta, addTask, updateTask, setRateLimit, setSessionCost } = useAppStore()
   const messagesEndRef = useRef<HTMLDivElement>(null)
-  const [sessionActive, setSessionActive] = useState(!!currentSessionId)
+  const autoStarted = useRef(false)
+
+  // Auto-start session on mount if provider is set but no session exists
+  useEffect(() => {
+    if (autoStarted.current || currentSessionId || !currentProvider) return
+    autoStarted.current = true
+
+    const lastDir = localStorage.getItem('kangnam-last-workdir')
+    const workingDir = lastDir || (navigator.platform?.includes('Win') ? 'C:\\Users' : '/Users')
+
+    cliApi.startSession(currentProvider, workingDir)
+      .then((sessionId) => {
+        setCurrentSessionId(sessionId)
+        setCurrentWorkingDir(workingDir)
+        localStorage.setItem('kangnam-last-workdir', workingDir)
+      })
+      .catch((e) => {
+        console.error('[ChatContent] auto-start session failed:', e)
+      })
+  }, [currentSessionId, currentProvider, setCurrentSessionId, setCurrentWorkingDir])
 
   useEffect(() => {
     const unlisten = cliApi.onMessage((msg) => {
@@ -229,39 +272,33 @@ function ChatContent() {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages])
 
-  useEffect(() => {
-    setSessionActive(!!currentSessionId)
-  }, [currentSessionId])
-
   return (
     <div className="flex-1 flex flex-col min-w-0 min-h-0">
       <TopBar />
 
-      {!sessionActive ? (
-        <WorkdirSelector onSessionStarted={() => setSessionActive(true)} />
-      ) : (
-        <>
-          <div className="flex-1 overflow-y-auto px-4 py-4">
-            <div className="mx-auto max-w-3xl">
-              {messages.length === 0 && !isStreaming ? (
-                <div className="flex h-full items-center justify-center text-sm text-[var(--text-tertiary)] py-20">
-                  메시지를 입력하세요
-                </div>
-              ) : (
-                <>
-                  {messages.map((msg, i) => <MessageRenderer key={i} message={msg} />)}
-                  {isStreaming && messages[messages.length - 1]?.type !== 'text_delta' && messages[messages.length - 1]?.type !== 'agent_progress' && (
-                    <StreamingIndicator />
-                  )}
-                </>
-              )}
-              <div ref={messagesEndRef} />
+      <div className="flex-1 overflow-y-auto px-4 py-4">
+        <div className="mx-auto max-w-3xl">
+          {messages.length === 0 && !isStreaming ? (
+            <div className="flex flex-col items-center justify-center gap-2 py-32">
+              <div className="w-10 h-10 rounded-xl flex items-center justify-center text-white font-bold text-lg" style={{ background: 'var(--accent)' }}>K</div>
+              <div className="text-lg font-semibold text-[var(--text-primary)] mt-2">무엇을 도와드릴까요?</div>
+              <div className="text-sm text-[var(--text-muted)]">
+                {currentSessionId ? 'Claude Code가 준비되었습니다' : '세션을 시작하는 중...'}
+              </div>
             </div>
-          </div>
-          <MessageInput />
-          <StatusBar />
-        </>
-      )}
+          ) : (
+            <>
+              {messages.map((msg, i) => <MessageRenderer key={i} message={msg} />)}
+              {isStreaming && messages[messages.length - 1]?.type !== 'text_delta' && messages[messages.length - 1]?.type !== 'agent_progress' && (
+                <StreamingIndicator />
+              )}
+            </>
+          )}
+          <div ref={messagesEndRef} />
+        </div>
+      </div>
+      <MessageInput />
+      <StatusBar />
 
       <SafetyDialog />
     </div>

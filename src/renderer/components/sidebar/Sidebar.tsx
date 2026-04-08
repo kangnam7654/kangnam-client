@@ -58,46 +58,22 @@ export function Sidebar() {
         <div className="drag-region h-12 shrink-0" />
 
         {/* Header — New Chat + Search */}
-        <div style={{ padding: '0 16px 12px', display: 'flex', alignItems: 'center', gap: 8 }}>
+        <div className="flex items-center gap-2 px-4 pb-3">
           <button
             onClick={handleNewChat}
-            className="no-drag hover:bg-[var(--bg-hover)]"
+            className="no-drag flex items-center gap-2.5 flex-1 px-3 py-2.5 rounded-lg border border-[var(--border-subtle)] text-sm text-[var(--text-primary)] hover:bg-[var(--bg-hover)] transition-colors"
             aria-label="New chat"
-            style={{
-              flex: 1,
-              display: 'flex', alignItems: 'center', gap: 10,
-              padding: '10px 14px',
-              border: '1px solid var(--border)',
-              background: 'transparent',
-              borderRadius: 8,
-              cursor: 'pointer',
-              fontSize: 14, fontWeight: 500, fontFamily: 'inherit',
-              color: 'var(--text-primary)',
-              transition: 'all 0.15s'
-            }}
           >
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ color: 'var(--text-secondary)', flexShrink: 0 }}>
-              <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7" />
-              <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z" />
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-[var(--text-muted)] shrink-0">
+              <line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" />
             </svg>
             <span>New chat</span>
           </button>
 
           <button
             onClick={() => setShowSearch(true)}
-            className="no-drag hover:bg-[var(--bg-hover)]"
+            className="no-drag flex items-center justify-center w-9 h-9 rounded-lg border border-[var(--border-subtle)] text-[var(--text-muted)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-secondary)] transition-colors shrink-0"
             aria-label="Search conversations"
-            style={{
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              width: 40, height: 40,
-              border: '1px solid var(--border)',
-              background: 'transparent',
-              borderRadius: 8,
-              cursor: 'pointer',
-              color: 'var(--text-secondary)',
-              transition: 'all 0.15s',
-              flexShrink: 0
-            }}
           >
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" />
@@ -107,20 +83,9 @@ export function Sidebar() {
           {/* Collapse button */}
           <button
             onClick={toggleSidebar}
-            className="no-drag hover:bg-[var(--bg-hover)]"
+            className="no-drag flex items-center justify-center w-9 h-9 rounded-lg border border-[var(--border-subtle)] text-[var(--text-muted)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-secondary)] transition-colors shrink-0"
             aria-label="Toggle sidebar"
             title="Hide sidebar (Cmd+\)"
-            style={{
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              width: 40, height: 40,
-              border: '1px solid var(--border)',
-              background: 'transparent',
-              borderRadius: 8,
-              cursor: 'pointer',
-              color: 'var(--text-secondary)',
-              transition: 'all 0.15s',
-              flexShrink: 0
-            }}
           >
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <rect x="3" y="3" width="18" height="18" rx="2" />
@@ -130,7 +95,7 @@ export function Sidebar() {
         </div>
 
         {/* Conversation List */}
-        <div className="flex-1 overflow-y-auto" style={{ padding: 8 }}>
+        <div className="flex-1 overflow-y-auto px-2">
           <ConversationList />
         </div>
 
@@ -144,7 +109,7 @@ export function Sidebar() {
         <TaskPanel />
 
         {/* Bottom — User + Settings */}
-        <div style={{ borderTop: '1px solid var(--border-subtle)', padding: '12px 16px' }}>
+        <div className="border-t border-[var(--border-subtle)] px-4 py-3">
           <button
             onClick={() => { setSettingsTab('providers'); setShowSettings(true) }}
             className="sidebar-item w-full"
