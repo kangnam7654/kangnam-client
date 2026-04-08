@@ -148,6 +148,7 @@ impl CliAdapter for ClaudeAdapter {
             "--output-format", "stream-json",
             "--input-format", "stream-json",
             "--verbose",
+            "--include-partial-messages",
         ]);
         cmd.current_dir(working_dir);
         cmd.stdin(Stdio::piped());
