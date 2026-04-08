@@ -154,9 +154,7 @@ function ChatContent() {
 
   useEffect(() => {
     const unlisten = cliApi.onMessage((msg) => {
-      if (msg.type === 'permission_request') {
-        setPendingPermission(msg)
-      } else if (msg.type === 'turn_end') {
+      if (msg.type === 'turn_end') {
         setIsStreaming(false)
         addMessage(msg)
       } else if (msg.type === 'error') {
@@ -167,7 +165,19 @@ function ChatContent() {
       }
     })
     return unlisten
-  }, [addMessage, setPendingPermission, setIsStreaming])
+  }, [addMessage, setIsStreaming])
+
+  useEffect(() => {
+    const unlisten = cliApi.onPermissionRequest((req) => {
+      setPendingPermission({
+        type: 'permission_request',
+        id: req.id,
+        tool: req.tool,
+        description: req.description,
+      })
+    })
+    return unlisten
+  }, [setPendingPermission])
 
   useEffect(() => {
     const unlisten = cliApi.onEnhanced((event) => {

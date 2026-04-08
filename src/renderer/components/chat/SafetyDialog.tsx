@@ -2,7 +2,7 @@ import { useAppStore } from '../../stores/app-store'
 import { cliApi } from '../../lib/cli-api'
 
 export function SafetyDialog() {
-  const { pendingPermission, setPendingPermission, currentSessionId } = useAppStore()
+  const { pendingPermission, setPendingPermission } = useAppStore()
 
   if (!pendingPermission || pendingPermission.type !== 'permission_request') return null
 
@@ -10,9 +10,7 @@ export function SafetyDialog() {
   const isDangerous = tool === 'Bash' || tool === 'command'
 
   const handleResponse = async (allowed: boolean) => {
-    if (currentSessionId) {
-      await cliApi.sendPermission(currentSessionId, id, allowed)
-    }
+    await cliApi.permissionResponse(id, allowed)
     setPendingPermission(null)
   }
 

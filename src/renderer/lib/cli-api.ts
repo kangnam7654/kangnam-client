@@ -31,8 +31,8 @@ export const cliApi = {
   sendMessage: (sessionId: string, message: string) =>
     rpc.call<void>('cli.sendMessage', { sessionId, message }),
 
-  sendPermission: (sessionId: string, requestId: string, allowed: boolean) =>
-    rpc.call<void>('cli.sendPermission', { sessionId, requestId, allowed }),
+  permissionResponse: (id: string, allowed: boolean) =>
+    rpc.call<void>('cli.permissionResponse', { id, allowed }),
 
   stopSession: (sessionId: string) =>
     rpc.call<void>('cli.stopSession', { sessionId }),
@@ -42,6 +42,14 @@ export const cliApi = {
     rpc.onNotification((method, params) => {
       if (method === 'cli.stream') {
         callback(params as UnifiedMessage)
+      }
+    }),
+
+  /** Subscribe to MCP permission request notifications */
+  onPermissionRequest: (callback: (req: { id: string; tool: string; description: string; input?: unknown }) => void): (() => void) =>
+    rpc.onNotification((method, params) => {
+      if (method === 'cli.permissionRequest') {
+        callback(params as { id: string; tool: string; description: string; input?: unknown })
       }
     }),
 
