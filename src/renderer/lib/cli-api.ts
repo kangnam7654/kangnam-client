@@ -1,5 +1,5 @@
 import { RpcClient } from './rpc/client'
-import { tauriTransport } from './rpc/transport-tauri'
+import { createWsTransport } from './rpc/transport-ws'
 import type { CliStatus, UnifiedMessage } from '../stores/app-store'
 
 export interface ProviderMeta {
@@ -9,8 +9,11 @@ export interface ProviderMeta {
   install_hint: string
 }
 
-// Single RPC client instance — transport can be swapped for web
-const rpc = new RpcClient(tauriTransport)
+// Connect to Axum WebSocket server
+const WS_PORT = (globalThis as Record<string, unknown>).__KANGNAM_PORT ?? '3001'
+const WS_URL = `ws://localhost:${WS_PORT}/ws`
+const transport = createWsTransport(WS_URL)
+const rpc = new RpcClient(transport)
 
 export const cliApi = {
   listProviders: () =>
@@ -22,8 +25,8 @@ export const cliApi = {
   install: (provider: string) =>
     rpc.call<void>('cli.install', { provider }),
 
-  startSession: (provider: string, workingDir: string) =>
-    rpc.call<string>('cli.startSession', { provider, workingDir }),
+  startSession: (provider: string, workingDir?: string) =>
+    rpc.call<string>('cli.startSession', workingDir ? { provider, workingDir } : { provider }),
 
   sendMessage: (sessionId: string, message: string) =>
     rpc.call<void>('cli.sendMessage', { sessionId, message }),

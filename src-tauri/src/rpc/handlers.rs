@@ -1,5 +1,5 @@
 use serde::Deserialize;
-use tauri::AppHandle;
+use std::path::PathBuf;
 
 use crate::cli::registry::CliRegistry;
 use crate::rpc::types::JsonRpcError;
@@ -32,37 +32,37 @@ pub async fn install(params: Option<serde_json::Value>, state: &AppState) -> Rpc
     Ok(serde_json::Value::Null)
 }
 
-pub async fn start_session(
-    params: Option<serde_json::Value>,
-    state: &AppState,
-    app_handle: AppHandle,
-) -> RpcResult {
+pub async fn start_session(params: Option<serde_json::Value>, state: &AppState) -> RpcResult {
     let p: StartSessionParams = parse_params(params)?;
-    let working_dir = std::path::PathBuf::from(&p.working_dir);
 
-    if !working_dir.is_dir() {
-        return Err(JsonRpcError::dir_not_found(&p.working_dir));
-    }
+    let working_dir = match p.working_dir {
+        Some(dir) => {
+            let path = PathBuf::from(&dir);
+            if !path.is_dir() {
+                return Err(JsonRpcError::dir_not_found(&dir));
+            }
+            path
+        }
+        None => dirs::home_dir().unwrap_or_else(|| PathBuf::from("/tmp")),
+    };
 
     let session_id = uuid::Uuid::new_v4().to_string();
+    let broadcast_tx = state.broadcast_tx.clone();
     let manager = state.cli_manager.lock().await;
     manager
-        .start_session(&p.provider, &working_dir, &session_id, app_handle)
+        .start_session(&p.provider, &working_dir, &session_id, broadcast_tx)
         .await
         .map_err(|e| JsonRpcError::internal(&e))?;
 
     Ok(serde_json::Value::String(session_id))
 }
 
-pub async fn send_message(
-    params: Option<serde_json::Value>,
-    state: &AppState,
-    app_handle: AppHandle,
-) -> RpcResult {
+pub async fn send_message(params: Option<serde_json::Value>, state: &AppState) -> RpcResult {
     let p: SendMessageParams = parse_params(params)?;
+    let broadcast_tx = state.broadcast_tx.clone();
     let manager = state.cli_manager.lock().await;
     manager
-        .send_message(&p.session_id, &p.message, app_handle)
+        .send_message(&p.session_id, &p.message, broadcast_tx)
         .await
         .map_err(|e| JsonRpcError::internal(&e))?;
     Ok(serde_json::Value::Null)
@@ -99,7 +99,7 @@ struct ProviderParam {
 #[serde(rename_all = "camelCase")]
 struct StartSessionParams {
     provider: String,
-    working_dir: String,
+    working_dir: Option<String>, // Optional — None = chat mode (no directory)
 }
 
 #[derive(Deserialize)]

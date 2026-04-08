@@ -28,7 +28,9 @@ rand = "0.8"
 uuid = { version = "1", features = ["v4"] }
 futures = "0.3"
 tokio-stream = "0.1"
-hyper = { version = "1", features = ["server", "http1"] }
+axum = { version = "0.8", features = ["ws"] }
+tower-http = { version = "0.6", features = ["cors", "fs"] }
+
 async-trait = "0.1"
 thiserror = "2"
 chrono = "0.4"

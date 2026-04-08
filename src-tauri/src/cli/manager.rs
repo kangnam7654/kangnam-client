@@ -1,14 +1,16 @@
+#![allow(dead_code)]
+
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
 use tokio::process::Child;
 use tokio::sync::Mutex;
-use tauri::{AppHandle, Emitter};
 
 use crate::cli::adapter::CliAdapter;
 use crate::cli::types::{CliStatus, UnifiedMessage};
 use crate::rpc::types::JsonRpcNotification;
+use crate::server::broadcast::BroadcastTx;
 
 struct CliSession {
     child: Child,
@@ -42,13 +44,20 @@ impl CliManager {
             .ok_or_else(|| format!("Unknown provider: {}", provider))
     }
 
-    /// Start a new CLI session. Spawns the subprocess and begins reading stdout.
+    fn emit_notification(tx: &BroadcastTx, msg: &UnifiedMessage) {
+        let notification = JsonRpcNotification::new(
+            "cli.stream",
+            serde_json::to_value(msg).unwrap_or_default(),
+        );
+        let _ = tx.send(notification);
+    }
+
     pub async fn start_session(
         &self,
         provider: &str,
         working_dir: &Path,
         session_id: &str,
-        app_handle: AppHandle,
+        broadcast_tx: BroadcastTx,
     ) -> Result<(), String> {
         let adapter = self.get_adapter(provider)?;
         let mut cmd = adapter.build_command(working_dir);
@@ -87,30 +96,24 @@ impl CliManager {
 
                 match parsed {
                     Ok(Some(msg)) => {
-                        let notification = JsonRpcNotification::new(
-                            "cli.stream",
-                            serde_json::to_value(&msg).unwrap_or_default(),
-                        );
-                        let _ = app_handle.emit("rpc-notification", &notification);
+                        Self::emit_notification(&broadcast_tx, &msg);
                     }
                     Ok(None) => {}
                     Err(e) => {
-                        let err_notification = JsonRpcNotification::new(
-                            "cli.stream",
-                            serde_json::to_value(&UnifiedMessage::Error {
+                        Self::emit_notification(
+                            &broadcast_tx,
+                            &UnifiedMessage::Error {
                                 message: format!("Parse error: {}", e),
-                            }).unwrap_or_default(),
+                            },
                         );
-                        let _ = app_handle.emit("rpc-notification", &err_notification);
                     }
                 }
             }
 
-            let turn_end = JsonRpcNotification::new(
-                "cli.stream",
-                serde_json::to_value(&UnifiedMessage::TurnEnd { usage: None }).unwrap_or_default(),
+            Self::emit_notification(
+                &broadcast_tx,
+                &UnifiedMessage::TurnEnd { usage: None },
             );
-            let _ = app_handle.emit("rpc-notification", &turn_end);
 
             let mut sessions_lock = sessions.lock().await;
             sessions_lock.remove(&sid);
@@ -119,13 +122,11 @@ impl CliManager {
         Ok(())
     }
 
-    /// Send a message to a running CLI session (via stdin).
-    /// For Codex (non-persistent), this spawns a new process.
     pub async fn send_message(
         &self,
         session_id: &str,
         message: &str,
-        app_handle: AppHandle,
+        broadcast_tx: BroadcastTx,
     ) -> Result<(), String> {
         let mut sessions_lock = self.sessions.lock().await;
 
@@ -153,7 +154,7 @@ impl CliManager {
                 let working_dir = session.working_dir.clone();
                 drop(sessions_lock);
 
-                self.start_codex_exec(&provider, &working_dir, session_id, message, app_handle)
+                self.start_codex_exec(&provider, &working_dir, session_id, message, broadcast_tx)
                     .await
             }
         } else {
@@ -161,14 +162,13 @@ impl CliManager {
         }
     }
 
-    /// Spawn a one-shot codex exec process for a single prompt.
     async fn start_codex_exec(
         &self,
         provider: &str,
         working_dir: &Path,
         session_id: &str,
         prompt: &str,
-        app_handle: AppHandle,
+        broadcast_tx: BroadcastTx,
     ) -> Result<(), String> {
         let adapter = self.get_adapter(provider)?;
         let mut cmd = adapter.build_command(working_dir);
@@ -203,30 +203,24 @@ impl CliManager {
                     crate::cli::adapters::codex::CodexAdapter::new().parse_line(&line);
                 match parsed {
                     Ok(Some(msg)) => {
-                        let notification = JsonRpcNotification::new(
-                            "cli.stream",
-                            serde_json::to_value(&msg).unwrap_or_default(),
-                        );
-                        let _ = app_handle.emit("rpc-notification", &notification);
+                        Self::emit_notification(&broadcast_tx, &msg);
                     }
                     Ok(None) => {}
                     Err(e) => {
-                        let err_notification = JsonRpcNotification::new(
-                            "cli.stream",
-                            serde_json::to_value(&UnifiedMessage::Error {
+                        Self::emit_notification(
+                            &broadcast_tx,
+                            &UnifiedMessage::Error {
                                 message: format!("Parse error: {}", e),
-                            }).unwrap_or_default(),
+                            },
                         );
-                        let _ = app_handle.emit("rpc-notification", &err_notification);
                     }
                 }
             }
 
-            let turn_end = JsonRpcNotification::new(
-                "cli.stream",
-                serde_json::to_value(&UnifiedMessage::TurnEnd { usage: None }).unwrap_or_default(),
+            Self::emit_notification(
+                &broadcast_tx,
+                &UnifiedMessage::TurnEnd { usage: None },
             );
-            let _ = app_handle.emit("rpc-notification", &turn_end);
 
             let mut sessions_lock = sessions.lock().await;
             sessions_lock.remove(&sid);
@@ -235,7 +229,6 @@ impl CliManager {
         Ok(())
     }
 
-    /// Send a permission response to a running CLI session.
     pub async fn send_permission_response(
         &self,
         session_id: &str,
@@ -263,7 +256,6 @@ impl CliManager {
         Ok(())
     }
 
-    /// Stop a running CLI session.
     pub async fn stop_session(&self, session_id: &str) -> Result<(), String> {
         let mut sessions_lock = self.sessions.lock().await;
         if let Some(mut session) = sessions_lock.remove(session_id) {
@@ -272,7 +264,6 @@ impl CliManager {
         Ok(())
     }
 
-    /// Check if a CLI is installed and get version.
     pub async fn check_installed(&self, provider: &str) -> Result<CliStatus, String> {
         let adapter = self.get_adapter(provider)?;
         let version_cmd = adapter.version_command();
@@ -321,7 +312,6 @@ impl CliManager {
         }
     }
 
-    /// Install a CLI tool.
     pub async fn install_cli(&self, provider: &str) -> Result<(), String> {
         let adapter = self.get_adapter(provider)?;
         let install_cmd = adapter

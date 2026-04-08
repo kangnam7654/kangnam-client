@@ -4,9 +4,11 @@ mod db;
 mod error;
 mod mcp;
 mod rpc;
+mod server;
 mod skills;
 mod state;
 
+use std::sync::Arc;
 use state::AppState;
 use tauri::{
     menu::{MenuBuilder, MenuItemBuilder},
@@ -17,17 +19,32 @@ use tauri::{
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     let app_state = AppState::new().expect("Failed to initialize app state");
+    let shared_state = Arc::new(app_state);
+
+    // Start Axum WebSocket server
+    let server_state = shared_state.clone();
+    let port: u16 = std::env::var("KANGNAM_PORT")
+        .ok()
+        .and_then(|p| p.parse().ok())
+        .unwrap_or(3001);
+
+    std::thread::spawn(move || {
+        let rt = tokio::runtime::Runtime::new().expect("Failed to create tokio runtime");
+        rt.block_on(async {
+            if let Err(e) = server::start_server(server_state, port).await {
+                eprintln!("[server] Failed to start: {}", e);
+            }
+        });
+    });
 
     tauri::Builder::default()
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_single_instance())
-        .manage(app_state)
+        .manage(shared_state)
         .invoke_handler(tauri::generate_handler![
-            // JSON-RPC 2.0
-            commands::cli::rpc,
-            // Settings
+            // Settings (still via Tauri invoke — not yet migrated to RPC)
             commands::settings::settings_get,
             commands::settings::settings_set,
             // Conversations
