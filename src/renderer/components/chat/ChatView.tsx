@@ -4,7 +4,6 @@ import type { SessionMeta, TaskState } from '../../stores/app-store'
 import { cliApi } from '../../lib/cli-api'
 import { MessageRenderer } from './MessageRenderer'
 import { SafetyDialog } from './SafetyDialog'
-import { StatusBar } from './StatusBar'
 
 function TopBar() {
   const { currentProvider, currentWorkingDir, currentSessionId, clearMessages, setCurrentSessionId, isStreaming, sessionMeta } = useAppStore()
@@ -118,10 +117,10 @@ function MessageInput() {
   }, [text])
 
   return (
-    <div className="shrink-0 px-4 pb-4 pt-2">
-      <div className="mx-auto max-w-3xl">
+    <div className="shrink-0 px-6 pb-5 pt-3">
+      <div className="mx-auto" style={{ maxWidth: 'min(48rem, 100%)' }}>
         <div
-          className="relative flex items-end gap-2 rounded-2xl border border-[var(--border-subtle)] px-4 py-3"
+          className="relative flex items-end gap-3 rounded-2xl border border-[var(--border-subtle)] px-4 py-3"
           style={{ background: 'var(--bg-composer)', boxShadow: 'var(--composer-shadow)' }}
         >
           <textarea
@@ -298,7 +297,6 @@ function ChatContent() {
         </div>
       </div>
       <MessageInput />
-      <StatusBar />
 
       <SafetyDialog />
     </div>

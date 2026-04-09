@@ -1,22 +1,31 @@
 import { useEffect } from 'react'
-import { Sidebar } from './components/sidebar/Sidebar'
-import { ChatView } from './components/chat/ChatView'
-import { SettingsPanel } from './components/settings/SettingsPanel'
-import { SearchOverlay } from './components/sidebar/SearchPanel'
 import { useAppStore } from './stores/app-store'
 import { cliApi } from './lib/cli-api'
 
-export default function App() {
-  const { theme, currentProvider, setCurrentProvider, setSetupComplete } = useAppStore()
+import { ActivityBar } from './components/layout/ActivityBar'
+import { SidePanel } from './components/layout/SidePanel'
+import { RightPanel } from './components/layout/RightPanel'
+import { ResizeHandle } from './components/layout/ResizeHandle'
+import { StatusBar } from './components/layout/StatusBar'
+import { ChatView } from './components/chat/ChatView'
+import { SettingsPanel } from './components/settings/SettingsPanel'
+import { SearchOverlay } from './components/sidebar/SearchPanel'
 
-  // Apply theme to document root
+export default function App() {
+  const {
+    theme, currentProvider, setCurrentProvider, setSetupComplete,
+    sidePanelVisible, sidePanelWidth, setSidePanelWidth,
+    rightPanelVisible, rightPanelWidth, setRightPanelWidth,
+    toggleSidePanel, toggleRightPanel,
+  } = useAppStore()
+
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme)
   }, [theme])
 
   // Auto-detect CLI providers on startup
   useEffect(() => {
-    if (currentProvider) return // already set
+    if (currentProvider) return
     cliApi.listProviders()
       .then(async (metas) => {
         for (const meta of metas) {
@@ -29,33 +38,71 @@ export default function App() {
             }
           } catch { /* ignore */ }
         }
-        // No CLI found — open settings so user can install
         useAppStore.getState().setSettingsTab('providers')
         useAppStore.getState().setShowSettings(true)
       })
-      .catch(() => { /* WS not ready yet, will retry on reconnect */ })
+      .catch(() => {})
   }, [currentProvider, setCurrentProvider, setSetupComplete])
 
   // Keyboard shortcuts
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
-      if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 'D') {
+      const meta = e.ctrlKey || e.metaKey
+      if (meta && e.shiftKey && e.key === 'D') {
         e.preventDefault()
         useAppStore.getState().toggleDevMode()
       }
-      if ((e.ctrlKey || e.metaKey) && e.key === '\\') {
+      if (meta && e.key === '\\') {
         e.preventDefault()
-        useAppStore.getState().toggleSidebar()
+        toggleSidePanel()
+      }
+      if (meta && e.key === 'b') {
+        e.preventDefault()
+        toggleRightPanel()
       }
     }
     window.addEventListener('keydown', handler)
     return () => window.removeEventListener('keydown', handler)
-  }, [])
+  }, [toggleSidePanel, toggleRightPanel])
+
+  const handleSidePanelResize = (delta: number) => {
+    setSidePanelWidth(Math.min(400, Math.max(200, sidePanelWidth + delta)))
+  }
+
+  const handleRightPanelResize = (delta: number) => {
+    setRightPanelWidth(Math.min(500, Math.max(260, rightPanelWidth + delta)))
+  }
 
   return (
-    <div style={{ display: 'flex', height: '100vh', width: '100vw', overflow: 'hidden', background: 'var(--bg-main, #2b2b2b)' }}>
-      <Sidebar />
-      <ChatView />
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', width: '100vw', overflow: 'hidden', background: 'var(--bg-main)' }}>
+      {/* Main row: Activity Bar + Side Panel + Chat + Right Panel */}
+      <div style={{ display: 'flex', flex: 1, minHeight: 0 }}>
+        <ActivityBar />
+
+        {sidePanelVisible && (
+          <>
+            <SidePanel />
+            <ResizeHandle side="left" onResize={handleSidePanelResize} />
+          </>
+        )}
+
+        {/* Main chat area */}
+        <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column' }}>
+          <ChatView />
+        </div>
+
+        {rightPanelVisible && (
+          <>
+            <ResizeHandle side="right" onResize={handleRightPanelResize} />
+            <RightPanel />
+          </>
+        )}
+      </div>
+
+      {/* Status Bar */}
+      <StatusBar />
+
+      {/* Overlays */}
       <SettingsPanel />
       <SearchOverlay />
     </div>
