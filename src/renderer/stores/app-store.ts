@@ -113,6 +113,9 @@ export interface ResultSummary {
   num_turns: number | null
 }
 
+export type SidePanelTab = 'chats' | 'files' | 'skills' | 'agents' | 'mcp'
+export type RightPanelTab = 'terminal' | 'files' | 'tools' | 'agents' | 'tasks'
+
 interface AppState {
   // CLI
   cliStatuses: CliStatus[]
@@ -191,6 +194,23 @@ interface AppState {
   setRateLimit: (info: RateLimitInfo | null) => void
   sessionCost: ResultSummary | null
   setSessionCost: (cost: ResultSummary | null) => void
+
+  // Layout
+  sidePanelTab: SidePanelTab
+  setSidePanelTab: (tab: SidePanelTab) => void
+  sidePanelVisible: boolean
+  setSidePanelVisible: (v: boolean) => void
+  toggleSidePanel: (tab?: SidePanelTab) => void
+  sidePanelWidth: number
+  setSidePanelWidth: (w: number) => void
+
+  rightPanelTab: RightPanelTab
+  setRightPanelTab: (tab: RightPanelTab) => void
+  rightPanelVisible: boolean
+  setRightPanelVisible: (v: boolean) => void
+  toggleRightPanel: () => void
+  rightPanelWidth: number
+  setRightPanelWidth: (w: number) => void
 }
 
 export const useAppStore = create<AppState>((set, get) => ({
@@ -307,4 +327,26 @@ export const useAppStore = create<AppState>((set, get) => ({
   setRateLimit: (info) => set({ rateLimit: info }),
   sessionCost: null,
   setSessionCost: (cost) => set({ sessionCost: cost }),
+
+  // Layout
+  sidePanelTab: 'chats',
+  setSidePanelTab: (tab) => set({ sidePanelTab: tab }),
+  sidePanelVisible: true,
+  setSidePanelVisible: (v) => set({ sidePanelVisible: v }),
+  toggleSidePanel: (tab) => set((s) => {
+    if (tab && tab !== s.sidePanelTab) {
+      return { sidePanelTab: tab, sidePanelVisible: true }
+    }
+    return { sidePanelVisible: !s.sidePanelVisible }
+  }),
+  sidePanelWidth: 280,
+  setSidePanelWidth: (w) => set({ sidePanelWidth: w }),
+
+  rightPanelTab: 'terminal',
+  setRightPanelTab: (tab) => set({ rightPanelTab: tab }),
+  rightPanelVisible: false,
+  setRightPanelVisible: (v) => set({ rightPanelVisible: v }),
+  toggleRightPanel: () => set((s) => ({ rightPanelVisible: !s.rightPanelVisible })),
+  rightPanelWidth: 360,
+  setRightPanelWidth: (w) => set({ rightPanelWidth: w }),
 }))
