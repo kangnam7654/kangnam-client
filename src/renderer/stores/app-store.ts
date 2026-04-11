@@ -86,6 +86,8 @@ export interface SessionMeta {
   tools: string[]
   skills: string[]
   slash_commands: string[]
+  agents: string[]
+  plugins: { name: string; path: string }[]
   mcp_servers: { name: string; status: string }[]
   model: string
   permission_mode: string
@@ -115,6 +117,17 @@ export interface ResultSummary {
 
 export type SidePanelTab = 'chats' | 'files' | 'skills' | 'agents' | 'mcp'
 export type RightPanelTab = 'terminal' | 'files' | 'tools' | 'agents' | 'tasks'
+export type MainView = 'chat' | 'studio'
+export type StudioBottomTab = 'cli' | 'tests' | 'viewer' | 'optimize'
+
+export interface StudioState {
+  type: 'skill' | 'agent'
+  name?: string
+  activeView: 'dashboard' | 'editor'
+  bottomTab: StudioBottomTab
+  bottomPanelVisible: boolean
+  dirty: boolean
+}
 
 interface AppState {
   // CLI
@@ -172,8 +185,8 @@ interface AppState {
   // Settings panel
   showSettings: boolean
   setShowSettings: (v: boolean) => void
-  settingsTab: 'providers' | 'mcp' | 'general' | 'prompts' | 'agents'
-  setSettingsTab: (tab: 'providers' | 'mcp' | 'general' | 'prompts' | 'agents') => void
+  settingsTab: 'providers' | 'mcp' | 'general'
+  setSettingsTab: (tab: 'providers' | 'mcp' | 'general') => void
 
   // Theme
   theme: 'light' | 'dark'
@@ -184,14 +197,18 @@ interface AppState {
   setDevMode: (v: boolean) => void
   toggleDevMode: () => void
 
+  // Model selection (persisted — used at session start)
+  selectedModel: string | null
+  setSelectedModel: (model: string | null) => void
+
   // Enhanced (Claude-specific)
   sessionMeta: SessionMeta | null
   setSessionMeta: (meta: SessionMeta | null) => void
   activeTasks: TaskState[]
   addTask: (task: TaskState) => void
   updateTask: (taskId: string, updates: Partial<TaskState>) => void
-  rateLimit: RateLimitInfo | null
-  setRateLimit: (info: RateLimitInfo | null) => void
+  rateLimits: Record<string, RateLimitInfo>
+  setRateLimit: (info: RateLimitInfo) => void
   sessionCost: ResultSummary | null
   setSessionCost: (cost: ResultSummary | null) => void
 
@@ -211,6 +228,18 @@ interface AppState {
   toggleRightPanel: () => void
   rightPanelWidth: number
   setRightPanelWidth: (w: number) => void
+
+  // Main view
+  activeMainView: MainView
+  setActiveMainView: (view: MainView) => void
+
+  // Studio
+  studioState: StudioState | null
+  openStudio: (type: 'skill' | 'agent', name?: string) => void
+  closeStudio: () => void
+  setStudioBottomTab: (tab: StudioBottomTab) => void
+  toggleStudioBottomPanel: () => void
+  setStudioDirty: (dirty: boolean) => void
 }
 
 export const useAppStore = create<AppState>((set, get) => ({
@@ -313,6 +342,14 @@ export const useAppStore = create<AppState>((set, get) => ({
     return { devMode: next }
   }),
 
+  // Model selection
+  selectedModel: localStorage.getItem('kangnam-selected-model'),
+  setSelectedModel: (model) => {
+    if (model) localStorage.setItem('kangnam-selected-model', model)
+    else localStorage.removeItem('kangnam-selected-model')
+    set({ selectedModel: model })
+  },
+
   // Enhanced
   sessionMeta: null,
   setSessionMeta: (meta) => set({ sessionMeta: meta }),
@@ -323,8 +360,10 @@ export const useAppStore = create<AppState>((set, get) => ({
       t.task_id === taskId ? { ...t, ...updates } : t
     ),
   })),
-  rateLimit: null,
-  setRateLimit: (info) => set({ rateLimit: info }),
+  rateLimits: {},
+  setRateLimit: (info) => set((s) => ({
+    rateLimits: { ...s.rateLimits, [info.rate_limit_type]: info }
+  })),
   sessionCost: null,
   setSessionCost: (cost) => set({ sessionCost: cost }),
 
@@ -349,4 +388,40 @@ export const useAppStore = create<AppState>((set, get) => ({
   toggleRightPanel: () => set((s) => ({ rightPanelVisible: !s.rightPanelVisible })),
   rightPanelWidth: 360,
   setRightPanelWidth: (w) => set({ rightPanelWidth: w }),
+
+  // Main view
+  activeMainView: 'chat',
+  setActiveMainView: (view) => set({ activeMainView: view }),
+
+  // Studio
+  studioState: null,
+  openStudio: (type, name) => set({
+    activeMainView: 'studio',
+    studioState: {
+      type,
+      name,
+      activeView: name ? 'editor' : 'dashboard',
+      bottomTab: 'cli',
+      bottomPanelVisible: false,
+      dirty: false,
+    },
+  }),
+  closeStudio: () => set({
+    studioState: {
+      type: 'skill',
+      activeView: 'dashboard',
+      bottomTab: 'cli',
+      bottomPanelVisible: false,
+      dirty: false,
+    },
+  }),
+  setStudioBottomTab: (tab) => set((s) => ({
+    studioState: s.studioState ? { ...s.studioState, bottomTab: tab, bottomPanelVisible: true } : null,
+  })),
+  toggleStudioBottomPanel: () => set((s) => ({
+    studioState: s.studioState ? { ...s.studioState, bottomPanelVisible: !s.studioState.bottomPanelVisible } : null,
+  })),
+  setStudioDirty: (dirty) => set((s) => ({
+    studioState: s.studioState ? { ...s.studioState, dirty } : null,
+  })),
 }))

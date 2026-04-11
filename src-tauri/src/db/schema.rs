@@ -49,6 +49,8 @@ pub fn run_migrations(conn: &mut Connection) -> Result<()> {
     // SQLite does not support RENAME COLUMN before 3.25.0; use ADD + UPDATE pattern
     let _ = tx.execute_batch("ALTER TABLE conversations ADD COLUMN cli_provider TEXT NOT NULL DEFAULT 'claude'");
     let _ = tx.execute_batch("UPDATE conversations SET cli_provider = provider WHERE cli_provider = 'claude' AND provider != ''");
+    // Migration: drop legacy provider column (NOT NULL without default blocks new inserts)
+    let _ = tx.execute_batch("ALTER TABLE conversations DROP COLUMN provider");
 
     // ── MCP servers ──
 

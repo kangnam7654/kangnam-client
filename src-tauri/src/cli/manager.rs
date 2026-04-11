@@ -64,9 +64,16 @@ impl CliManager {
         session_id: &str,
         broadcast_tx: BroadcastTx,
         enhanced_tx: Option<crate::server::broadcast::EnhancedBroadcastTx>,
+        model: Option<String>,
     ) -> Result<(), String> {
         let adapter = self.get_adapter(provider)?;
-        let mut cmd = adapter.build_command(working_dir);
+        let mut cmd = if provider == "claude" {
+            let claude_adapter = crate::cli::adapters::claude::ClaudeAdapter::new()
+                .with_model(model);
+            claude_adapter.build_command(working_dir)
+        } else {
+            adapter.build_command(working_dir)
+        };
         let mut child = cmd
             .spawn()
             .map_err(|e| format!("Failed to spawn {}: {}", provider, e))?;
@@ -106,6 +113,22 @@ impl CliManager {
 
                 match parsed {
                     Ok(Some(msg)) => {
+                        // For non-error result messages with text, emit text before TurnEnd
+                        if is_claude {
+                            if let UnifiedMessage::TurnEnd { .. } = &msg {
+                                if let Ok(v) = serde_json::from_str::<serde_json::Value>(&line) {
+                                    if v.get("type").and_then(|t| t.as_str()) == Some("result") {
+                                        if !v.get("is_error").and_then(|b| b.as_bool()).unwrap_or(false) {
+                                            if let Some(text) = v.get("result").and_then(|t| t.as_str()) {
+                                                if !text.is_empty() {
+                                                    Self::emit_notification(&broadcast_tx, &UnifiedMessage::TextDelta { text: text.to_string() });
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
                         Self::emit_notification(&broadcast_tx, &msg);
                     }
                     Ok(None) => {}

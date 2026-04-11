@@ -1,10 +1,20 @@
+import { useEffect } from 'react'
 import { useAppStore } from '../../stores/app-store'
+import type { Conversation } from '../../stores/app-store'
 import { ConversationList } from '../sidebar/ConversationList'
 import { SkillBrowser } from '../sidebar/SkillBrowser'
 import { AgentPanel } from '../sidebar/AgentPanel'
 
 export function SidePanel() {
-  const { sidePanelTab, sidePanelVisible, sidePanelWidth } = useAppStore()
+  const { sidePanelTab, sidePanelVisible, sidePanelWidth, currentSessionId } = useAppStore()
+
+  // Refresh conversation list when chats tab is active or session changes
+  useEffect(() => {
+    if (sidePanelTab !== 'chats') return
+    window.api?.conv?.list?.()
+      .then((convs: unknown) => useAppStore.getState().setConversations(convs as Conversation[]))
+      .catch(() => {})
+  }, [sidePanelTab, currentSessionId])
 
   if (!sidePanelVisible) return null
 

@@ -1,7 +1,8 @@
 import { useAppStore } from '../../stores/app-store'
 
 export function StatusBar() {
-  const { sessionMeta, sessionCost, rateLimit } = useAppStore()
+  const { sessionMeta, sessionCost, rateLimits } = useAppStore()
+  const rateLimit = Object.values(rateLimits)[0] ?? null
 
   if (!sessionMeta) return null
 

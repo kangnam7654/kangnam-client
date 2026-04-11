@@ -8,6 +8,7 @@ import { RightPanel } from './components/layout/RightPanel'
 import { ResizeHandle } from './components/layout/ResizeHandle'
 import { StatusBar } from './components/layout/StatusBar'
 import { ChatView } from './components/chat/ChatView'
+import { StudioView } from './components/studio/StudioView'
 import { SettingsPanel } from './components/settings/SettingsPanel'
 import { SearchOverlay } from './components/sidebar/SearchPanel'
 
@@ -16,7 +17,7 @@ export default function App() {
     theme, currentProvider, setCurrentProvider, setSetupComplete,
     sidePanelVisible, sidePanelWidth, setSidePanelWidth,
     rightPanelVisible, rightPanelWidth, setRightPanelWidth,
-    toggleSidePanel, toggleRightPanel,
+    toggleSidePanel, toggleRightPanel, activeMainView,
   } = useAppStore()
 
   useEffect(() => {
@@ -86,9 +87,9 @@ export default function App() {
           </>
         )}
 
-        {/* Main chat area */}
+        {/* Main content area: Studio or Chat */}
         <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column' }}>
-          <ChatView />
+          {activeMainView === 'studio' ? <StudioView /> : <ChatView />}
         </div>
 
         {rightPanelVisible && (

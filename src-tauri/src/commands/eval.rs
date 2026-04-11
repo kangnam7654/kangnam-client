@@ -1,3 +1,4 @@
+use std::sync::Arc;
 use rusqlite::params;
 use tauri::{AppHandle, Emitter, State};
 
@@ -8,7 +9,7 @@ use crate::state::AppState;
 pub fn eval_set_create(
     skill_id: String,
     name: Option<String>,
-    state: State<'_, AppState>,
+    state: State<'_, Arc<AppState>>,
 ) -> Result<serde_json::Value, String> {
     let conn = state.db.lock().unwrap_or_else(|e| e.into_inner());
     let id = uuid::Uuid::new_v4().to_string();
@@ -28,7 +29,7 @@ pub fn eval_set_create(
 #[tauri::command]
 pub fn eval_set_list(
     skill_id: String,
-    state: State<'_, AppState>,
+    state: State<'_, Arc<AppState>>,
 ) -> Result<serde_json::Value, String> {
     let conn = state.db.lock().unwrap_or_else(|e| e.into_inner());
     let mut stmt = conn
@@ -54,7 +55,7 @@ pub fn eval_set_list(
 }
 
 #[tauri::command]
-pub fn eval_set_delete(id: String, state: State<'_, AppState>) -> Result<(), String> {
+pub fn eval_set_delete(id: String, state: State<'_, Arc<AppState>>) -> Result<(), String> {
     let conn = state.db.lock().unwrap_or_else(|e| e.into_inner());
     conn.execute("DELETE FROM skill_eval_sets WHERE id = ?1", params![id])
         .map_err(|e| e.to_string())?;
@@ -67,7 +68,7 @@ pub fn eval_case_add(
     prompt: String,
     expected: String,
     should_trigger: bool,
-    state: State<'_, AppState>,
+    state: State<'_, Arc<AppState>>,
 ) -> Result<serde_json::Value, String> {
     let conn = state.db.lock().unwrap_or_else(|e| e.into_inner());
     let id = uuid::Uuid::new_v4().to_string();
@@ -94,7 +95,7 @@ pub fn eval_case_add(
 pub fn eval_case_bulk_add(
     eval_set_id: String,
     cases: Vec<serde_json::Value>,
-    state: State<'_, AppState>,
+    state: State<'_, Arc<AppState>>,
 ) -> Result<serde_json::Value, String> {
     let conn = state.db.lock().unwrap_or_else(|e| e.into_inner());
     // Get starting sort_order once (fixes N+1 query pattern)
@@ -141,7 +142,7 @@ pub fn eval_case_update(
     prompt: String,
     expected: String,
     should_trigger: bool,
-    state: State<'_, AppState>,
+    state: State<'_, Arc<AppState>>,
 ) -> Result<(), String> {
     let conn = state.db.lock().unwrap_or_else(|e| e.into_inner());
     conn.execute(
@@ -153,7 +154,7 @@ pub fn eval_case_update(
 }
 
 #[tauri::command]
-pub fn eval_case_delete(id: String, state: State<'_, AppState>) -> Result<(), String> {
+pub fn eval_case_delete(id: String, state: State<'_, Arc<AppState>>) -> Result<(), String> {
     let conn = state.db.lock().unwrap_or_else(|e| e.into_inner());
     conn.execute("DELETE FROM skill_eval_cases WHERE id = ?1", params![id])
         .map_err(|e| e.to_string())?;
@@ -163,7 +164,7 @@ pub fn eval_case_delete(id: String, state: State<'_, AppState>) -> Result<(), St
 #[tauri::command]
 pub fn eval_case_list(
     eval_set_id: String,
-    state: State<'_, AppState>,
+    state: State<'_, Arc<AppState>>,
 ) -> Result<serde_json::Value, String> {
     let conn = state.db.lock().unwrap_or_else(|e| e.into_inner());
     let mut stmt = conn
@@ -195,7 +196,7 @@ pub async fn eval_run_start(
     skill_id: String,
     provider: String,
     model: Option<String>,
-    state: State<'_, AppState>,
+    state: State<'_, Arc<AppState>>,
     app: AppHandle,
 ) -> Result<serde_json::Value, String> {
     // Load skill info
@@ -417,7 +418,7 @@ pub async fn eval_run_start(
 }
 
 #[tauri::command]
-pub fn eval_run_stop(run_id: String, state: State<'_, AppState>) -> Result<(), String> {
+pub fn eval_run_stop(run_id: String, state: State<'_, Arc<AppState>>) -> Result<(), String> {
     let conn = state.db.lock().unwrap_or_else(|e| e.into_inner());
     conn.execute(
         "UPDATE skill_eval_runs SET status = 'stopped' WHERE id = ?1 AND status = 'running'",
@@ -430,7 +431,7 @@ pub fn eval_run_stop(run_id: String, state: State<'_, AppState>) -> Result<(), S
 #[tauri::command]
 pub fn eval_run_list(
     eval_set_id: String,
-    state: State<'_, AppState>,
+    state: State<'_, Arc<AppState>>,
 ) -> Result<serde_json::Value, String> {
     let conn = state.db.lock().unwrap_or_else(|e| e.into_inner());
     let mut stmt = conn
@@ -466,7 +467,7 @@ pub fn eval_run_list(
 #[tauri::command]
 pub fn eval_run_get(
     run_id: String,
-    state: State<'_, AppState>,
+    state: State<'_, Arc<AppState>>,
 ) -> Result<serde_json::Value, String> {
     let conn = state.db.lock().unwrap_or_else(|e| e.into_inner());
     conn.query_row(
@@ -497,7 +498,7 @@ pub fn eval_run_get(
 #[tauri::command]
 pub fn eval_run_results(
     run_id: String,
-    state: State<'_, AppState>,
+    state: State<'_, Arc<AppState>>,
 ) -> Result<serde_json::Value, String> {
     let conn = state.db.lock().unwrap_or_else(|e| e.into_inner());
     let mut stmt = conn
@@ -534,7 +535,7 @@ pub fn eval_run_results(
 #[tauri::command]
 pub fn eval_run_stats(
     run_id: String,
-    state: State<'_, AppState>,
+    state: State<'_, Arc<AppState>>,
 ) -> Result<serde_json::Value, String> {
     let conn = state.db.lock().unwrap_or_else(|e| e.into_inner());
 
@@ -584,7 +585,7 @@ pub fn eval_run_stats(
 }
 
 #[tauri::command]
-pub fn eval_run_delete(run_id: String, state: State<'_, AppState>) -> Result<(), String> {
+pub fn eval_run_delete(run_id: String, state: State<'_, Arc<AppState>>) -> Result<(), String> {
     let conn = state.db.lock().unwrap_or_else(|e| e.into_inner());
     conn.execute("DELETE FROM skill_eval_runs WHERE id = ?1", params![run_id])
         .map_err(|e| e.to_string())?;
@@ -596,7 +597,7 @@ pub fn eval_result_feedback(
     result_id: String,
     feedback: String,
     rating: i64,
-    state: State<'_, AppState>,
+    state: State<'_, Arc<AppState>>,
 ) -> Result<(), String> {
     let conn = state.db.lock().unwrap_or_else(|e| e.into_inner());
     conn.execute(
@@ -612,7 +613,7 @@ pub async fn eval_ai_generate(
     skill: serde_json::Value,
     provider: String,
     model: Option<String>,
-    state: State<'_, AppState>,
+    state: State<'_, Arc<AppState>>,
     app: AppHandle,
 ) -> Result<serde_json::Value, String> {
     let cases = ai::generate_evals(&skill, &provider, model.as_deref(), &state, &app).await?;
@@ -625,7 +626,7 @@ pub async fn eval_optimize_start(
     _eval_set_id: String,
     _provider: String,
     _model: Option<String>,
-    _state: State<'_, AppState>,
+    _state: State<'_, Arc<AppState>>,
     _app: AppHandle,
 ) -> Result<(), String> {
     // Placeholder for iterative skill optimization using eval results

@@ -100,6 +100,12 @@ pub struct McpServerInfo {
     pub status: String,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PluginInfo {
+    pub name: String,
+    pub path: String,
+}
+
 #[derive(Debug, Clone, Serialize)]
 #[serde(tag = "type", rename_all = "snake_case")]
 pub enum ClaudeEnhancedEvent {
@@ -108,6 +114,8 @@ pub enum ClaudeEnhancedEvent {
         tools: Vec<String>,
         skills: Vec<String>,
         slash_commands: Vec<String>,
+        agents: Vec<String>,
+        plugins: Vec<PluginInfo>,
         mcp_servers: Vec<McpServerInfo>,
         model: String,
         permission_mode: String,

@@ -1,12 +1,31 @@
 import { useState, useEffect, useRef } from 'react'
 import { useAppStore } from '../../stores/app-store'
-import type { SessionMeta, TaskState } from '../../stores/app-store'
+import type { SessionMeta, TaskState, Conversation } from '../../stores/app-store'
 import { cliApi } from '../../lib/cli-api'
 import { MessageRenderer } from './MessageRenderer'
 import { SafetyDialog } from './SafetyDialog'
 
+const AVAILABLE_MODELS = [
+  { id: 'claude-sonnet-4-6', label: 'Sonnet 4.6' },
+  { id: 'claude-opus-4-6', label: 'Opus 4.6' },
+  { id: 'claude-haiku-4-5-20251001', label: 'Haiku 4.5' },
+]
+
+type EffortLevel = 'low' | 'medium' | 'high'
+
+const EFFORT_OPTIONS: { value: EffortLevel; label: string; desc: string }[] = [
+  { value: 'low', label: 'Low', desc: '빠른 응답' },
+  { value: 'medium', label: 'Medium', desc: '균형' },
+  { value: 'high', label: 'High', desc: '깊은 사고' },
+]
+
 function TopBar() {
-  const { currentProvider, currentWorkingDir, currentSessionId, clearMessages, setCurrentSessionId, isStreaming, sessionMeta } = useAppStore()
+  const {
+    currentProvider, currentWorkingDir, currentSessionId, clearMessages,
+    setCurrentSessionId, isStreaming, sessionMeta, selectedModel, setSelectedModel,
+  } = useAppStore()
+  const [modelDropdownOpen, setModelDropdownOpen] = useState(false)
+  const modelDropdownRef = useRef<HTMLDivElement>(null)
 
   const handleNewChat = async () => {
     if (currentSessionId) {
@@ -18,7 +37,33 @@ function TopBar() {
     useAppStore.getState().setCurrentWorkingDir(null)
   }
 
+  const handleModelSelect = async (modelId: string) => {
+    setModelDropdownOpen(false)
+    if (modelId === selectedModel) return
+    setSelectedModel(modelId)
+    // Restart session with new model
+    if (currentSessionId) {
+      try { await cliApi.stopSession(currentSessionId) } catch { /* ignore */ }
+    }
+    clearMessages()
+    setCurrentSessionId(null)
+    useAppStore.getState().setIsStreaming(false)
+  }
+
+  // Close dropdown on outside click
+  useEffect(() => {
+    if (!modelDropdownOpen) return
+    const handler = (e: MouseEvent) => {
+      if (modelDropdownRef.current && !modelDropdownRef.current.contains(e.target as Node)) {
+        setModelDropdownOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [modelDropdownOpen])
+
   const dirName = currentWorkingDir?.split('/').pop() || currentWorkingDir
+  const displayModel = sessionMeta?.model ?? selectedModel
 
   return (
     <div className="drag-region h-12 flex items-center justify-between shrink-0 relative px-4">
@@ -34,15 +79,80 @@ function TopBar() {
         New
       </button>
 
-      {/* Center: Provider + Dir */}
+      {/* Center: Provider + Model (clickable) + Dir */}
       <div className="no-drag flex items-center gap-2 cursor-default">
         {currentProvider && (
           <span className="text-xs font-medium text-[var(--text-tertiary)] uppercase">{currentProvider}</span>
         )}
-        {sessionMeta?.model && (
+        {displayModel && (
           <>
             <span className="text-[var(--text-muted)]">/</span>
-            <span className="text-xs text-[var(--text-tertiary)]">{sessionMeta.model}</span>
+            <div ref={modelDropdownRef} className="relative">
+              <button
+                onClick={() => setModelDropdownOpen((v) => !v)}
+                className="text-xs text-[var(--text-tertiary)] hover:text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] px-1.5 py-0.5 rounded transition-colors flex items-center gap-1"
+                title="Change model (restarts session)"
+              >
+                {displayModel}
+                <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <polyline points="6 9 12 15 18 9" />
+                </svg>
+              </button>
+              {modelDropdownOpen && (
+                <div
+                  style={{
+                    position: 'absolute',
+                    top: 'calc(100% + 6px)',
+                    left: '50%',
+                    transform: 'translateX(-50%)',
+                    background: 'var(--bg-surface)',
+                    border: '1px solid var(--border)',
+                    borderRadius: 'var(--radius-md)',
+                    boxShadow: '0 4px 16px rgba(0,0,0,0.2)',
+                    minWidth: 220,
+                    zIndex: 100,
+                    overflow: 'hidden',
+                  }}
+                >
+                  <div style={{ padding: '6px 10px 4px', fontSize: 10, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+                    Model (restarts session)
+                  </div>
+                  {AVAILABLE_MODELS.map((m) => {
+                    const isActive = selectedModel === m.id || (!selectedModel && sessionMeta?.model === m.id)
+                    return (
+                      <button
+                        key={m.id}
+                        onClick={() => handleModelSelect(m.id)}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 8,
+                          width: '100%',
+                          padding: '7px 12px',
+                          background: 'none',
+                          border: 'none',
+                          color: 'var(--text-primary)',
+                          fontSize: 13,
+                          cursor: 'pointer',
+                          textAlign: 'left',
+                          transition: 'background 0.1s',
+                        }}
+                        onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = 'var(--bg-hover)' }}
+                        onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = 'none' }}
+                      >
+                        <span style={{ flex: 1 }}>{m.label}</span>
+                        <span style={{ fontSize: 10, color: 'var(--text-muted)' }}>{m.id}</span>
+                        {isActive && (
+                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                            <polyline points="20 6 9 17 4 12" />
+                          </svg>
+                        )}
+                      </button>
+                    )
+                  })}
+                </div>
+              )}
+            </div>
           </>
         )}
         {dirName && (
@@ -70,8 +180,12 @@ function TopBar() {
 
 function MessageInput() {
   const [text, setText] = useState('')
+  const [effortLevel, setEffortLevel] = useState<EffortLevel>('high')
+  const [effortDropdownOpen, setEffortDropdownOpen] = useState(false)
   const { currentSessionId, addMessage, isStreaming, setIsStreaming } = useAppStore()
   const textareaRef = useRef<HTMLTextAreaElement>(null)
+  const effortDropdownRef = useRef<HTMLDivElement>(null)
+  const effortApplied = useRef<EffortLevel>('high')
 
   const handleStop = async () => {
     if (!currentSessionId) return
@@ -85,15 +199,29 @@ function MessageInput() {
       return
     }
     const trimmed = text.trim()
-    if (!trimmed || !currentSessionId) return
-    setText('')
+    if (!trimmed) return
 
-    // Show user message immediately
+    // Wait for session if not ready yet
+    const sessionId = useAppStore.getState().currentSessionId
+    if (!sessionId) {
+      addMessage({ type: 'error', message: '세션 준비 중입니다. 잠시 후 다시 시도해주세요.' })
+      return
+    }
+
+    // Send /effort command if level changed since last apply
+    if (effortLevel !== effortApplied.current) {
+      try {
+        await cliApi.sendMessage(sessionId, `/effort ${effortLevel}`)
+        effortApplied.current = effortLevel
+      } catch { /* ignore */ }
+    }
+
+    setText('')
     addMessage({ type: 'user_message', text: trimmed })
     setIsStreaming(true)
 
     try {
-      await cliApi.sendMessage(currentSessionId, trimmed)
+      await cliApi.sendMessage(sessionId, trimmed)
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e)
       addMessage({ type: 'error', message: `메시지 전송 실패: ${msg}` })
@@ -116,44 +244,169 @@ function MessageInput() {
     el.style.height = `${Math.min(el.scrollHeight, 200)}px`
   }, [text])
 
+  // Close effort dropdown on outside click
+  useEffect(() => {
+    if (!effortDropdownOpen) return
+    const handler = (e: MouseEvent) => {
+      if (effortDropdownRef.current && !effortDropdownRef.current.contains(e.target as Node)) {
+        setEffortDropdownOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [effortDropdownOpen])
+
+  const currentEffort = EFFORT_OPTIONS.find((o) => o.value === effortLevel)!
+
   return (
-    <div className="shrink-0 px-6 pb-5 pt-3">
-      <div className="mx-auto" style={{ maxWidth: 'min(48rem, 100%)' }}>
-        <div
-          className="relative flex items-end gap-3 rounded-2xl border border-[var(--border-subtle)] px-4 py-3"
-          style={{ background: 'var(--bg-composer)', boxShadow: 'var(--composer-shadow)' }}
-        >
-          <textarea
-            ref={textareaRef}
-            value={text}
-            onChange={(e) => setText(e.target.value)}
-            onKeyDown={handleKeyDown}
-            placeholder={currentSessionId ? 'Ask Claude anything…' : 'Starting session…'}
-            disabled={!currentSessionId}
-            rows={1}
-            className="composer-input flex-1 resize-none bg-transparent text-[15px] text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:outline-none disabled:opacity-40 leading-relaxed"
-            style={{ maxHeight: 200 }}
-            aria-label="Message input"
-          />
+    <div style={{ flexShrink: 0, padding: '8px 16px 12px' }}>
+      <div
+        style={{
+          background: 'var(--bg-surface)',
+          border: '1px solid var(--border)',
+          borderRadius: 'var(--radius-lg)',
+          padding: '10px 12px',
+          display: 'flex',
+          alignItems: 'flex-end',
+          gap: 8,
+          transition: 'border-color 0.15s',
+        }}
+        onFocus={(e) => { (e.currentTarget as HTMLElement).style.borderColor = 'var(--accent)' }}
+        onBlur={(e) => { (e.currentTarget as HTMLElement).style.borderColor = 'var(--border)' }}
+      >
+        <textarea
+          ref={textareaRef}
+          value={text}
+          onChange={(e) => setText(e.target.value)}
+          onKeyDown={handleKeyDown}
+          placeholder={currentSessionId ? 'Message Claude...' : 'Preparing session — type ahead...'}
+          rows={1}
+          style={{
+            flex: 1,
+            resize: 'none',
+            background: 'transparent',
+            border: 'none',
+            outline: 'none',
+            color: 'var(--text-primary)',
+            fontSize: 13,
+            fontFamily: 'var(--font-sans)',
+            lineHeight: 1.5,
+            maxHeight: 160,
+            padding: '2px 0',
+          }}
+          className="composer-input placeholder:text-[var(--text-muted)] disabled:opacity-40"
+          aria-label="Message input"
+        />
+
+        {/* Effort level selector */}
+        <div ref={effortDropdownRef} style={{ position: 'relative', flexShrink: 0 }}>
           <button
-            onClick={handleSubmit}
-            disabled={!isStreaming && (!text.trim() || !currentSessionId)}
-            className="shrink-0 flex h-8 w-8 items-center justify-center rounded-lg text-white disabled:opacity-30 hover:opacity-85 transition-opacity"
-            style={{ background: 'var(--accent)' }}
-            aria-label="Send message"
+            onClick={() => setEffortDropdownOpen((v) => !v)}
+            title="Effort level"
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 3,
+              height: 28,
+              padding: '0 7px',
+              borderRadius: 'var(--radius-md)',
+              border: '1px solid var(--border)',
+              background: effortLevel === 'high' ? 'var(--accent)' : effortLevel === 'medium' ? 'var(--accent-soft)' : 'transparent',
+              color: effortLevel === 'high' ? '#fff' : effortLevel === 'medium' ? 'var(--accent)' : 'var(--text-muted)',
+              fontSize: 11,
+              cursor: 'pointer',
+              transition: 'background 0.15s, color 0.15s',
+              whiteSpace: 'nowrap',
+            }}
           >
-            {isStreaming ? (
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
-                <rect x="4" y="4" width="16" height="16" rx="2" />
-              </svg>
-            ) : (
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                <line x1="22" y1="2" x2="11" y2="13" />
-                <polygon points="22 2 15 22 11 13 2 9 22 2" />
-              </svg>
-            )}
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
+            </svg>
+            {currentEffort.label}
           </button>
+          {effortDropdownOpen && (
+            <div
+              style={{
+                position: 'absolute',
+                bottom: 'calc(100% + 6px)',
+                right: 0,
+                background: 'var(--bg-surface)',
+                border: '1px solid var(--border)',
+                borderRadius: 'var(--radius-md)',
+                boxShadow: '0 4px 16px rgba(0,0,0,0.2)',
+                minWidth: 160,
+                zIndex: 100,
+                overflow: 'hidden',
+              }}
+            >
+              <div style={{ padding: '6px 10px 4px', fontSize: 10, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+                Effort (/effort)
+              </div>
+              {EFFORT_OPTIONS.map((opt) => (
+                <button
+                  key={opt.value}
+                  onClick={() => { setEffortLevel(opt.value); setEffortDropdownOpen(false) }}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 8,
+                    width: '100%',
+                    padding: '7px 12px',
+                    background: 'none',
+                    border: 'none',
+                    color: 'var(--text-primary)',
+                    fontSize: 13,
+                    cursor: 'pointer',
+                    textAlign: 'left',
+                    transition: 'background 0.1s',
+                  }}
+                  onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = 'var(--bg-hover)' }}
+                  onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = 'none' }}
+                >
+                  <span style={{ flex: 1 }}>{opt.label}</span>
+                  <span style={{ fontSize: 10, color: 'var(--text-muted)' }}>{opt.desc}</span>
+                  {effortLevel === opt.value && (
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                      <polyline points="20 6 9 17 4 12" />
+                    </svg>
+                  )}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
+
+        {/* Send / Stop button */}
+        <button
+          onClick={handleSubmit}
+          disabled={!isStreaming && (!text.trim() || !currentSessionId)}
+          aria-label={isStreaming ? 'Stop' : 'Send'}
+          style={{
+            flexShrink: 0,
+            width: 28,
+            height: 28,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            borderRadius: 'var(--radius-md)',
+            border: 'none',
+            background: isStreaming ? 'var(--danger)' : 'var(--accent)',
+            color: '#fff',
+            cursor: 'pointer',
+            opacity: !isStreaming && (!text.trim() || !currentSessionId) ? 0.3 : 1,
+            transition: 'opacity 0.15s, background 0.15s',
+          }}
+        >
+          {isStreaming ? (
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
+              <rect x="4" y="4" width="16" height="16" rx="2" />
+            </svg>
+          ) : (
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M22 2L11 13" /><path d="M22 2L15 22L11 13L2 9L22 2Z" />
+            </svg>
+          )}
+        </button>
       </div>
     </div>
   )
@@ -172,28 +425,36 @@ function StreamingIndicator() {
 function ChatContent() {
   const { messages, addMessage, setPendingPermission, currentSessionId, setCurrentSessionId,
           setIsStreaming, isStreaming, currentProvider, setCurrentWorkingDir,
-          setSessionMeta, addTask, updateTask, setRateLimit, setSessionCost } = useAppStore()
+          setSessionMeta, addTask, updateTask, setRateLimit, setSessionCost, selectedModel } = useAppStore()
   const messagesEndRef = useRef<HTMLDivElement>(null)
-  const autoStarted = useRef(false)
+  const startingSession = useRef(false)
 
-  // Auto-start session on mount if provider is set but no session exists
+  // Auto-start session when provider is set but no session exists
   useEffect(() => {
-    if (autoStarted.current || currentSessionId || !currentProvider) return
-    autoStarted.current = true
+    if (currentSessionId || !currentProvider || startingSession.current) return
+    startingSession.current = true
 
     const lastDir = localStorage.getItem('kangnam-last-workdir')
     const workingDir = lastDir || (navigator.platform?.includes('Win') ? 'C:\\Users' : '/Users')
 
-    cliApi.startSession(currentProvider, workingDir)
-      .then((sessionId) => {
+    cliApi.startSession(currentProvider, workingDir, selectedModel)
+      .then(async (sessionId) => {
         setCurrentSessionId(sessionId)
         setCurrentWorkingDir(workingDir)
         localStorage.setItem('kangnam-last-workdir', workingDir)
+        // Refresh conversation list
+        try {
+          const convs = await window.api.conv.list()
+          useAppStore.getState().setConversations(convs as Conversation[])
+        } catch { /* ignore */ }
       })
       .catch((e) => {
         console.error('[ChatContent] auto-start session failed:', e)
       })
-  }, [currentSessionId, currentProvider, setCurrentSessionId, setCurrentWorkingDir])
+      .finally(() => {
+        startingSession.current = false
+      })
+  }, [currentSessionId, currentProvider, setCurrentSessionId, setCurrentWorkingDir, selectedModel])
 
   useEffect(() => {
     const unlisten = cliApi.onMessage((msg) => {
@@ -256,6 +517,7 @@ function ChatContent() {
           })
           break
         case 'rate_limit':
+          console.log('[rate_limit]', JSON.stringify(event))
           setRateLimit({
             status: event.status as string,
             utilization: event.utilization as number | null,
@@ -276,18 +538,28 @@ function ChatContent() {
       <TopBar />
 
       <div className="flex-1 overflow-y-auto px-4 py-4">
-        <div className="mx-auto max-w-3xl">
+        <div style={{ maxWidth: '48rem', margin: '0 auto' }}>
           {messages.length === 0 && !isStreaming ? (
-            <div className="flex flex-col items-center justify-center gap-2 py-32">
-              <div className="w-10 h-10 rounded-xl flex items-center justify-center text-white font-bold text-lg" style={{ background: 'var(--accent)' }}>K</div>
-              <div className="text-lg font-semibold text-[var(--text-primary)] mt-2">무엇을 도와드릴까요?</div>
-              <div className="text-sm text-[var(--text-muted)]">
-                {currentSessionId ? 'Claude Code가 준비되었습니다' : '세션을 시작하는 중...'}
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 8, paddingTop: '30vh' }}>
+              <div style={{ width: 40, height: 40, borderRadius: 'var(--radius-lg)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 700, fontSize: 18, background: 'var(--accent)' }}>K</div>
+              <div style={{ fontSize: 18, fontWeight: 600, color: 'var(--text-primary)', marginTop: 8 }}>
+                {currentSessionId ? '무엇을 도와드릴까요?' : 'Claude Code 시작 중'}
               </div>
+              {!currentSessionId && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: 'var(--text-muted)', fontSize: 13 }}>
+                  <span style={{ display: 'inline-block', width: 12, height: 12, border: '2px solid var(--text-muted)', borderTopColor: 'var(--accent)', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
+                  세션 초기화 중... (hooks, plugins, MCP 로드)
+                </div>
+              )}
+              {currentSessionId && (
+                <div style={{ color: 'var(--text-muted)', fontSize: 13 }}>
+                  Claude Code가 준비되었습니다
+                </div>
+              )}
             </div>
           ) : (
             <>
-              {messages.map((msg, i) => <MessageRenderer key={i} message={msg} />)}
+              {messages.map((msg, i) => <MessageRenderer key={i} message={msg} isLast={i === messages.length - 1} isStreaming={isStreaming} />)}
               {isStreaming && messages[messages.length - 1]?.type !== 'text_delta' && messages[messages.length - 1]?.type !== 'agent_progress' && (
                 <StreamingIndicator />
               )}

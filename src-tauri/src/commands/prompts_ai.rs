@@ -1,3 +1,4 @@
+use std::sync::Arc;
 use tauri::{AppHandle, State};
 
 use crate::skills::ai;
@@ -8,7 +9,7 @@ pub async fn prompts_ai_generate(
     user_request: String,
     provider: String,
     model: Option<String>,
-    state: State<'_, AppState>,
+    state: State<'_, Arc<AppState>>,
     app: AppHandle,
 ) -> Result<serde_json::Value, String> {
     let result =
@@ -22,7 +23,7 @@ pub async fn prompts_ai_improve(
     feedback: String,
     provider: String,
     model: Option<String>,
-    state: State<'_, AppState>,
+    state: State<'_, Arc<AppState>>,
     app: AppHandle,
 ) -> Result<serde_json::Value, String> {
     let result =
@@ -37,7 +38,7 @@ pub async fn prompts_ai_generate_ref(
     user_request: String,
     provider: String,
     model: Option<String>,
-    state: State<'_, AppState>,
+    state: State<'_, Arc<AppState>>,
     app: AppHandle,
 ) -> Result<serde_json::Value, String> {
     let result = ai::generate_reference(
@@ -57,7 +58,7 @@ pub async fn prompts_ai_generate_evals(
     skill: serde_json::Value,
     provider: String,
     model: Option<String>,
-    state: State<'_, AppState>,
+    state: State<'_, Arc<AppState>>,
     app: AppHandle,
 ) -> Result<serde_json::Value, String> {
     let result =
@@ -71,7 +72,7 @@ pub async fn prompts_ai_grade(
     criteria: Vec<String>,
     provider: String,
     model: Option<String>,
-    state: State<'_, AppState>,
+    state: State<'_, Arc<AppState>>,
     app: AppHandle,
 ) -> Result<serde_json::Value, String> {
     ai::grade_skill(&skill, &criteria, &provider, model.as_deref(), &state, &app).await
@@ -83,7 +84,7 @@ pub async fn prompts_ai_compare(
     skill_b: serde_json::Value,
     provider: String,
     model: Option<String>,
-    state: State<'_, AppState>,
+    state: State<'_, Arc<AppState>>,
     app: AppHandle,
 ) -> Result<serde_json::Value, String> {
     ai::compare_skills(&skill_a, &skill_b, &provider, model.as_deref(), &state, &app).await
@@ -96,7 +97,7 @@ pub async fn prompts_ai_analyze(
     loser_skill: serde_json::Value,
     provider: String,
     model: Option<String>,
-    state: State<'_, AppState>,
+    state: State<'_, Arc<AppState>>,
     app: AppHandle,
 ) -> Result<serde_json::Value, String> {
     ai::analyze_comparison(

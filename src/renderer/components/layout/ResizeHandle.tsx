@@ -1,29 +1,36 @@
 import { useCallback, useEffect, useRef } from 'react'
 
 interface ResizeHandleProps {
-  side: 'left' | 'right'
+  side: 'left' | 'right' | 'bottom'
   onResize: (delta: number) => void
   onDoubleClick?: () => void
 }
 
 export function ResizeHandle({ side, onResize, onDoubleClick }: ResizeHandleProps) {
   const dragging = useRef(false)
-  const lastX = useRef(0)
+  const lastPos = useRef(0)
+  const isHorizontal = side === 'bottom'
 
   const onMouseDown = useCallback((e: React.MouseEvent) => {
     e.preventDefault()
     dragging.current = true
-    lastX.current = e.clientX
-    document.body.style.cursor = 'col-resize'
+    lastPos.current = isHorizontal ? e.clientY : e.clientX
+    document.body.style.cursor = isHorizontal ? 'row-resize' : 'col-resize'
     document.body.style.userSelect = 'none'
-  }, [])
+  }, [isHorizontal])
 
   useEffect(() => {
     const onMouseMove = (e: MouseEvent) => {
       if (!dragging.current) return
-      const delta = e.clientX - lastX.current
-      lastX.current = e.clientX
-      onResize(side === 'left' ? delta : -delta)
+      if (isHorizontal) {
+        const delta = e.clientY - lastPos.current
+        lastPos.current = e.clientY
+        onResize(delta)
+      } else {
+        const delta = e.clientX - lastPos.current
+        lastPos.current = e.clientX
+        onResize(side === 'left' ? delta : -delta)
+      }
     }
     const onMouseUp = () => {
       dragging.current = false
@@ -36,7 +43,36 @@ export function ResizeHandle({ side, onResize, onDoubleClick }: ResizeHandleProp
       window.removeEventListener('mousemove', onMouseMove)
       window.removeEventListener('mouseup', onMouseUp)
     }
-  }, [onResize, side])
+  }, [onResize, side, isHorizontal])
+
+  if (isHorizontal) {
+    return (
+      <div
+        onMouseDown={onMouseDown}
+        onDoubleClick={onDoubleClick}
+        style={{
+          height: 4,
+          cursor: 'row-resize',
+          background: 'transparent',
+          flexShrink: 0,
+          position: 'relative',
+        }}
+      >
+        <div
+          style={{
+            position: 'absolute',
+            left: 0,
+            right: 0,
+            top: 1,
+            height: 2,
+            background: 'var(--border)',
+            transition: 'background 0.15s',
+          }}
+          className="hover:!bg-[var(--accent)]"
+        />
+      </div>
+    )
+  }
 
   return (
     <div

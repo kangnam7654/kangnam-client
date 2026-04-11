@@ -3,15 +3,11 @@ import { useAppStore } from '../../stores/app-store'
 import type { MCPServerStatus } from './types'
 import { ProvidersTab } from './tabs/ProvidersTab'
 import { MCPTab } from './tabs/MCPTab'
-import { PromptsTab } from './tabs/PromptsTab'
-import { AgentsTab } from './tabs/AgentsTab'
 import { GeneralTab } from './tabs/GeneralTab'
 
 const TABS = [
   { id: 'providers', label: 'Providers', icon: 'M13 10V3L4 14h7v7l9-11h-7z' },
   { id: 'mcp', label: 'MCP Servers', icon: 'M14.7 6.3a1 1 0 000 1.4l1.6 1.6a1 1 0 001.4 0l3.77-3.77a6 6 0 01-7.94 7.94l-6.91 6.91a2.12 2.12 0 01-3-3l6.91-6.91a6 6 0 017.94-7.94l-3.76 3.76z' },
-  { id: 'prompts', label: 'Skills', icon: 'M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z M14 2v6h6 M16 13H8 M16 17H8 M10 9H8' },
-  { id: 'agents', label: 'Agents', icon: 'M12 2a5 5 0 015 5v3a5 5 0 01-10 0V7a5 5 0 015-5z M8 21h8 M12 17v4' },
   { id: 'general', label: 'General', icon: 'M12.22 2h-.44a2 2 0 00-2 2v.18a2 2 0 01-1 1.73l-.43.25a2 2 0 01-2 0l-.15-.08a2 2 0 00-2.73.73l-.22.38a2 2 0 00.73 2.73l.15.1a2 2 0 011 1.72v.51a2 2 0 01-1 1.74l-.15.09a2 2 0 00-.73 2.73l.22.38a2 2 0 002.73.73l.15-.08a2 2 0 012 0l.43.25a2 2 0 011 1.73V20a2 2 0 002 2h.44a2 2 0 002-2v-.18a2 2 0 011-1.73l.43-.25a2 2 0 012 0l.15.08a2 2 0 002.73-.73l.22-.39a2 2 0 00-.73-2.73l-.15-.08a2 2 0 01-1-1.74v-.5a2 2 0 011-1.74l.15-.09a2 2 0 00.73-2.73l-.22-.38a2 2 0 00-2.73-.73l-.15.08a2 2 0 01-2 0l-.43-.25a2 2 0 01-1-1.73V4a2 2 0 00-2-2z M12 8a4 4 0 100 8 4 4 0 000-8z' }
 ] as const
 
@@ -131,8 +127,6 @@ export function SettingsPanel() {
               onRemove={async (name) => { await window.api.mcp.removeServer(name); await loadData() }}
               onUpdate={async () => { await loadData() }}
             />}
-            {settingsTab === 'prompts' && <PromptsTab />}
-            {settingsTab === 'agents' && <AgentsTab />}
             {settingsTab === 'general' && <GeneralTab />}
           </div>
         </div>

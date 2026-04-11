@@ -51,22 +51,14 @@ pub async fn start_session(params: Option<serde_json::Value>, state: &AppState) 
 
     let session_id = uuid::Uuid::new_v4().to_string();
 
-    // Create conversation in DB using session_id as conversation id
-    {
-        let db = state.db.lock().map_err(|e| JsonRpcError::internal(&e.to_string()))?;
-        let now = chrono::Utc::now().timestamp();
-        db.execute(
-            "INSERT INTO conversations (id, title, cli_provider, created_at, updated_at) \
-             VALUES (?1, 'New Chat', ?2, ?3, ?4)",
-            rusqlite::params![session_id, p.provider, now, now],
-        ).map_err(|e| JsonRpcError::internal(&e.to_string()))?;
-    }
+    // NOTE: conversation DB row is created lazily on first message (send_message),
+    // not here. This prevents empty "New Chat" entries on every app launch.
 
     let broadcast_tx = state.broadcast_tx.clone();
     let enhanced_tx = state.enhanced_broadcast_tx.clone();
     let manager = state.cli_manager.lock().await;
     manager
-        .start_session(&p.provider, &working_dir, &session_id, broadcast_tx, Some(enhanced_tx))
+        .start_session(&p.provider, &working_dir, &session_id, broadcast_tx, Some(enhanced_tx), p.model)
         .await
         .map_err(|e| JsonRpcError::internal(&e))?;
 
@@ -76,9 +68,23 @@ pub async fn start_session(params: Option<serde_json::Value>, state: &AppState) 
 pub async fn send_message(params: Option<serde_json::Value>, state: &AppState) -> RpcResult {
     let p: SendMessageParams = parse_params(params)?;
 
-    // Save user message to DB
+    // Create conversation in DB if it doesn't exist yet (lazy creation)
+    // Then save user message
     {
         let db = state.db.lock().map_err(|e| JsonRpcError::internal(&e.to_string()))?;
+        let exists: bool = db.query_row(
+            "SELECT EXISTS(SELECT 1 FROM conversations WHERE id = ?1)",
+            rusqlite::params![p.session_id],
+            |r| r.get(0),
+        ).unwrap_or(false);
+        if !exists {
+            let now = chrono::Utc::now().timestamp();
+            let _ = db.execute(
+                "INSERT INTO conversations (id, title, cli_provider, created_at, updated_at) \
+                 VALUES (?1, 'New Chat', 'claude', ?2, ?3)",
+                rusqlite::params![p.session_id, now, now],
+            );
+        }
         let _ = conversations::add_message(
             &db, &p.session_id, "user", &p.message,
             None, None, None, None, None,
@@ -136,6 +142,7 @@ struct ProviderParam {
 struct StartSessionParams {
     provider: String,
     working_dir: Option<String>, // Optional — None = chat mode (no directory)
+    model: Option<String>,       // Optional — None = use CLI default model
 }
 
 #[derive(Deserialize)]

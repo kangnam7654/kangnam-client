@@ -1,3 +1,4 @@
+use std::sync::Arc;
 use tauri::State;
 
 use crate::mcp::types::*;
@@ -26,14 +27,14 @@ fn validate_server_config(config: &ServerConfig) -> Result<(), String> {
 }
 
 #[tauri::command]
-pub async fn mcp_list_servers(state: State<'_, AppState>) -> Result<Vec<ServerStatus>, String> {
+pub async fn mcp_list_servers(state: State<'_, Arc<AppState>>) -> Result<Vec<ServerStatus>, String> {
     state.mcp.server_status().await
 }
 
 #[tauri::command]
 pub async fn mcp_add_server(
     config: ServerConfig,
-    state: State<'_, AppState>,
+    state: State<'_, Arc<AppState>>,
 ) -> Result<(), String> {
     validate_server_config(&config)?;
     state
@@ -46,7 +47,7 @@ pub async fn mcp_add_server(
 #[tauri::command]
 pub async fn mcp_reconnect_server(
     name: String,
-    state: State<'_, AppState>,
+    state: State<'_, Arc<AppState>>,
 ) -> Result<(), String> {
     state
         .mcp
@@ -59,7 +60,7 @@ pub async fn mcp_reconnect_server(
 pub async fn mcp_update_server(
     old_name: String,
     config: ServerConfig,
-    state: State<'_, AppState>,
+    state: State<'_, Arc<AppState>>,
 ) -> Result<(), String> {
     validate_server_config(&config)?;
     state
@@ -73,7 +74,7 @@ pub async fn mcp_update_server(
 }
 
 #[tauri::command]
-pub async fn mcp_remove_server(name: String, state: State<'_, AppState>) -> Result<(), String> {
+pub async fn mcp_remove_server(name: String, state: State<'_, Arc<AppState>>) -> Result<(), String> {
     state
         .mcp
         .request("mcp:remove-server", serde_json::json!({ "name": name }))
@@ -82,19 +83,19 @@ pub async fn mcp_remove_server(name: String, state: State<'_, AppState>) -> Resu
 }
 
 #[tauri::command]
-pub async fn mcp_list_tools(state: State<'_, AppState>) -> Result<Vec<AggregatedTool>, String> {
+pub async fn mcp_list_tools(state: State<'_, Arc<AppState>>) -> Result<Vec<AggregatedTool>, String> {
     state.mcp.list_tools().await
 }
 
 #[tauri::command]
-pub async fn mcp_server_status(state: State<'_, AppState>) -> Result<Vec<ServerStatus>, String> {
+pub async fn mcp_server_status(state: State<'_, Arc<AppState>>) -> Result<Vec<ServerStatus>, String> {
     state.mcp.server_status().await
 }
 
 #[tauri::command]
 pub async fn mcp_get_config(
     name: String,
-    state: State<'_, AppState>,
+    state: State<'_, Arc<AppState>>,
 ) -> Result<serde_json::Value, String> {
     let configs = state
         .mcp
@@ -114,7 +115,7 @@ pub async fn mcp_ai_assist(
     _prompt: String,
     _provider: String,
     _model: Option<String>,
-    _state: State<'_, AppState>,
+    _state: State<'_, Arc<AppState>>,
 ) -> Result<serde_json::Value, String> {
     // Phase 6: AI-assisted MCP configuration
     Err("AI assist not yet implemented".to_string())

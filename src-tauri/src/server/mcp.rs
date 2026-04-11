@@ -50,6 +50,23 @@ impl McpResponse {
     }
 }
 
+/// GET /mcp — SSE endpoint for MCP Streamable HTTP protocol discovery.
+/// Claude Code tries GET first to establish an SSE stream. We return
+/// a simple SSE that sends the server info and keeps the connection open.
+pub async fn mcp_sse_handler() -> impl IntoResponse {
+    use axum::response::sse::{Event, Sse};
+    use futures::stream;
+    use std::convert::Infallible;
+
+    let init_event = Event::default()
+        .event("endpoint")
+        .data("/mcp");
+
+    Sse::new(stream::once(async move {
+        Ok::<_, Infallible>(init_event)
+    }))
+}
+
 pub async fn mcp_handler(
     State(state): State<Arc<AppState>>,
     Json(req): Json<McpRequest>,

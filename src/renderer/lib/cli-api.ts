@@ -25,8 +25,12 @@ export const cliApi = {
   install: (provider: string) =>
     rpc.call<void>('cli.install', { provider }),
 
-  startSession: (provider: string, workingDir?: string) =>
-    rpc.call<string>('cli.startSession', workingDir ? { provider, workingDir } : { provider }),
+  startSession: (provider: string, workingDir?: string, model?: string | null) =>
+    rpc.call<string>('cli.startSession', {
+      provider,
+      ...(workingDir && { workingDir }),
+      ...(model && { model }),
+    }),
 
   sendMessage: (sessionId: string, message: string) =>
     rpc.call<void>('cli.sendMessage', { sessionId, message }),

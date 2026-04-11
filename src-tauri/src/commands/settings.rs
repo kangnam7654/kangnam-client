@@ -1,6 +1,7 @@
 use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::PathBuf;
+use std::sync::Arc;
 use tauri::State;
 
 use crate::state::AppState;
@@ -65,13 +66,13 @@ fn save_settings(state: &AppState, settings: &Settings) -> Result<(), String> {
 }
 
 #[tauri::command]
-pub fn settings_get(state: State<'_, AppState>) -> Result<Settings, String> {
+pub fn settings_get(state: State<'_, Arc<AppState>>) -> Result<Settings, String> {
     Ok(load_settings(&state))
 }
 
 #[tauri::command]
 pub fn settings_set(
-    state: State<'_, AppState>,
+    state: State<'_, Arc<AppState>>,
     partial: serde_json::Value,
 ) -> Result<Settings, String> {
     let current = load_settings(&state);

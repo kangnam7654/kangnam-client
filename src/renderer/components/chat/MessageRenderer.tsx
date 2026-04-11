@@ -1,16 +1,21 @@
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
+import ReactMarkdown from 'react-markdown'
+import remarkGfm from 'remark-gfm'
+import { codeToHtml } from 'shiki'
 import type { UnifiedMessage } from '../../stores/app-store'
 
 interface MessageRendererProps {
   message: UnifiedMessage
+  isLast?: boolean
+  isStreaming?: boolean
 }
 
-export function MessageRenderer({ message }: MessageRendererProps) {
+export function MessageRenderer({ message, isLast, isStreaming }: MessageRendererProps) {
   switch (message.type) {
     case 'user_message':
       return <UserMessage text={message.text} />
     case 'text_delta':
-      return <AssistantText text={message.text} />
+      return <AssistantText text={message.text} streaming={!!(isLast && isStreaming)} />
     case 'tool_use_start':
       return <ToolUseCard id={message.id} name={message.name} input={message.input} />
     case 'tool_result':
@@ -32,20 +37,105 @@ export function MessageRenderer({ message }: MessageRendererProps) {
 
 function UserMessage({ text }: { text: string }) {
   return (
-    <div className="flex justify-end mb-6">
-      <div className="max-w-[85%] rounded-2xl rounded-br-sm bg-[var(--bg-user-bubble)] px-4 py-3 text-sm text-[var(--text-primary)] whitespace-pre-wrap leading-relaxed selectable">
+    <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 20 }}>
+      <div
+        style={{
+          maxWidth: '90%',
+          borderRadius: '16px 16px 4px 16px',
+          background: 'var(--bg-user-bubble)',
+          padding: '10px 16px',
+          fontSize: 13,
+          color: 'var(--text-primary)',
+          whiteSpace: 'pre-wrap',
+          wordBreak: 'break-word',
+          lineHeight: 1.6,
+          userSelect: 'text',
+        }}
+      >
         {text}
       </div>
     </div>
   )
 }
 
-function AssistantText({ text }: { text: string }) {
+function AssistantText({ text, streaming }: { text: string; streaming: boolean }) {
+  if (streaming) {
+    return (
+      <div style={{ marginBottom: 24, fontSize: 13, color: 'var(--text-primary)', whiteSpace: 'pre-wrap', wordBreak: 'break-word', lineHeight: 1.7, userSelect: 'text' }}>
+        {text}
+      </div>
+    )
+  }
   return (
-    <div className="mb-6 text-[15px] text-[var(--text-primary)] whitespace-pre-wrap leading-[1.7] selectable" style={{ fontFamily: 'var(--font-serif)' }}>
-      {text}
+    <div className="aui-markdown selectable" style={{ marginBottom: 24, fontSize: 13, color: 'var(--text-primary)' }}>
+      <ReactMarkdown
+        remarkPlugins={[remarkGfm]}
+        components={{
+          code: CodeBlock,
+        }}
+      >{text}</ReactMarkdown>
     </div>
   )
+}
+
+function CodeBlock({ className, children, ...props }: React.HTMLAttributes<HTMLElement> & { children?: React.ReactNode }) {
+  const lang = className?.replace('language-', '') || ''
+  const code = String(children).replace(/\n$/, '')
+  const isInline = !className
+
+  if (isInline) {
+    return <code style={{ background: 'var(--bg-code-inline)', borderRadius: 5, padding: '0.2em 0.4em', fontSize: '0.85em', fontFamily: 'var(--font-mono)', color: 'var(--text-code-inline)' }}>{children}</code>
+  }
+
+  return <ShikiCodeBlock code={code} lang={lang} />
+}
+
+function ShikiCodeBlock({ code, lang }: { code: string; lang: string }) {
+  const ref = useRef<HTMLDivElement>(null)
+  const [copied, setCopied] = useState(false)
+
+  useEffect(() => {
+    let cancelled = false
+    codeToHtml(code, { lang: lang || 'text', theme: 'vitesse-dark' })
+      .then((html) => {
+        if (!cancelled && ref.current) ref.current.innerHTML = html
+      })
+      .catch(() => {
+        if (!cancelled && ref.current) {
+          ref.current.innerHTML = `<pre style="margin:0;padding:16px;overflow-x:auto;font-size:12px;line-height:1.6;font-family:var(--font-mono);color:var(--text-primary)">${escapeHtml(code)}</pre>`
+        }
+      })
+    return () => { cancelled = true }
+  }, [code, lang])
+
+  const handleCopy = () => {
+    navigator.clipboard.writeText(code)
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2000)
+  }
+
+  return (
+    <div style={{ position: 'relative', marginBottom: 12, borderRadius: 'var(--radius-md)', overflow: 'hidden', border: '1px solid var(--border)', background: 'var(--bg-code)' }}>
+      {/* Header */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '6px 12px', borderBottom: '1px solid var(--border)', fontSize: 11, color: 'var(--text-muted)' }}>
+        <span>{lang || 'text'}</span>
+        <button
+          onClick={handleCopy}
+          style={{ background: 'none', border: 'none', color: copied ? 'var(--success)' : 'var(--text-muted)', cursor: 'pointer', fontSize: 11, fontFamily: 'var(--font-mono)' }}
+        >
+          {copied ? 'Copied!' : 'Copy'}
+        </button>
+      </div>
+      {/* Code */}
+      <div ref={ref} className="shiki-block" style={{ fontSize: 12, lineHeight: 1.6, overflow: 'auto' }}>
+        <pre style={{ margin: 0, padding: 16, fontFamily: 'var(--font-mono)', color: 'var(--text-primary)' }}><code>{code}</code></pre>
+      </div>
+    </div>
+  )
+}
+
+function escapeHtml(str: string): string {
+  return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
 }
 
 function ToolUseCard({ id: _id, name, input }: { id: string; name: string; input: unknown }) {
@@ -143,10 +233,10 @@ function ErrorMessage({ message }: { message: string }) {
 
 function TurnEndIndicator({ usage }: { usage?: { input_tokens: number; output_tokens: number } }) {
   return (
-    <div className="my-6 flex items-center gap-3 text-[11px] text-[var(--text-muted)]">
-      <div className="h-px flex-1 bg-[var(--border-subtle)]" />
+    <div style={{ margin: '24px 0 28px', display: 'flex', alignItems: 'center', gap: 12, fontSize: 11, color: 'var(--text-muted)' }}>
+      <div style={{ height: 1, flex: 1, background: 'var(--border-subtle)' }} />
       {usage && <span>{(usage.input_tokens + usage.output_tokens).toLocaleString()} tokens</span>}
-      <div className="h-px flex-1 bg-[var(--border-subtle)]" />
+      <div style={{ height: 1, flex: 1, background: 'var(--border-subtle)' }} />
     </div>
   )
 }

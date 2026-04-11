@@ -1,16 +1,17 @@
+use std::sync::Arc;
 use tauri::State;
 
 use crate::db::skills::{self, Skill, SkillReference};
 use crate::state::AppState;
 
 #[tauri::command]
-pub fn prompts_list(state: State<'_, AppState>) -> Result<Vec<Skill>, String> {
+pub fn prompts_list(state: State<'_, Arc<AppState>>) -> Result<Vec<Skill>, String> {
     let conn = state.db.lock().unwrap_or_else(|e| e.into_inner());
     skills::list_skills(&conn).map_err(|e| e.to_string())
 }
 
 #[tauri::command]
-pub fn prompts_get(id: String, state: State<'_, AppState>) -> Result<Option<Skill>, String> {
+pub fn prompts_get(id: String, state: State<'_, Arc<AppState>>) -> Result<Option<Skill>, String> {
     let conn = state.db.lock().unwrap_or_else(|e| e.into_inner());
     Ok(skills::get_skill(&conn, &id))
 }
@@ -18,7 +19,7 @@ pub fn prompts_get(id: String, state: State<'_, AppState>) -> Result<Option<Skil
 #[tauri::command]
 pub fn prompts_get_instructions(
     id: String,
-    state: State<'_, AppState>,
+    state: State<'_, Arc<AppState>>,
 ) -> Result<Option<String>, String> {
     let conn = state.db.lock().unwrap_or_else(|e| e.into_inner());
     Ok(skills::get_skill_instructions(&conn, &id))
@@ -32,7 +33,7 @@ pub fn prompts_create(
     argument_hint: Option<String>,
     model: Option<String>,
     user_invocable: Option<bool>,
-    state: State<'_, AppState>,
+    state: State<'_, Arc<AppState>>,
 ) -> Result<Skill, String> {
     let conn = state.db.lock().unwrap_or_else(|e| e.into_inner());
     skills::create_skill(
@@ -56,7 +57,7 @@ pub fn prompts_update(
     argument_hint: Option<String>,
     model: Option<String>,
     user_invocable: Option<bool>,
-    state: State<'_, AppState>,
+    state: State<'_, Arc<AppState>>,
 ) -> Result<(), String> {
     let conn = state.db.lock().unwrap_or_else(|e| e.into_inner());
     skills::update_skill(
@@ -73,7 +74,7 @@ pub fn prompts_update(
 }
 
 #[tauri::command]
-pub fn prompts_delete(id: String, state: State<'_, AppState>) -> Result<(), String> {
+pub fn prompts_delete(id: String, state: State<'_, Arc<AppState>>) -> Result<(), String> {
     let conn = state.db.lock().unwrap_or_else(|e| e.into_inner());
     skills::delete_skill(&conn, &id);
     Ok(())
@@ -84,7 +85,7 @@ pub fn prompts_delete(id: String, state: State<'_, AppState>) -> Result<(), Stri
 #[tauri::command]
 pub fn prompts_ref_list(
     skill_id: String,
-    state: State<'_, AppState>,
+    state: State<'_, Arc<AppState>>,
 ) -> Result<Vec<SkillReference>, String> {
     let conn = state.db.lock().unwrap_or_else(|e| e.into_inner());
     Ok(skills::list_skill_references(&conn, &skill_id))
@@ -95,7 +96,7 @@ pub fn prompts_ref_add(
     skill_id: String,
     name: String,
     content: String,
-    state: State<'_, AppState>,
+    state: State<'_, Arc<AppState>>,
 ) -> Result<SkillReference, String> {
     let conn = state.db.lock().unwrap_or_else(|e| e.into_inner());
     skills::add_skill_reference(&conn, &skill_id, &name, &content).map_err(|e| e.to_string())
@@ -106,7 +107,7 @@ pub fn prompts_ref_update(
     id: String,
     name: String,
     content: String,
-    state: State<'_, AppState>,
+    state: State<'_, Arc<AppState>>,
 ) -> Result<(), String> {
     let conn = state.db.lock().unwrap_or_else(|e| e.into_inner());
     skills::update_skill_reference(&conn, &id, &name, &content);
@@ -114,7 +115,7 @@ pub fn prompts_ref_update(
 }
 
 #[tauri::command]
-pub fn prompts_ref_delete(id: String, state: State<'_, AppState>) -> Result<(), String> {
+pub fn prompts_ref_delete(id: String, state: State<'_, Arc<AppState>>) -> Result<(), String> {
     let conn = state.db.lock().unwrap_or_else(|e| e.into_inner());
     skills::delete_skill_reference(&conn, &id);
     Ok(())

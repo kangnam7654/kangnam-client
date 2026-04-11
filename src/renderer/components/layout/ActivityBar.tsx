@@ -1,4 +1,4 @@
-import { useAppStore, type SidePanelTab } from '../../stores/app-store'
+import { useAppStore, type SidePanelTab, type MainView } from '../../stores/app-store'
 
 const tabs: { id: SidePanelTab; label: string; icon: React.ReactNode }[] = [
   {
@@ -54,8 +54,19 @@ const tabs: { id: SidePanelTab; label: string; icon: React.ReactNode }[] = [
   },
 ]
 
+const studioTab = {
+  id: 'studio' as const,
+  label: 'Studio',
+  icon: (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M12 20h9" />
+      <path d="M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4L16.5 3.5z" />
+    </svg>
+  ),
+}
+
 export function ActivityBar() {
-  const { sidePanelTab, sidePanelVisible, toggleSidePanel, setShowSettings } = useAppStore()
+  const { sidePanelTab, sidePanelVisible, toggleSidePanel, setShowSettings, activeMainView, setActiveMainView } = useAppStore()
 
   return (
     <div
@@ -100,6 +111,32 @@ export function ActivityBar() {
           </button>
         )
       })}
+
+      {/* Separator */}
+      <div style={{ width: 24, height: 1, background: 'var(--border)', margin: '4px 0' }} />
+
+      {/* Studio tab — switches main view, not side panel */}
+      <button
+        onClick={() => setActiveMainView(activeMainView === 'studio' ? 'chat' : 'studio')}
+        title={studioTab.label}
+        aria-label={studioTab.label}
+        className="no-drag"
+        style={{
+          width: 36,
+          height: 36,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          borderRadius: 'var(--radius-md)',
+          border: 'none',
+          background: activeMainView === 'studio' ? 'var(--accent-soft)' : 'transparent',
+          color: activeMainView === 'studio' ? 'var(--activity-icon-active)' : 'var(--activity-icon)',
+          cursor: 'pointer',
+          transition: 'all 0.15s',
+        }}
+      >
+        {studioTab.icon}
+      </button>
 
       <div style={{ flex: 1 }} />
 

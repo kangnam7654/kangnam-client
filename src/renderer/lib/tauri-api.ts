@@ -63,6 +63,25 @@ const api = {
     ) => onEvent('chat:context-usage', cb)
   },
 
+  // Claude Code file-based commands (~/.claude/commands/)
+  claudeCommands: {
+    list: () => invoke('list_claude_commands') as Promise<{ name: string; description: string; is_directory: boolean }[]>,
+    read: (name: string) => invoke('read_claude_command', { name }) as Promise<{
+      name: string; description: string; instructions: string
+      is_directory: boolean; refs: { filename: string; size: number; is_main: boolean }[]
+    } | null>,
+    write: (name: string, description: string, instructions: string) =>
+      invoke('write_claude_command', { name, description, instructions }),
+    delete: (name: string) => invoke('delete_claude_command', { name }),
+    // Reference file management
+    listRefs: (name: string) => invoke('list_skill_refs', { name }) as Promise<{ filename: string; size: number; is_main: boolean }[]>,
+    readRef: (name: string, filename: string) => invoke('read_skill_ref', { name, filename }) as Promise<string>,
+    writeRef: (name: string, filename: string, content: string) =>
+      invoke('write_skill_ref', { name, filename, content }),
+    deleteRef: (name: string, filename: string) => invoke('delete_skill_ref', { name, filename }),
+    forkPlugin: (pluginPath: string, skillName: string) => invoke('fork_plugin_skill', { pluginPath, skillName }),
+  },
+
   // Conversations (Phase 3)
   conv: {
     list: () => invoke('conv_list'),
@@ -305,6 +324,21 @@ const api = {
         maxTurns
       }),
     delete: (id: string) => invoke('agents_delete', { id }),
+    readDescription: (name: string) => invoke('read_agent_description', { name }) as Promise<string | null>,
+    // Claude Code file-based agents (~/.claude/agents/)
+    listClaude: () => invoke('list_claude_agents') as Promise<{ name: string; description: string; model: string | null; is_directory: boolean }[]>,
+    readClaude: (name: string) => invoke('read_claude_agent', { name }) as Promise<{
+      name: string; description: string; instructions: string; model: string | null
+      is_directory: boolean; refs: { filename: string; size: number; is_main: boolean }[]
+    } | null>,
+    writeClaude: (name: string, description: string, instructions: string, model?: string | null) =>
+      invoke('write_claude_agent', { name, description, instructions, model }),
+    deleteClaude: (name: string) => invoke('delete_claude_agent', { name }),
+    listRefs: (name: string) => invoke('list_agent_refs', { name }) as Promise<{ filename: string; size: number; is_main: boolean }[]>,
+    readRef: (name: string, filename: string) => invoke('read_agent_ref', { name, filename }) as Promise<string>,
+    writeRef: (name: string, filename: string, content: string) =>
+      invoke('write_agent_ref', { name, filename, content }),
+    deleteRef: (name: string, filename: string) => invoke('delete_agent_ref', { name, filename }),
     execute: (
       agentId: string,
       conversationId: string,
@@ -342,6 +376,16 @@ const api = {
     ) => onEvent('agent:run-error', cb),
     onStream: (cb: EventCallback<{ runId: string; chunk: string }>) =>
       onEvent('agent:stream', cb)
+  },
+
+  // Studio snapshots
+  studio: {
+    snapshotSkill: (name: string) => invoke('snapshot_skill', { name }) as Promise<string>,
+    snapshotAgent: (name: string) => invoke('snapshot_agent', { name }) as Promise<string>,
+    listSkillSnapshots: (name: string) =>
+      invoke('list_skill_snapshots', { name }) as Promise<{ filename: string; timestamp: number; size: number }[]>,
+    listAgentSnapshots: (name: string) =>
+      invoke('list_agent_snapshots', { name }) as Promise<{ filename: string; timestamp: number; size: number }[]>,
   },
 
   // Settings (Phase 1 — active)

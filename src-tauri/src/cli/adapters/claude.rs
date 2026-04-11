@@ -3,19 +3,25 @@ use tokio::process::Command;
 use std::process::Stdio;
 
 use crate::cli::adapter::CliAdapter;
-use crate::cli::types::{UnifiedMessage, ClaudeEnhancedEvent, McpServerInfo};
+use crate::cli::types::{UnifiedMessage, ClaudeEnhancedEvent, McpServerInfo, PluginInfo};
 
 pub struct ClaudeAdapter {
     mcp_port: u16,
+    model: Option<String>,
 }
 
 impl ClaudeAdapter {
     pub fn new() -> Self {
-        Self { mcp_port: 3001 }
+        Self { mcp_port: 3001, model: None }
     }
 
     pub fn with_port(port: u16) -> Self {
-        Self { mcp_port: port }
+        Self { mcp_port: port, model: None }
+    }
+
+    pub fn with_model(mut self, model: Option<String>) -> Self {
+        self.model = model;
+        self
     }
 
     /// Parse a stream_event from Claude Code's NDJSON output
@@ -99,13 +105,8 @@ impl ClaudeAdapter {
             // tool_use blocks are handled via stream_event content_block_start
         }
 
-        if !text_parts.is_empty() {
-            let combined: String = text_parts.join("");
-            if !combined.trim().is_empty() {
-                return Ok(Some(UnifiedMessage::TextDelta { text: combined }));
-            }
-        }
-
+        // Skip assistant turn messages — text is already streamed via stream_event text_delta.
+        // Emitting here would cause duplicate display.
         Ok(None)
     }
 
@@ -137,6 +138,17 @@ impl ClaudeAdapter {
             .and_then(|v| v.as_array())
             .map(|arr| arr.iter().filter_map(|v| v.as_str().map(String::from)).collect())
             .unwrap_or_default();
+        let agents = value.get("agents")
+            .and_then(|v| v.as_array())
+            .map(|arr| arr.iter().filter_map(|v| v.as_str().map(String::from)).collect())
+            .unwrap_or_default();
+        let plugins = value.get("plugins")
+            .and_then(|v| v.as_array())
+            .map(|arr| arr.iter().map(|p| PluginInfo {
+                name: p.get("name").and_then(|v| v.as_str()).unwrap_or("").to_string(),
+                path: p.get("path").and_then(|v| v.as_str()).unwrap_or("").to_string(),
+            }).collect())
+            .unwrap_or_default();
         let mcp_servers = value.get("mcp_servers")
             .and_then(|v| v.as_array())
             .map(|arr| arr.iter().map(|s| McpServerInfo {
@@ -154,6 +166,8 @@ impl ClaudeAdapter {
             tools,
             skills,
             slash_commands,
+            agents,
+            plugins,
             mcp_servers,
             model,
             permission_mode,
@@ -252,8 +266,12 @@ impl ClaudeAdapter {
         let utilization = rate_limit_info
             .and_then(|v| v.get("utilization"))
             .and_then(|v| v.as_f64());
-        let rate_limit_type = value.get("rate_limit_type")
+        let rate_limit_type = rate_limit_info
+            .and_then(|v| v.get("rateLimitType").or_else(|| v.get("rate_limit_type")))
             .and_then(|v| v.as_str())
+            // Fallback: check top-level fields (some versions put it outside rate_limit_info)
+            .or_else(|| value.get("rateLimitType").and_then(|v| v.as_str()))
+            .or_else(|| value.get("rate_limit_type").and_then(|v| v.as_str()))
             .unwrap_or("")
             .to_string();
 
@@ -285,10 +303,16 @@ impl CliAdapter for ClaudeAdapter {
             "--include-partial-messages",
             "--include-hook-events",
         ]);
+        if let Some(ref model) = self.model {
+            cmd.args(["--model", model]);
+        }
         // Register our MCP server for permission handling
         let mcp_config = serde_json::json!({
-            "kangnam": {
-                "url": format!("http://localhost:{}/mcp", self.mcp_port)
+            "mcpServers": {
+                "kangnam": {
+                    "type": "http",
+                    "url": format!("http://localhost:{}/mcp", self.mcp_port)
+                }
             }
         });
         cmd.arg("--mcp-config");
@@ -320,6 +344,14 @@ impl CliAdapter for ClaudeAdapter {
                     let session_id = value.get("session_id").and_then(|s| s.as_str()).unwrap_or("").to_string();
                     Ok(Some(UnifiedMessage::SessionInit { session_id }))
                 } else {
+                    // Display text content from system messages (e.g., /context, /cost output)
+                    let text = value.get("message").and_then(|m| m.as_str())
+                        .or_else(|| value.get("text").and_then(|t| t.as_str()));
+                    if let Some(text) = text {
+                        if !text.is_empty() {
+                            return Ok(Some(UnifiedMessage::TextDelta { text: text.to_string() }));
+                        }
+                    }
                     Ok(None)
                 }
             }
@@ -426,7 +458,7 @@ mod tests {
 
     #[test]
     fn test_parse_enhanced_system_init() {
-        let line = r#"{"type":"system","subtype":"init","session_id":"abc-123","tools":["Bash","Read"],"skills":["my-skill"],"slash_commands":["/compact"],"mcp_servers":[{"name":"server1","status":"connected"}],"model":"claude-sonnet-4-6","permissionMode":"default","cwd":"/tmp","claude_code_version":"2.1.0"}"#;
+        let line = r#"{"type":"system","subtype":"init","session_id":"abc-123","tools":["Bash","Read"],"skills":["my-skill"],"slash_commands":["/compact"],"agents":["code-reviewer","frontend-dev"],"plugins":[{"name":"superpowers","path":"/tmp/sp"}],"mcp_servers":[{"name":"server1","status":"connected"}],"model":"claude-sonnet-4-6","permissionMode":"default","cwd":"/tmp","claude_code_version":"2.1.0"}"#;
         let result = adapter().parse_enhanced(line).unwrap().unwrap();
         match result {
             ClaudeEnhancedEvent::SessionMeta {
@@ -434,6 +466,8 @@ mod tests {
                 tools,
                 skills,
                 slash_commands,
+                agents,
+                plugins,
                 mcp_servers,
                 model,
                 permission_mode,
@@ -444,6 +478,9 @@ mod tests {
                 assert_eq!(tools, vec!["Bash", "Read"]);
                 assert_eq!(skills, vec!["my-skill"]);
                 assert_eq!(slash_commands, vec!["/compact"]);
+                assert_eq!(agents, vec!["code-reviewer", "frontend-dev"]);
+                assert_eq!(plugins.len(), 1);
+                assert_eq!(plugins[0].name, "superpowers");
                 assert_eq!(mcp_servers.len(), 1);
                 assert_eq!(mcp_servers[0].name, "server1");
                 assert_eq!(mcp_servers[0].status, "connected");

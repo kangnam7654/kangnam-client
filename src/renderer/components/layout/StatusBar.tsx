@@ -1,7 +1,7 @@
 import { useAppStore } from '../../stores/app-store'
 
 export function StatusBar() {
-  const { sessionMeta, sessionCost, rateLimit, currentSessionId } = useAppStore()
+  const { sessionMeta, sessionCost, rateLimits, currentSessionId } = useAppStore()
 
   return (
     <div
@@ -52,12 +52,15 @@ export function StatusBar() {
         </>
       )}
 
-      {rateLimit && rateLimit.utilization != null && (
-        <>
-          <Sep />
-          <RateBar status={rateLimit.status} utilization={rateLimit.utilization} />
-        </>
-      )}
+      {Object.entries(rateLimits).map(([type, info]) => (
+        info.utilization != null && (
+          <span key={type} style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+            <Sep />
+            <span style={{ fontSize: 10, color: 'var(--text-muted)' }}>{formatRateLimitLabel(type)}</span>
+            <RateBar status={info.status} utilization={info.utilization} />
+          </span>
+        )
+      ))}
 
       <div style={{ flex: 1 }} />
 
@@ -75,6 +78,13 @@ export function StatusBar() {
       )}
     </div>
   )
+}
+
+function formatRateLimitLabel(type: string): string {
+  if (!type) return 'rate'
+  if (type.includes('hour') || type.includes('5') || type === 'five_hour') return '5h'
+  if (type.includes('day') || type.includes('7') || type === 'daily') return '7d'
+  return type.length > 8 ? type.slice(0, 8) : type
 }
 
 function Sep() {
