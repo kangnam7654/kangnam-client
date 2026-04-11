@@ -5,6 +5,7 @@ import { StudioFileTree } from './StudioFileTree'
 import { StudioBottomPanel } from './StudioBottomPanel'
 import { ResizeHandle } from '../layout/ResizeHandle'
 import { cliApi } from '../../lib/cli-api'
+import { MarkdownPreview } from '../common/MarkdownPreview'
 
 interface FileInfo {
   filename: string
@@ -37,6 +38,9 @@ export function StudioEditor({ type, name: initialName }: StudioEditorProps) {
   // Dirty tracking
   const [dirty, setDirty] = useState(false)
   const initialData = useRef({ name: '', description: '', instructions: '', model: null as string | null })
+
+  // Preview mode
+  const [viewMode, setViewMode] = useState<'edit' | 'split'>('edit')
 
   // Bottom panel
   const [bottomHeight, setBottomHeight] = useState(200)
@@ -99,6 +103,21 @@ export function StudioEditor({ type, name: initialName }: StudioEditorProps) {
     window.addEventListener('keydown', handler)
     return () => window.removeEventListener('keydown', handler)
   })
+
+  // Keyboard shortcut: Cmd+Shift+V — toggle preview
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 'v') {
+        const isRefMarkdown = activeFile?.endsWith('.md') ?? false
+        const previewAvailable = !activeFile || isRefMarkdown
+        if (!previewAvailable) return
+        e.preventDefault()
+        setViewMode((m) => m === 'edit' ? 'split' : 'edit')
+      }
+    }
+    window.addEventListener('keydown', handler)
+    return () => window.removeEventListener('keydown', handler)
+  }, [activeFile])
 
   // Save
   const handleSave = useCallback(async () => {
@@ -283,6 +302,12 @@ export function StudioEditor({ type, name: initialName }: StudioEditorProps) {
   const bottomTab = studioState?.bottomTab || 'cli'
   const bottomVisible = studioState?.bottomPanelVisible || false
 
+  // Preview state
+  const isRefMarkdown = activeFile?.endsWith('.md') ?? false
+  const previewAvailable = !activeFile || isRefMarkdown
+  const showPreview = previewAvailable && viewMode === 'split'
+  const previewContent = activeFile ? refContent : instructions
+
   return (
     <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
       {/* Top bar */}
@@ -308,6 +333,24 @@ export function StudioEditor({ type, name: initialName }: StudioEditorProps) {
         </button>
 
         <div style={{ flex: 1 }} />
+
+        {/* Preview toggle */}
+        {previewAvailable && (
+          <button
+            onClick={() => setViewMode((m) => m === 'edit' ? 'split' : 'edit')}
+            title="Toggle Preview (⌘⇧V)"
+            style={{
+              display: 'flex', alignItems: 'center', gap: 4,
+              padding: '4px 8px', fontSize: 11,
+              background: viewMode === 'split' ? 'var(--accent)' : 'transparent',
+              color: viewMode === 'split' ? '#fff' : 'var(--text-secondary)',
+              border: '1px solid var(--border)',
+              borderRadius: 'var(--radius-sm)', cursor: 'pointer',
+            }}
+          >
+            <ViewSplitIcon />
+          </button>
+        )}
 
         {/* AI action buttons */}
         <ToolbarButton
@@ -370,13 +413,23 @@ export function StudioEditor({ type, name: initialName }: StudioEditorProps) {
         {/* Editor area */}
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0 }}>
           {activeFile ? (
-            /* Ref file editor — full Monaco */
-            <div style={{ flex: 1 }}>
-              <MonacoWrapper
-                value={refContent}
-                onChange={setRefContent}
-                language={activeFile.endsWith('.py') ? 'python' : activeFile.endsWith('.sh') ? 'shell' : activeFile.endsWith('.json') ? 'json' : 'markdown'}
-              />
+            /* Ref file editor — full Monaco (+ optional preview) */
+            <div style={{ flex: 1, display: 'flex', minWidth: 0 }}>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <MonacoWrapper
+                  value={refContent}
+                  onChange={setRefContent}
+                  language={activeFile.endsWith('.py') ? 'python' : activeFile.endsWith('.sh') ? 'shell' : activeFile.endsWith('.json') ? 'json' : 'markdown'}
+                />
+              </div>
+              {showPreview && (
+                <>
+                  <div style={{ width: 1, background: 'var(--border)', flexShrink: 0 }} />
+                  <div style={{ flex: 1, minWidth: 0, overflow: 'auto', padding: '16px 20px' }}>
+                    <MarkdownPreview content={previewContent} />
+                  </div>
+                </>
+              )}
             </div>
           ) : (
             /* Main file — hybrid form + Monaco */
@@ -415,12 +468,22 @@ export function StudioEditor({ type, name: initialName }: StudioEditorProps) {
                 )}
               </div>
 
-              {/* Instructions — Monaco */}
-              <div style={{ flex: 1, minHeight: 200 }}>
-                <MonacoWrapper
-                  value={instructions}
-                  onChange={setInstructions}
-                />
+              {/* Instructions — Monaco (+ optional preview) */}
+              <div style={{ flex: 1, minHeight: 200, display: 'flex', minWidth: 0 }}>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <MonacoWrapper
+                    value={instructions}
+                    onChange={setInstructions}
+                  />
+                </div>
+                {showPreview && (
+                  <>
+                    <div style={{ width: 1, background: 'var(--border)', flexShrink: 0 }} />
+                    <div style={{ flex: 1, minWidth: 0, overflow: 'auto', padding: '16px 20px' }}>
+                      <MarkdownPreview content={previewContent} />
+                    </div>
+                  </>
+                )}
               </div>
             </div>
           )}
@@ -509,6 +572,15 @@ function PlayIcon() {
   return (
     <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <polygon points="5 3 19 12 5 21 5 3" />
+    </svg>
+  )
+}
+
+function ViewSplitIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="3" y="3" width="18" height="18" rx="2" />
+      <line x1="12" y1="3" x2="12" y2="21" />
     </svg>
   )
 }
